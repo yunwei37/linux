@@ -747,25 +747,26 @@ static void tbnet_disconnect_work(struct work_struct *work)
 	tbnet_tear_down(net, false);
 }
 
-static bool tbnet_check_frame(struct tbnet *net, const struct tbnet_frame *tf,
-			      const struct thunderbolt_ip_frame_header *hdr)
+static enum tbnet_rx_error tbnet_check_frame(struct tbnet *net,
+					     const struct tbnet_frame *tf,
+					     const struct thunderbolt_ip_frame_header *hdr)
 {
 	u32 frame_id, frame_count, frame_size, frame_index;
 	unsigned int size;
 
 	if (tf->frame.flags & RING_DESC_CRC_ERROR) {
 		net->stats.rx_crc_errors++;
-		return false;
+		return TBNET_RX_ERROR_CRC;
 	} else if (tf->frame.flags & RING_DESC_BUFFER_OVERRUN) {
 		net->stats.rx_over_errors++;
-		return false;
+		return TBNET_RX_ERROR_OVERRUN;
 	}
 
 	/* Should be greater than just header i.e. contains data */
 	size = tb_ring_frame_size(&tf->frame);
 	if (size <= sizeof(*hdr)) {
 		net->stats.rx_length_errors++;
-		return false;
+		return TBNET_RX_ERROR_SHORT;
 	}
 
 	frame_count = le32_to_cpu(hdr->frame_count);
@@ -775,7 +776,7 @@ static bool tbnet_check_frame(struct tbnet *net, const struct tbnet_frame *tf,
 
 	if ((frame_size > size - sizeof(*hdr)) || !frame_size) {
 		net->stats.rx_length_errors++;
-		return false;
+		return TBNET_RX_ERROR_SIZE;
 	}
 
 	/* In case we're in the middle of packet, validate the frame
@@ -785,7 +786,7 @@ static bool tbnet_check_frame(struct tbnet *net, const struct tbnet_frame *tf,
 		/* Check the frame count fits the count field */
 		if (frame_count != le32_to_cpu(net->rx_hdr.frame_count)) {
 			net->stats.rx_length_errors++;
-			return false;
+			return TBNET_RX_ERROR_COUNT;
 		}
 
 		/* Check the frame identifiers are incremented correctly,
@@ -794,15 +795,15 @@ static bool tbnet_check_frame(struct tbnet *net, const struct tbnet_frame *tf,
 		if (frame_index != le16_to_cpu(net->rx_hdr.frame_index) + 1 ||
 		    frame_id != le16_to_cpu(net->rx_hdr.frame_id)) {
 			net->stats.rx_missed_errors++;
-			return false;
+			return TBNET_RX_ERROR_INDEX;
 		}
 
 		if (net->skb->len + frame_size > TBNET_MAX_MTU) {
 			net->stats.rx_length_errors++;
-			return false;
+			return TBNET_RX_ERROR_MTU;
 		}
 
-		return true;
+		return TBNET_RX_ERROR_NONE;
 	}
 
 	/* Start of packet, validate the frame header. tbnet_poll() puts the
@@ -812,14 +813,14 @@ static bool tbnet_check_frame(struct tbnet *net, const struct tbnet_frame *tf,
 	 */
 	if (frame_count == 0 || frame_count > MAX_SKB_FRAGS + 1) {
 		net->stats.rx_length_errors++;
-		return false;
+		return TBNET_RX_ERROR_START;
 	}
 	if (frame_index != 0) {
 		net->stats.rx_missed_errors++;
-		return false;
+		return TBNET_RX_ERROR_GAP;
 	}
 
-	return true;
+	return TBNET_RX_ERROR_NONE;
 }
 
 static int tbnet_poll(struct napi_struct *napi, int budget)
@@ -838,6 +839,7 @@ static int tbnet_poll(struct napi_struct *napi, int budget)
 		struct page *page;
 		bool last = true;
 		u32 frame_size;
+		enum tbnet_rx_error reason;
 
 		/* Return some buffers to hardware, one at a time is too
 		 * slow so allocate MAX_SKB_FRAGS buffers at the same
@@ -863,9 +865,40 @@ static int tbnet_poll(struct napi_struct *napi, int budget)
 		cleaned_count++;
 
 		hdr = page_address(page);
-		if (!tbnet_check_frame(net, tf, hdr)) {
-			trace_tbnet_invalid_rx_ip_frame(hdr->frame_size,
-				hdr->frame_id, hdr->frame_index, hdr->frame_count);
+		reason = tbnet_check_frame(net, tf, hdr);
+		if (reason != TBNET_RX_ERROR_NONE) {
+			/*
+			 * The descriptor word is reconstructed in struct
+			 * ring_desc field order (length:12 | eof:4 | sof:4 |
+			 * flags:12) from the copy tb_ring_poll()/ring_work()
+			 * latched into struct ring_frame, not read back from
+			 * the hardware slot. For RX the NHI is the only writer
+			 * of length/eof/sof (ring_write_descriptors() programs
+			 * them for TX only), so they show what the controller
+			 * completed. flags is a 12-bit field, so the << 20
+			 * shift cannot reach bit 31; the descriptor's 32-bit
+			 * timestamp is not available.
+			 *
+			 * cons/prod are driver-owned and only touched from NAPI
+			 * and teardown, so they are safe to read here.
+			 * ring->head/tail are owned by the core and mutated
+			 * under ring->lock by ring_write_descriptors()/
+			 * ring_work()/tb_ring_poll(); they would report the
+			 * next slot rather than this one, so they are left
+			 * out.
+			 */
+			u32 desc = tf->frame.size | (tf->frame.eof << 12) |
+				   (tf->frame.sof << 16) |
+				   ((u32)tf->frame.flags << 20);
+
+			trace_tbnet_invalid_rx_ip_frame(reason, desc,
+							tf->frame.buffer_phy,
+							net->rx_ring.cons,
+							net->rx_ring.prod,
+							hdr->frame_size,
+							hdr->frame_id,
+							hdr->frame_index,
+							hdr->frame_count);
 			__free_pages(page, TBNET_RX_PAGE_ORDER);
 			dev_kfree_skb_any(net->skb);
 			net->skb = NULL;
