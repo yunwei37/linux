@@ -208,16 +208,23 @@ DECLARE_EVENT_CLASS(tbnet_skb,
 		__field(unsigned int, len)
 		__field(unsigned int, data_len)
 		__field(unsigned int, nr_frags)
+		__field(unsigned int, gso_size)
+		__field(unsigned int, gso_segs)
+		__field(unsigned int, gso_type)
 	),
 	TP_fast_assign(
 		__entry->addr = skb;
 		__entry->len = skb->len;
 		__entry->data_len = skb->data_len;
 		__entry->nr_frags = skb_shinfo(skb)->nr_frags;
+		__entry->gso_size = skb_shinfo(skb)->gso_size;
+		__entry->gso_segs = skb_shinfo(skb)->gso_segs;
+		__entry->gso_type = skb_shinfo(skb)->gso_type;
 	),
-	TP_printk("skb=%p len=%u data_len=%u nr_frags=%u",
+	TP_printk("skb=%p len=%u data_len=%u nr_frags=%u gso_size=%u gso_segs=%u gso_type=%#x",
 		  __entry->addr, __entry->len, __entry->data_len,
-		  __entry->nr_frags)
+		  __entry->nr_frags, __entry->gso_size, __entry->gso_segs,
+		  __entry->gso_type)
 );
 
 DEFINE_EVENT(tbnet_skb, tbnet_rx_skb,
