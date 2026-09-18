@@ -34,7 +34,7 @@
 #define TBNET_RING_SIZE		256
 #define TBNET_LOGIN_RETRIES	60
 #define TBNET_LOGOUT_RETRIES	10
-#define TBNET_THROTTLING	8192
+#define TBNET_THROTTLING	128000
 #define TBNET_E2E		BIT(0)
 #define TBNET_MATCH_FRAGS_ID	BIT(1)
 #define TBNET_64K_FRAMES	BIT(2)
@@ -218,6 +218,10 @@ static struct tb_property_dir *tbnet_dir;
 static bool tbnet_e2e = true;
 module_param_named(e2e, tbnet_e2e, bool, 0444);
 MODULE_PARM_DESC(e2e, "USB4NET full end-to-end flow control (default: true)");
+
+static bool tbnet_tx_e2e;
+module_param_named(tx_e2e, tbnet_tx_e2e, bool, 0444);
+MODULE_PARM_DESC(tx_e2e, "USB4NET Tx end-to-end flow control (default: false)");
 
 static void tbnet_fill_header(struct thunderbolt_ip_header *hdr, u64 route,
 	u8 sequence, const uuid_t *initiator_uuid, const uuid_t *target_uuid,
@@ -981,8 +985,8 @@ static int tbnet_open(struct net_device *dev)
 	netif_carrier_off(dev);
 
 	flags = RING_FLAG_FRAME;
-	/* Only enable full E2E if the other end supports it too */
-	if (tbnet_e2e && net->svc->prtcstns & TBNET_E2E)
+	/* Tx E2E is opt-in and requires support from the other end too */
+	if (tbnet_tx_e2e && tbnet_e2e && net->svc->prtcstns & TBNET_E2E)
 		flags |= RING_FLAG_E2E;
 
 	ring = tb_ring_alloc_tx(xd->tb->nhi, -1, TBNET_RING_SIZE, flags);
@@ -1003,6 +1007,11 @@ static int tbnet_open(struct net_device *dev)
 
 	sof_mask = BIT(TBIP_PDF_FRAME_START);
 	eof_mask = BIT(TBIP_PDF_FRAME_END);
+
+	flags = RING_FLAG_FRAME;
+	/* Only enable full E2E if the other end supports it too */
+	if (tbnet_e2e && net->svc->prtcstns & TBNET_E2E)
+		flags |= RING_FLAG_E2E;
 
 	ring = tb_ring_alloc_rx(xd->tb->nhi, -1, TBNET_RING_SIZE, flags,
 				net->tx_ring.ring->hop, sof_mask,
