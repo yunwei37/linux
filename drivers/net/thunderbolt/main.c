@@ -219,6 +219,10 @@ static bool tbnet_e2e = true;
 module_param_named(e2e, tbnet_e2e, bool, 0444);
 MODULE_PARM_DESC(e2e, "USB4NET full end-to-end flow control (default: true)");
 
+static bool tbnet_tx_e2e;
+module_param_named(tx_e2e, tbnet_tx_e2e, bool, 0444);
+MODULE_PARM_DESC(tx_e2e, "USB4NET Tx end-to-end flow control (default: false)");
+
 static void tbnet_fill_header(struct thunderbolt_ip_header *hdr, u64 route,
 	u8 sequence, const uuid_t *initiator_uuid, const uuid_t *target_uuid,
 	enum thunderbolt_ip_type type, size_t size, u32 command_id)
@@ -947,8 +951,12 @@ static int tbnet_open(struct net_device *dev)
 
 	netif_carrier_off(dev);
 
-	ring = tb_ring_alloc_tx(xd->tb->nhi, -1, TBNET_RING_SIZE,
-				RING_FLAG_FRAME);
+	flags = RING_FLAG_FRAME;
+	/* Tx E2E is opt-in and requires support from the other end too */
+	if (tbnet_tx_e2e && tbnet_e2e && net->svc->prtcstns & TBNET_E2E)
+		flags |= RING_FLAG_E2E;
+
+	ring = tb_ring_alloc_tx(xd->tb->nhi, -1, TBNET_RING_SIZE, flags);
 	if (!ring) {
 		netdev_err(dev, "failed to allocate Tx ring\n");
 		return -ENOMEM;
