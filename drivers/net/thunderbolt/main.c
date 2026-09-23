@@ -160,6 +160,7 @@ struct tbnet_ring {
  * @login_sent: ThunderboltIP login message successfully sent
  * @login_received: ThunderboltIP login message received from the remote
  *		    host
+ * @tx_e2e: Enable end-to-end flow control on the Tx ring
  * @local_transmit_path: HopID we are using to send out packets
  * @remote_transmit_path: HopID the other end is using to send packets to us
  * @connection_lock: Lock serializing access to @login_sent,
@@ -190,6 +191,7 @@ struct tbnet {
 	atomic_t command_id;
 	bool login_sent;
 	bool login_received;
+	bool tx_e2e;
 	int local_transmit_path;
 	int remote_transmit_path;
 	struct mutex connection_lock;
@@ -947,8 +949,12 @@ static int tbnet_open(struct net_device *dev)
 
 	netif_carrier_off(dev);
 
-	ring = tb_ring_alloc_tx(xd->tb->nhi, -1, TBNET_RING_SIZE,
-				RING_FLAG_FRAME);
+	flags = RING_FLAG_FRAME;
+	/* The peer bit advertises E2E protocol support. */
+	if (net->tx_e2e && tbnet_e2e && net->svc->prtcstns & TBNET_E2E)
+		flags |= RING_FLAG_E2E;
+
+	ring = tb_ring_alloc_tx(xd->tb->nhi, -1, TBNET_RING_SIZE, flags);
 	if (!ring) {
 		netdev_err(dev, "failed to allocate Tx ring\n");
 		return -ENOMEM;
@@ -1336,8 +1342,58 @@ static int tbnet_get_link_ksettings(struct net_device *dev,
 	return 0;
 }
 
+static const char tbnet_priv_flags[][ETH_GSTRING_LEN] = {
+#define TBNET_PRIV_FLAG_TX_E2E	BIT(0)
+	"tx-e2e",
+};
+
+static void tbnet_get_strings(struct net_device *dev, u32 stringset, u8 *data)
+{
+	if (stringset == ETH_SS_PRIV_FLAGS)
+		memcpy(data, tbnet_priv_flags, sizeof(tbnet_priv_flags));
+}
+
+static int tbnet_get_sset_count(struct net_device *dev, int sset)
+{
+	if (sset == ETH_SS_PRIV_FLAGS)
+		return ARRAY_SIZE(tbnet_priv_flags);
+
+	return -EOPNOTSUPP;
+}
+
+static u32 tbnet_get_priv_flags(struct net_device *dev)
+{
+	const struct tbnet *net = netdev_priv(dev);
+
+	return net->tx_e2e ? TBNET_PRIV_FLAG_TX_E2E : 0;
+}
+
+static int tbnet_set_priv_flags(struct net_device *dev, u32 flags)
+{
+	struct tbnet *net = netdev_priv(dev);
+	bool tx_e2e;
+
+	if (flags & ~TBNET_PRIV_FLAG_TX_E2E)
+		return -EINVAL;
+
+	tx_e2e = flags & TBNET_PRIV_FLAG_TX_E2E;
+	if (net->tx_e2e == tx_e2e)
+		return 0;
+	if (netif_running(dev))
+		return -EBUSY;
+	if (tx_e2e && !tbnet_e2e)
+		return -EOPNOTSUPP;
+
+	net->tx_e2e = tx_e2e;
+	return 0;
+}
+
 static const struct ethtool_ops tbnet_ethtool_ops = {
 	.get_link_ksettings = tbnet_get_link_ksettings,
+	.get_strings = tbnet_get_strings,
+	.get_sset_count = tbnet_get_sset_count,
+	.get_priv_flags = tbnet_get_priv_flags,
+	.set_priv_flags = tbnet_set_priv_flags,
 };
 
 static void tbnet_generate_mac(struct net_device *dev)
