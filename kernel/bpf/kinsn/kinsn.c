@@ -11,6 +11,7 @@
 #include <linux/filter.h>
 #include <linux/init.h>
 #include <linux/unaligned.h>
+#include "kinsn.h"
 
 __bpf_kfunc_start_defs();
 
@@ -151,14 +152,14 @@ BTF_ID(func, bpf_kinsn_lea64)
 
 /* without emit, the JIT copies the kfunc, whose code is the instruction itself */
 static const struct bpf_kinsn kinsns[] = {
-	KINSN(0, rol64, NULL),
-	KINSN(1, select64, NULL),
-	KINSN(2, select_lt64, NULL),
-	KINSN(3, extract64, NULL),
-	KINSN(4, load_be64, NULL),
+	KINSN(0, rol64, KINSN_EMIT(rol64)),
+	KINSN(1, select64, KINSN_EMIT(select64)),
+	KINSN(2, select_lt64, KINSN_EMIT(select_lt64)),
+	KINSN(3, extract64, KINSN_EMIT(extract64)),
+	KINSN(4, load_be64, KINSN_EMIT(load_be64)),
 	KINSN(5, prefetch, NULL),
 	KINSN(6, copy16, NULL),
-	KINSN(7, lea64, NULL),
+	KINSN(7, lea64, KINSN_EMIT(lea64)),
 };
 
 static const struct btf_kfunc_id_set kinsn_set = {
