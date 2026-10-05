@@ -2000,6 +2000,28 @@ static int emit_kfunc_arena_args(struct bpf_prog *bpf_prog,
 	return prog - start;
 }
 
+static u8 x86_reg(u32 reg)
+{
+	return reg2hex[reg] + (is_ereg(reg) ? 8 : 0);
+}
+
+/*
+ * Get the native code of a kinsn call with the operands in the x86 registers
+ * that the verifier bound them to.
+ */
+int bpf_jit_emit_kinsn(const struct bpf_kinsn_region *r, u8 *buf)
+{
+	struct bpf_kinsn_operands ops = r->ops;
+	int i, len;
+
+	if (r->copy)
+		return -EOPNOTSUPP;
+	for (i = BPF_REG_0; i <= BPF_REG_5; i++)
+		ops.reg[i] = x86_reg(r->ops.reg[i]);
+	len = r->kinsn->emit(&ops, buf);
+	return len > 0 && len <= BPF_KINSN_MAX_EMIT ? len : -EINVAL;
+}
+
 static int do_jit(struct bpf_verifier_env *env, struct bpf_prog *bpf_prog, int *addrs, u8 *image,
 		  u8 *rw_image, int oldproglen, struct jit_context *ctx, bool jmp_padding)
 {
@@ -2952,6 +2974,14 @@ populate_extable:
 			if (!imm32)
 				return -EINVAL;
 			if (src_reg == BPF_PSEUDO_KFUNC_CALL) {
+				const struct bpf_kinsn_region *r = bpf_kinsn_native(env, insn_idx);
+
+				/* a kinsn call gets its native code */
+				if (r) {
+					memcpy(prog, r->image, r->image_len);
+					prog += r->image_len;
+					break;
+				}
 				fm = bpf_jit_find_kfunc_model(bpf_prog, insn);
 				if (!fm)
 					return -EINVAL;
