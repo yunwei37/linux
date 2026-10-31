@@ -57,6 +57,16 @@
 
 #include "process.h"
 
+#ifndef CONFIG_HAVE_HW_BREAKPOINT
+DEFINE_PER_CPU(unsigned long, cpu_dr7);
+EXPORT_PER_CPU_SYMBOL(cpu_dr7);
+
+void hw_breakpoint_restore(void)
+{
+	hw_breakpoint_disable();
+}
+#endif
+
 /*
  * per-CPU TSS segments. Threads are completely 'soft' on Linux,
  * no more per-task TSS's. The TSS size is kept cacheline-aligned

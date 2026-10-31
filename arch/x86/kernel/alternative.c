@@ -8,6 +8,7 @@
 #include <linux/execmem.h>
 #include <linux/cleanup.h>
 #include <linux/kgdb.h>
+#include <linux/kdebug.h>
 #include <linux/mmap_lock.h>
 
 #include <asm/text-patching.h>

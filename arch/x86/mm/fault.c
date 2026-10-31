@@ -21,6 +21,7 @@
 #include <linux/vmalloc.h>
 
 #include <asm/cpufeature.h>		/* boot_cpu_has, ...		*/
+#include <asm/stacktrace.h>
 #include <asm/traps.h>			/* dotraplinkage, ...		*/
 #include <asm/fixmap.h>			/* VSYSCALL_ADDR		*/
 #include <asm/vsyscall.h>		/* emulate_vsyscall		*/

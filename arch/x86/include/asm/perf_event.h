@@ -578,6 +578,14 @@ static inline u32 get_ibs_caps(void) { return 0; }
 static inline int forward_event_to_ibs(struct perf_event *event) { return -ENOENT; }
 #endif
 
+struct x86_pmu_lbr {
+	unsigned int	nr;
+	unsigned int	from;
+	unsigned int	to;
+	unsigned int	info;
+	bool		has_callstack;
+};
+
 #ifdef CONFIG_PERF_EVENTS
 extern void perf_events_lapic_init(void);
 
@@ -623,13 +631,7 @@ struct perf_guest_switch_msr {
 	u64 host, guest;
 };
 
-struct x86_pmu_lbr {
-	unsigned int	nr;
-	unsigned int	from;
-	unsigned int	to;
-	unsigned int	info;
-	bool		has_callstack;
-};
+
 
 extern void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap);
 extern u64 perf_get_hw_event_config(int hw_event);

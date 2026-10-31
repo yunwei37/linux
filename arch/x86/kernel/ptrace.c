@@ -468,6 +468,7 @@ static int genregs_set(struct task_struct *target,
 	return ret;
 }
 
+#ifdef CONFIG_HAVE_HW_BREAKPOINT
 static void ptrace_triggered(struct perf_event *bp,
 			     struct perf_sample_data *data,
 			     struct pt_regs *regs)
@@ -685,6 +686,19 @@ static int ptrace_set_debugreg(struct task_struct *tsk, int n,
 	}
 	return rc;
 }
+
+#else
+static unsigned long ptrace_get_debugreg(struct task_struct *tsk, int n)
+{
+	return 0;
+}
+
+static int ptrace_set_debugreg(struct task_struct *tsk, int n,
+			      unsigned long val)
+{
+	return -EIO;
+}
+#endif
 
 /*
  * These access the current or another (stopped) task's io permission

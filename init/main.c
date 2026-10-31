@@ -118,6 +118,9 @@
 #include <kunit/test.h>
 
 static int kernel_init(void *);
+#ifdef CONFIG_MODELOS
+void __noreturn modelos_enter(void);
+#endif
 
 /*
  * Debug helper: via this flag we know that we are in 'early bootup code'
@@ -1463,6 +1466,10 @@ static int __ref kernel_init(void *unused)
 
 	rcu_end_inkernel_boot();
 
+#ifdef CONFIG_MODELOS
+	modelos_enter();
+#endif
+
 	do_sysctl_args();
 
 	if (ramdisk_execute_command) {
@@ -1553,6 +1560,11 @@ static noinline void __init kernel_init_freeable(void)
 	do_basic_setup();
 
 	kunit_run_all_tests();
+
+#ifdef CONFIG_MODELOS
+	/* No rootfs, console file descriptors or executable init are needed. */
+	return;
+#endif
 
 	wait_for_initramfs();
 	console_on_rootfs();

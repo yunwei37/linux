@@ -2207,3 +2207,12 @@ config ARCH_HAS_SYNC_CORE_BEFORE_USERMODE
 # <asm/syscall_wrapper.h>.
 config ARCH_HAS_SYSCALL_WRAPPER
 	def_bool n
+
+config MODELOS
+	bool "Built-in ModelOS kernel-only entry"
+	depends on SMP && X86_64
+	help
+	  Finish normal kernel initialization, then run a bound worker on each
+	  online CPU and sleep PID 1 instead of mounting a root or executing init.
+	  PID 1 keeps no user address space. Worker startup is checked before
+	  the entry reports readiness; Linux driver and scheduler plumbing stay.
