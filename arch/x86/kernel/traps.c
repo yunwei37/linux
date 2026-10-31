@@ -247,12 +247,14 @@ do_trap(int trapnr, int signr, char *str, struct pt_regs *regs,
 	if (!do_trap_no_signal(tsk, trapnr, str, regs, error_code))
 		return;
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	show_signal(tsk, signr, "trap ", str, regs, error_code);
 
 	if (!sicode)
 		force_sig(signr);
 	else
 		force_sig_fault(signr, sicode, addr);
+#endif
 }
 NOKPROBE_SYMBOL(do_trap);
 

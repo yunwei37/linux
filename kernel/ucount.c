@@ -14,6 +14,7 @@ struct ucounts init_ucounts = {
 	.count = RCUREF_INIT(1),
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 #define UCOUNTS_HASHTABLE_BITS 10
 #define UCOUNTS_HASHTABLE_ENTRIES (1 << UCOUNTS_HASHTABLE_BITS)
 static struct hlist_nulls_head ucounts_hashtable[UCOUNTS_HASHTABLE_ENTRIES] = {
@@ -360,3 +361,5 @@ static __init int user_namespace_sysctl_init(void)
 	return 0;
 }
 subsys_initcall(user_namespace_sysctl_init);
+
+#endif

@@ -62,6 +62,22 @@ struct cred init_cred = {
 	.ucounts		= &init_ucounts,
 };
 
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+int copy_creds(struct task_struct *p, u64 clone_flags)
+{
+	p->cred = p->real_cred = get_cred_many(&init_cred, 2);
+	return 0;
+}
+void exit_creds(struct task_struct *tsk)
+{
+	put_cred_many(tsk->cred, 2);
+	tsk->cred = tsk->real_cred = NULL;
+}
+const struct cred *get_task_cred(struct task_struct *task)
+{
+	return get_cred(&init_cred);
+}
+#else
 /*
  * The RCU callback to actually dispose of a set of credentials
  */
@@ -684,3 +700,5 @@ int set_create_files_as(struct cred *new, struct inode *inode)
 	return security_kernel_create_files_as(new, inode);
 }
 EXPORT_SYMBOL(set_create_files_as);
+
+#endif

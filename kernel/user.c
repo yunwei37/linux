@@ -1,3 +1,63 @@
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+#include <linux/proc_ns.h>
+#include <linux/cred.h>
+#include <linux/user_namespace.h>
+#include <linux/sched/user.h>
+struct user_namespace init_user_ns = {
+	.uid_map = {
+		{
+			.extent[0] = {
+				.first = 0,
+				.lower_first = 0,
+				.count = 4294967295U,
+			},
+			.nr_extents = 1,
+		},
+	},
+	.gid_map = {
+		{
+			.extent[0] = {
+				.first = 0,
+				.lower_first = 0,
+				.count = 4294967295U,
+			},
+			.nr_extents = 1,
+		},
+	},
+	.projid_map = {
+		{
+			.extent[0] = {
+				.first = 0,
+				.lower_first = 0,
+				.count = 4294967295U,
+			},
+			.nr_extents = 1,
+		},
+	},
+	.ns.ns_type = ns_common_type(&init_user_ns),
+	.ns.__ns_ref = REFCOUNT_INIT(3),
+	.owner = GLOBAL_ROOT_UID,
+	.group = GLOBAL_ROOT_GID,
+	.ns.inum = ns_init_inum(&init_user_ns),
+#ifdef CONFIG_USER_NS
+	.ns.ops = &userns_operations,
+#endif
+	.flags = USERNS_INIT_FLAGS,
+#ifdef CONFIG_KEYS
+	.keyring_name_list = LIST_HEAD_INIT(init_user_ns.keyring_name_list),
+	.keyring_sem = __RWSEM_INITIALIZER(init_user_ns.keyring_sem),
+#endif
+#if IS_ENABLED(CONFIG_BINFMT_MISC)
+	.binfmt_misc = &init_binfmt_misc,
+#endif
+};
+EXPORT_SYMBOL_GPL(init_user_ns);
+struct user_struct root_user = {
+	.__count	= REFCOUNT_INIT(1),
+	.uid		= GLOBAL_ROOT_UID,
+	.ratelimit	= RATELIMIT_STATE_INIT(root_user.ratelimit, 0, 0),
+};
+#else
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * The "user cache".
@@ -264,3 +324,5 @@ static int __init uid_cache_init(void)
 	return 0;
 }
 subsys_initcall(uid_cache_init);
+
+#endif

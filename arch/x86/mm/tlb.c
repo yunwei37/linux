@@ -619,6 +619,7 @@ void switch_mm(struct mm_struct *prev, struct mm_struct *next,
  * affinity settings or CPU hotplug. This is part of the paranoid L1D flush
  * contract which this task requested.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void l1d_flush_force_sigbus(struct callback_head *ch)
 {
 	force_sig(SIGBUS);
@@ -747,6 +748,7 @@ static void cond_mitigation(struct task_struct *next)
 
 	this_cpu_write(cpu_tlbstate.last_user_mm_spec, next_mm);
 }
+#endif
 
 #ifdef CONFIG_PERF_EVENTS
 static inline void cr4_update_pce_mm(struct mm_struct *mm)
@@ -903,7 +905,9 @@ void switch_mm_irqs_off(struct mm_struct *unused, struct mm_struct *next,
 		 * Apply process to process speculation vulnerability
 		 * mitigations if applicable.
 		 */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		cond_mitigation(tsk);
+#endif
 
 		/*
 		 * Indicate that CR3 is about to change. nmi_uaccess_okay()

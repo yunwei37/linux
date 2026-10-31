@@ -102,7 +102,9 @@ void kernel_restart_prepare(char *cmd)
 {
 	blocking_notifier_call_chain(&reboot_notifier_list, SYS_RESTART, cmd);
 	system_state = SYSTEM_RESTART;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	usermodehelper_disable();
+#endif
 	device_shutdown();
 }
 
@@ -305,7 +307,9 @@ static void kernel_shutdown_prepare(enum system_states state)
 	blocking_notifier_call_chain(&reboot_notifier_list,
 		(state == SYSTEM_HALT) ? SYS_HALT : SYS_POWER_OFF, NULL);
 	system_state = state;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	usermodehelper_disable();
+#endif
 	device_shutdown();
 }
 /**
@@ -835,9 +839,25 @@ void ctrl_alt_del(void)
 	if (C_A_D)
 		schedule_work(&cad_work);
 	else
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		kill_cad_pid(SIGINT, 1);
+#else
+		schedule_work(&cad_work);
+#endif
 }
 
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+static int __orderly_reboot(void)
+{
+	kernel_restart(NULL);
+	return 0;
+}
+static int __orderly_poweroff(bool force)
+{
+	kernel_power_off();
+	return 0;
+}
+#else
 #define POWEROFF_CMD_PATH_LEN  256
 static char poweroff_cmd[POWEROFF_CMD_PATH_LEN] = "/sbin/poweroff";
 static const char reboot_cmd[] = "/sbin/reboot";
@@ -901,6 +921,8 @@ static int __orderly_poweroff(bool force)
 
 	return ret;
 }
+
+#endif
 
 static bool poweroff_force;
 

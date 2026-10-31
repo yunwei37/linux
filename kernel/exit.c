@@ -143,8 +143,12 @@ static void __unhash_process(struct release_task_post *post, struct task_struct 
 
 	if (group_dead) {
 		detach_pid(post->pids, p, PIDTYPE_TGID);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		detach_pid(post->pids, p, PIDTYPE_PGID);
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		detach_pid(post->pids, p, PIDTYPE_SID);
+#endif
 
 		list_del_rcu(&p->tasks);
 		list_del_init(&p->sibling);
@@ -260,7 +264,9 @@ repeat:
 	/* don't need to get the RCU readlock here - the process is dead and
 	 * can't be modifying its own credentials. But shut RCU-lockdep up */
 	rcu_read_lock();
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	dec_rlimit_ucounts(task_ucounts(p), UCOUNT_RLIMIT_NPROC, 1);
+#endif
 	rcu_read_unlock();
 
 #ifndef CONFIG_MODELOS_KERNEL_ONLY

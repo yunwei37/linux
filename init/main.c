@@ -1055,7 +1055,9 @@ void start_kernel(void)
 	anon_vma_init();
 #endif
 	thread_stack_cache_init();
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	cred_init();
+#endif
 	fork_init();
 	proc_caches_init();
 	uts_ns_init();
@@ -1070,7 +1072,9 @@ void start_kernel(void)
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 	pagecache_init();
 #endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	signals_init();
+#endif
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 	seq_file_init();
 #endif

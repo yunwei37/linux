@@ -4075,6 +4075,7 @@ EXPORT_SYMBOL(vzalloc_noprof);
  *
  * Return: pointer to the allocated memory or %NULL on error
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void *vmalloc_user_noprof(unsigned long size)
 {
 	return __vmalloc_node_range_noprof(size, SHMLBA,  VMALLOC_START, VMALLOC_END,
@@ -4082,6 +4083,7 @@ void *vmalloc_user_noprof(unsigned long size)
 				    VM_USERMAP, NUMA_NO_NODE,
 				    __builtin_return_address(0));
 }
+#endif
 EXPORT_SYMBOL(vmalloc_user_noprof);
 
 /**
@@ -4267,6 +4269,7 @@ EXPORT_SYMBOL(vmalloc_32_noprof);
  *
  * Return: pointer to the allocated memory or %NULL on error
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void *vmalloc_32_user_noprof(unsigned long size)
 {
 	return __vmalloc_node_range_noprof(size, SHMLBA,  VMALLOC_START, VMALLOC_END,
@@ -4274,6 +4277,7 @@ void *vmalloc_32_user_noprof(unsigned long size)
 				    VM_USERMAP, NUMA_NO_NODE,
 				    __builtin_return_address(0));
 }
+#endif
 EXPORT_SYMBOL(vmalloc_32_user_noprof);
 
 /*

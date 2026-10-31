@@ -195,6 +195,7 @@ char *kmemdup_nul(const char *s, size_t len, gfp_t gfp)
 }
 EXPORT_SYMBOL(kmemdup_nul);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static kmem_buckets *user_buckets __ro_after_init;
 
 static int __init init_user_buckets(void)
@@ -312,6 +313,8 @@ void *memdup_user_nul(const void __user *src, size_t len)
 
 	return p;
 }
+#endif
+
 EXPORT_SYMBOL(memdup_user_nul);
 
 /* Check if the vma is being used as a stack by this task */

@@ -1679,8 +1679,10 @@ static int copy_sighand(u64 clone_flags, struct task_struct *tsk)
 	spin_unlock_irq(&current->sighand->siglock);
 
 	/* Reset all signal handler not set to SIG_IGN to SIG_DFL. */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (clone_flags & CLONE_CLEAR_SIGHAND)
 		flush_signal_handlers(tsk, 0);
+#endif
 
 	return 0;
 }
@@ -2122,6 +2124,7 @@ __latent_entropy struct task_struct *copy_process(
 	if (retval < 0)
 		goto bad_fork_free;
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	retval = -EAGAIN;
 	if (is_rlimit_overlimit(task_ucounts(p), UCOUNT_RLIMIT_NPROC, rlimit(RLIMIT_NPROC))) {
 		if (p->real_cred->user != INIT_USER &&
@@ -2129,6 +2132,8 @@ __latent_entropy struct task_struct *copy_process(
 			goto bad_fork_cleanup_count;
 	}
 	current->flags &= ~PF_NPROC_EXCEEDED;
+
+#endif
 
 	/*
 	 * If multiple threads are within copy_process(), then this check
@@ -2454,8 +2459,12 @@ __latent_entropy struct task_struct *copy_process(
 		init_task_pid(p, PIDTYPE_PID, pid);
 		if (thread_group_leader(p)) {
 			init_task_pid(p, PIDTYPE_TGID, pid);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 			init_task_pid(p, PIDTYPE_PGID, task_pgrp(current));
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 			init_task_pid(p, PIDTYPE_SID, task_session(current));
+#endif
 
 			if (is_child_reaper(pid)) {
 				ns_of_pid(pid)->child_reaper = p;
@@ -2473,15 +2482,21 @@ __latent_entropy struct task_struct *copy_process(
 			list_add_tail(&p->sibling, &p->real_parent->children);
 			list_add_tail_rcu(&p->tasks, &init_task.tasks);
 			attach_pid(p, PIDTYPE_TGID);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 			attach_pid(p, PIDTYPE_PGID);
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 			attach_pid(p, PIDTYPE_SID);
+#endif
 			__this_cpu_inc(process_counts);
 		} else {
 			current->signal->nr_threads++;
 			current->signal->quick_threads++;
 			atomic_inc(&current->signal->live);
 			refcount_inc(&current->signal->sigcnt);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 			task_join_group_stop(p);
+#endif
 			list_add_tail_rcu(&p->thread_node,
 					  &p->signal->thread_head);
 		}
@@ -2578,7 +2593,9 @@ bad_fork_cleanup_policy:
 bad_fork_cleanup_delayacct:
 	delayacct_tsk_free(p);
 bad_fork_cleanup_count:
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	dec_rlimit_ucounts(task_ucounts(p), UCOUNT_RLIMIT_NPROC, 1);
+#endif
 	exit_creds(p);
 bad_fork_free:
 	WRITE_ONCE(p->__state, TASK_DEAD);

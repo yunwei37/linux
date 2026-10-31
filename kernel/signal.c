@@ -61,6 +61,43 @@
 
 #include "time/posix-timers.h"
 
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+/* No queued POSIX signals or user delivery. Kernel task notifications retain
+ * TIF_NOTIFY_SIGNAL and ordinary scheduler wakeups, independently of this. */
+void recalc_sigpending(void)
+{
+	clear_thread_flag(TIF_SIGPENDING);
+}
+void calculate_sigpending(void)
+{
+	recalc_sigpending();
+}
+void flush_sigqueue(struct sigpending *queue)
+{
+	sigemptyset(&queue->signal);
+	INIT_LIST_HEAD(&queue->list);
+}
+void flush_signals(struct task_struct *t)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&t->sighand->siglock, flags);
+	clear_tsk_thread_flag(t, TIF_SIGPENDING);
+	flush_sigqueue(&t->pending);
+	flush_sigqueue(&t->signal->shared_pending);
+	spin_unlock_irqrestore(&t->sighand->siglock, flags);
+}
+
+void ignore_signals(struct task_struct *t)
+{
+	int i;
+
+	for (i = 0; i < _NSIG; ++i)
+		t->sighand->action[i].sa.sa_handler = SIG_IGN;
+
+	flush_signals(t);
+}
+#else
 /*
  * SLAB caches for signal bits.
  */
@@ -5243,3 +5280,5 @@ void kdb_send_sig(struct task_struct *t, int sig)
 		kdb_printf("Signal %d is sent to process %d.\n", sig, t->pid);
 }
 #endif	/* CONFIG_KGDB_KDB */
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */

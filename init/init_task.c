@@ -43,8 +43,12 @@ static struct signal_struct init_signals = {
 	.pids = {
 		[PIDTYPE_PID]	= &init_struct_pid,
 		[PIDTYPE_TGID]	= &init_struct_pid,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		[PIDTYPE_PGID]	= &init_struct_pid,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		[PIDTYPE_SID]	= &init_struct_pid,
+#endif
 	},
 	INIT_PREV_CPUTIME(init_signals)
 };
@@ -87,9 +91,11 @@ struct task_struct init_task __aligned(L1_CACHE_BYTES) = {
 	.mm		= NULL,
 	.active_mm	= &init_mm,
 	.faults_disabled_mapping = NULL,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.restart_block	= {
 		.fn = do_no_restart_syscall,
 	},
+#endif
 	.se		= {
 		.group_node 	= LIST_HEAD_INIT(init_task.se.group_node),
 	},
