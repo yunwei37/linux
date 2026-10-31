@@ -120,6 +120,9 @@
 static int kernel_init(void *);
 #ifdef CONFIG_MODELOS
 void __noreturn modelos_enter(void);
+#ifdef CONFIG_MODELOS_RUST
+void __noreturn modelos_rust_enter(void);
+#endif
 #endif
 
 /*
@@ -1466,7 +1469,9 @@ static int __ref kernel_init(void *unused)
 
 	rcu_end_inkernel_boot();
 
-#ifdef CONFIG_MODELOS
+#ifdef CONFIG_MODELOS_RUST
+	modelos_rust_enter();
+#elif defined(CONFIG_MODELOS)
 	modelos_enter();
 #endif
 

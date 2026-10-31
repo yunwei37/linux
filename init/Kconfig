@@ -2216,3 +2216,9 @@ config MODELOS
 	  online CPU and sleep PID 1 instead of mounting a root or executing init.
 	  PID 1 keeps no user address space. Worker startup is checked before
 	  the entry reports readiness; Linux driver and scheduler plumbing stay.
+
+config MODELOS_RUST
+	bool "Enter ModelOS through Rust"
+	depends on MODELOS && RUST
+	help
+	  Run a built-in Rust entry after initcalls, then use the C worker bridge.

@@ -62,3 +62,4 @@ $(obj)/version-timestamp.o: include/generated/utsversion.h
 CFLAGS_version-timestamp.o := -include include/generated/utsversion.h
 
 obj-$(CONFIG_MODELOS) += modelos.o
+obj-$(CONFIG_MODELOS_RUST) += modelos_rust.o
