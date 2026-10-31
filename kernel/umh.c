@@ -1,4 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+#include <linux/umh.h>
+int call_usermodehelper(const char *p, char **a, char **e, int w) { return -ENOENT; }
+struct subprocess_info *call_usermodehelper_setup(const char *p, char **a, char **e,
+ gfp_t g, int (*i)(struct subprocess_info *,struct cred *),
+ void (*c)(struct subprocess_info *),void *d) { return NULL; }
+int call_usermodehelper_exec(struct subprocess_info *i,int w) { return -ENOENT; }
+int __usermodehelper_disable(enum umh_disable_depth d) { return 0; }
+void __usermodehelper_set_disable_depth(enum umh_disable_depth d) { }
+int usermodehelper_read_trylock(void) { return 0; }
+long usermodehelper_read_lock_wait(long t) { return t; }
+void usermodehelper_read_unlock(void) { }
+#else
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * umh - the kernel usermode helper
  */
@@ -568,3 +582,5 @@ static int __init init_umh_sysctls(void)
 }
 early_initcall(init_umh_sysctls);
 #endif /* CONFIG_SYSCTL */
+
+#endif

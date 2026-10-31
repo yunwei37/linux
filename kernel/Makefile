@@ -211,3 +211,7 @@ $(obj)/kheaders.md5: $(obj)/kheaders-srclist FORCE
 	$(call filechk,kheaders_md5sum)
 
 clean-files := kheaders.md5 kheaders-srclist kheaders-objlist
+
+ifdef CONFIG_MODELOS_KERNEL_ONLY
+obj-y := $(filter-out ptrace.o capability.o,$(obj-y))
+endif

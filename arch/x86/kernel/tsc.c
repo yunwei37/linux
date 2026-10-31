@@ -1157,7 +1157,9 @@ static void tsc_cs_tick_stable(struct clocksource *cs)
 
 static int tsc_cs_enable(struct clocksource *cs)
 {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	vclocks_set_used(VDSO_CLOCKMODE_TSC);
+#endif
 	return 0;
 }
 

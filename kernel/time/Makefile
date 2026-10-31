@@ -32,3 +32,7 @@ obj-$(CONFIG_TEST_UDELAY)			+= test_udelay.o
 obj-$(CONFIG_TIME_NS)				+= namespace.o namespace_vdso.o
 obj-$(CONFIG_TEST_CLOCKSOURCE_WATCHDOG)		+= clocksource-wdtest.o
 obj-$(CONFIG_TIME_KUNIT_TEST)			+= time_test.o
+
+ifdef CONFIG_MODELOS_KERNEL_ONLY
+obj-y := $(filter-out vsyscall.o,$(obj-y))
+endif

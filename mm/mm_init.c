@@ -2753,6 +2753,8 @@ void __init mm_core_init(void)
 	/* Should be run after espfix64 is set up. */
 	pti_init();
 	kmsan_init_runtime();
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	mm_cache_init();
+#endif
 	execmem_init();
 }

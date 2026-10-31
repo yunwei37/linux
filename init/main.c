@@ -935,7 +935,9 @@ void start_kernel(void)
 	 * initalization of page allocator
 	 */
 	setup_log_buf(0);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	vfs_caches_init_early();
+#endif
 	sort_main_extable();
 	trap_init();
 	mm_core_init();
@@ -1049,7 +1051,9 @@ void start_kernel(void)
 	arch_cpu_finalize_init();
 
 	pid_idr_init();
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	anon_vma_init();
+#endif
 	thread_stack_cache_init();
 	cred_init();
 	fork_init();
@@ -1060,13 +1064,25 @@ void start_kernel(void)
 	security_init();
 	dbg_late_init();
 	net_ns_init();
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	vfs_caches_init();
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	pagecache_init();
+#endif
 	signals_init();
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	seq_file_init();
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	proc_root_init();
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	nsfs_init();
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	pidfs_init();
+#endif
 	cpuset_init();
 	mem_cgroup_init();
 	cgroup_init();
@@ -1523,6 +1539,7 @@ static int __ref kernel_init(void *unused)
 }
 
 /* Open /dev/console, for stdin/stdout/stderr, this should never fail */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void __init console_on_rootfs(void)
 {
 	struct file *file = filp_open("/dev/console", O_RDWR, 0);
@@ -1536,6 +1553,7 @@ void __init console_on_rootfs(void)
 	init_dup(file);
 	fput(file);
 }
+#endif
 
 static noinline void __init kernel_init_freeable(void)
 {

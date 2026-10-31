@@ -543,6 +543,9 @@ int __sched_setscheduler(struct task_struct *p,
 	int queue_flags = DEQUEUE_SAVE | DEQUEUE_MOVE | DEQUEUE_NOCLOCK;
 	struct rq *rq;
 	bool cpuset_locked = false;
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	user = false;
+#endif
 
 	/* The pi code expects interrupts enabled */
 	BUG_ON(pi && in_interrupt());
@@ -1230,6 +1233,7 @@ out_free_cpus_allowed:
 	return retval;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 {
 	struct affinity_context ac;
@@ -1275,6 +1279,7 @@ long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 
 	return retval;
 }
+#endif
 
 static int get_user_cpu_mask(unsigned long __user *user_mask_ptr, unsigned len,
 			     struct cpumask *new_mask)

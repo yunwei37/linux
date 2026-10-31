@@ -822,7 +822,12 @@ void __init poking_init(void)
 	spinlock_t *ptl;
 	pte_t *ptep;
 
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	extern struct mm_struct *modelos_kernel_mm_alloc(void);
+	text_poke_mm = modelos_kernel_mm_alloc();
+#else
 	text_poke_mm = mm_alloc();
+#endif
 	BUG_ON(!text_poke_mm);
 
 	/* Xen PV guests need the PGD to be pinned. */

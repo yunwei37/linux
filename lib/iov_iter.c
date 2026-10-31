@@ -87,6 +87,7 @@ size_t memcpy_from_iter(void *iter_from, size_t progress,
  *
  * Always returns 0 for non-userspace iterators.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 size_t fault_in_iov_iter_readable(const struct iov_iter *i, size_t size)
 {
 	if (iter_is_ubuf(i)) {
@@ -114,6 +115,7 @@ size_t fault_in_iov_iter_readable(const struct iov_iter *i, size_t size)
 	}
 	return 0;
 }
+#endif
 EXPORT_SYMBOL(fault_in_iov_iter_readable);
 
 /*
@@ -130,6 +132,7 @@ EXPORT_SYMBOL(fault_in_iov_iter_readable);
  *
  * Always returns 0 for non-user-space iterators.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 size_t fault_in_iov_iter_writeable(const struct iov_iter *i, size_t size)
 {
 	if (iter_is_ubuf(i)) {
@@ -157,6 +160,7 @@ size_t fault_in_iov_iter_writeable(const struct iov_iter *i, size_t size)
 	}
 	return 0;
 }
+#endif
 EXPORT_SYMBOL(fault_in_iov_iter_writeable);
 
 void iov_iter_init(struct iov_iter *i, unsigned int direction,
@@ -1048,6 +1052,7 @@ static struct page *first_bvec_segment(const struct iov_iter *i,
 	return page;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t __iov_iter_get_pages_alloc(struct iov_iter *i,
 		   struct page ***pages, size_t maxsize,
 		   unsigned int maxpages, size_t *start)
@@ -1114,6 +1119,7 @@ static ssize_t __iov_iter_get_pages_alloc(struct iov_iter *i,
 		return iter_xarray_get_pages(i, pages, maxsize, maxpages, start);
 	return -EFAULT;
 }
+#endif
 
 ssize_t iov_iter_get_pages2(struct iov_iter *i, struct page **pages,
 		size_t maxsize, unsigned maxpages, size_t *start)
@@ -1799,6 +1805,7 @@ static ssize_t iov_iter_extract_user_pages(struct iov_iter *i,
  *
  * It may also return -ENOMEM and -EFAULT.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 ssize_t iov_iter_extract_pages(struct iov_iter *i,
 			       struct page ***pages,
 			       size_t maxsize,
@@ -1832,4 +1839,5 @@ ssize_t iov_iter_extract_pages(struct iov_iter *i,
 						     offset0);
 	return -EFAULT;
 }
+#endif
 EXPORT_SYMBOL_GPL(iov_iter_extract_pages);

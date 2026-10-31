@@ -714,6 +714,7 @@ out:
 }
 
 /* /dev/kmsg - userspace message inject/listen interface */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 struct devkmsg_user {
 	atomic64_t seq;
 	struct ratelimit_state rs;
@@ -965,6 +966,8 @@ const struct file_operations kmsg_fops = {
 	.poll = devkmsg_poll,
 	.release = devkmsg_release,
 };
+#endif
+
 
 #ifdef CONFIG_VMCORE_INFO
 /*

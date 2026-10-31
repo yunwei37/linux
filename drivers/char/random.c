@@ -738,7 +738,9 @@ static void __cold _credit_init_bits(size_t bits)
 		WRITE_ONCE(vdso_k_rng_data->is_ready, true);
 #endif
 		wake_up_interruptible(&crng_init_wait);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		kill_fasync(&fasync, SIGIO, POLL_IN);
+#endif
 		pr_notice("crng init done\n");
 		m = ratelimit_state_get_miss(&urandom_warning);
 		if (m)
@@ -1382,6 +1384,7 @@ out:
  *
  **********************************************************************/
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(getrandom, char __user *, ubuf, size_t, len, unsigned int, flags)
 {
 	struct iov_iter iter;
@@ -1410,6 +1413,7 @@ SYSCALL_DEFINE3(getrandom, char __user *, ubuf, size_t, len, unsigned int, flags
 		return ret;
 	return get_random_bytes_user(&iter);
 }
+#endif
 
 static __poll_t random_poll(struct file *file, poll_table *wait)
 {
@@ -1552,11 +1556,14 @@ static long random_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	}
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int random_fasync(int fd, struct file *filp, int on)
 {
 	return fasync_helper(fd, filp, on, &fasync);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 const struct file_operations random_fops = {
 	.read_iter = random_read_iter,
 	.write_iter = random_write_iter,
@@ -1568,7 +1575,9 @@ const struct file_operations random_fops = {
 	.splice_read = copy_splice_read,
 	.splice_write = iter_file_splice_write,
 };
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 const struct file_operations urandom_fops = {
 	.read_iter = urandom_read_iter,
 	.write_iter = random_write_iter,
@@ -1579,6 +1588,7 @@ const struct file_operations urandom_fops = {
 	.splice_read = copy_splice_read,
 	.splice_write = iter_file_splice_write,
 };
+#endif
 
 
 /********************************************************************

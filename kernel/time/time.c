@@ -176,6 +176,7 @@ SYSCALL_DEFINE2(gettimeofday, struct __kernel_old_timeval __user *, tv,
  * various programs will get confused when the clock gets warped.
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int do_sys_settimeofday64(const struct timespec64 *tv, const struct timezone *tz)
 {
 	static int firsttime = 1;
@@ -205,6 +206,7 @@ int do_sys_settimeofday64(const struct timespec64 *tv, const struct timezone *tz
 		return do_settimeofday64(tv);
 	return 0;
 }
+#endif
 
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(settimeofday, struct __kernel_old_timeval __user *, tv,

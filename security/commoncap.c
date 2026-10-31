@@ -323,6 +323,7 @@ int cap_capset(struct cred *new,
  * Return: 1 if security.capability has a value, meaning inode_killpriv()
  * is required, 0 otherwise, meaning inode_killpriv() is not required.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int cap_inode_need_killpriv(struct dentry *dentry)
 {
 	struct inode *inode = d_backing_inode(dentry);
@@ -331,6 +332,7 @@ int cap_inode_need_killpriv(struct dentry *dentry)
 	error = __vfs_getxattr(dentry, inode, XATTR_NAME_CAPS, NULL, 0);
 	return error > 0;
 }
+#endif
 
 /**
  * cap_inode_killpriv - Erase the security markings on an inode
@@ -348,6 +350,7 @@ int cap_inode_need_killpriv(struct dentry *dentry)
  *
  * Return: 0 if successful, -ve on error.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int cap_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry)
 {
 	int error;
@@ -357,6 +360,7 @@ int cap_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry)
 		error = 0;
 	return error;
 }
+#endif
 
 static bool rootid_owns_currentns(vfsuid_t rootvfsuid)
 {
@@ -407,6 +411,7 @@ static bool is_v3header(int size, const struct vfs_cap_data *cap)
  * by the integrity subsystem, which really wants the unconverted values -
  * so that's good.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int cap_inode_getsecurity(struct mnt_idmap *idmap,
 			  struct inode *inode, const char *name, void **buffer,
 			  bool alloc)
@@ -512,6 +517,7 @@ out_free:
 	kfree(tmpbuf);
 	return size;
 }
+#endif
 
 /**
  * rootid_from_xattr - translate root uid of vfs caps
@@ -556,6 +562,7 @@ static bool validheader(size_t size, const struct vfs_cap_data *cap)
  *
  * Return: On success, return the new size; on error, return < 0.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int cap_convert_nscap(struct mnt_idmap *idmap, struct dentry *dentry,
 		      const void **ivalue, size_t size)
 {
@@ -608,6 +615,7 @@ int cap_convert_nscap(struct mnt_idmap *idmap, struct dentry *dentry,
 	*ivalue = nscap;
 	return newsize;
 }
+#endif
 
 /*
  * Calculate the new process capability sets from the capability sets attached
@@ -662,6 +670,7 @@ static inline int bprm_caps_from_vfs_caps(struct cpu_vfs_cap_data *caps,
  * permissions. On non-idmapped mounts or if permission checking is to be
  * performed on the raw inode simply pass @nop_mnt_idmap.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int get_vfs_caps_from_disk(struct mnt_idmap *idmap,
 			   const struct dentry *dentry,
 			   struct cpu_vfs_cap_data *cpu_caps)
@@ -744,6 +753,7 @@ int get_vfs_caps_from_disk(struct mnt_idmap *idmap,
 
 	return 0;
 }
+#endif
 
 /*
  * Attempt to get the on-exec apply capability sets for an executable file from
@@ -906,6 +916,7 @@ static inline bool nonroot_raised_pE(struct cred *new, const struct cred *old,
  *
  * Return: 0 if successful, -ve on error.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int cap_bprm_creds_from_file(struct linux_binprm *bprm, const struct file *file)
 {
 	/* Process setpcap binaries and capabilities for uid 0 */
@@ -997,6 +1008,7 @@ int cap_bprm_creds_from_file(struct linux_binprm *bprm, const struct file *file)
 
 	return 0;
 }
+#endif
 
 /**
  * cap_inode_setxattr - Determine whether an xattr may be altered

@@ -126,8 +126,12 @@ struct task_struct init_task __aligned(L1_CACHE_BYTES) = {
 	RCU_POINTER_INITIALIZER(cred, &init_cred),
 	.comm		= INIT_TASK_COMM,
 	.thread		= INIT_THREAD,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.fs		= &init_fs,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.files		= &init_files,
+#endif
 #ifdef CONFIG_IO_URING
 	.io_uring	= NULL,
 #endif

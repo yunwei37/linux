@@ -47,12 +47,14 @@ static bool seq_buf_can_fit(struct seq_buf *s, size_t len)
  *
  * Returns: zero on success, non-zero otherwise.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int seq_buf_print_seq(struct seq_file *m, struct seq_buf *s)
 {
 	unsigned int len = seq_buf_used(s);
 
 	return seq_write(m, s->buffer, len);
 }
+#endif
 
 /**
  * seq_buf_vprintf - sequence printing of information.
@@ -309,6 +311,7 @@ int seq_buf_putmem_hex(struct seq_buf *s, const void *mem,
  *
  * Returns: the number of written bytes on success, -1 on overflow.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int seq_buf_path(struct seq_buf *s, const struct path *path, const char *esc)
 {
 	char *buf;
@@ -329,6 +332,7 @@ int seq_buf_path(struct seq_buf *s, const struct path *path, const char *esc)
 
 	return res;
 }
+#endif
 
 /**
  * seq_buf_to_user - copy the sequence buffer to user space

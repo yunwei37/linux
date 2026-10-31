@@ -330,3 +330,16 @@ obj-$(CONFIG_GENERIC_LIB_DEVMEM_IS_ALLOWED) += devmem_is_allowed.o
 obj-$(CONFIG_FIRMWARE_TABLE) += fw_table.o
 
 subdir-$(CONFIG_FORTIFY_SOURCE) += test_fortify
+
+ifdef CONFIG_MODELOS_KERNEL_ONLY
+obj-y := $(filter-out iov_iter.o buildid.o,$(obj-y))
+lib-y := $(filter-out iov_iter.o buildid.o,$(lib-y))
+endif
+
+ifdef CONFIG_MODELOS_KERNEL_ONLY
+obj-y := $(filter-out vdso/,$(obj-y))
+endif
+
+ifdef CONFIG_MODELOS_KERNEL_ONLY
+obj-y += modelos-ucs2.o
+endif

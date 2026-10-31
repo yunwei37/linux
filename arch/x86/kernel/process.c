@@ -148,6 +148,7 @@ void exit_thread(struct task_struct *tsk)
 	fpu__drop(tsk);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int set_new_tls(struct task_struct *p, unsigned long tls)
 {
 	struct user_desc __user *utls = (struct user_desc __user *)tls;
@@ -157,6 +158,7 @@ static int set_new_tls(struct task_struct *p, unsigned long tls)
 	else
 		return do_set_thread_area_64(p, ARCH_SET_FS, tls);
 }
+#endif
 
 __visible void ret_from_fork(struct task_struct *prev, struct pt_regs *regs,
 				     int (*fn)(void *), void *fn_arg)
@@ -240,6 +242,12 @@ int copy_thread(struct task_struct *p, const struct kernel_clone_args *args)
 
 	fpu_clone(p, clone_flags, args->fn, new_ssp);
 
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	p->thread.pkru = pkru_get_init_value();
+	memset(childregs, 0, sizeof(struct pt_regs));
+	kthread_frame_init(frame, args->fn, args->fn_arg);
+	return 0;
+#else
 	/* Kernel thread ? */
 	if (unlikely(p->flags & PF_KTHREAD)) {
 		p->thread.pkru = pkru_get_init_value();
@@ -285,6 +293,7 @@ int copy_thread(struct task_struct *p, const struct kernel_clone_args *args)
 		io_bitmap_share(p);
 
 	return ret;
+#endif
 }
 
 static void pkru_flush_thread(void)
@@ -1031,12 +1040,14 @@ static int __init idle_setup(char *str)
 }
 early_param("idle", idle_setup);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 unsigned long arch_align_stack(unsigned long sp)
 {
 	if (!(current->personality & ADDR_NO_RANDOMIZE) && randomize_va_space)
 		sp -= get_random_u32_below(8192);
 	return sp & ~0xf;
 }
+#endif
 
 unsigned long arch_randomize_brk(struct mm_struct *mm)
 {

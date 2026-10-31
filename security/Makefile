@@ -29,3 +29,7 @@ obj-$(CONFIG_SECURITY_IPE)		+= ipe/
 
 # Object integrity file lists
 obj-$(CONFIG_INTEGRITY)			+= integrity/
+
+ifdef CONFIG_MODELOS_KERNEL_ONLY
+obj-y := $(filter-out commoncap.o min_addr.o,$(obj-y))
+endif

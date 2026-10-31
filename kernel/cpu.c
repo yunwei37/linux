@@ -1238,6 +1238,7 @@ void __init cpuhp_threads_init(void)
  * Also note that the function uses a somewhat relaxed locking scheme, so it may
  * be called only for an already offlined CPU.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void clear_tasks_mm_cpumask(int cpu)
 {
 	struct task_struct *p;
@@ -1266,6 +1267,7 @@ void clear_tasks_mm_cpumask(int cpu)
 	}
 	rcu_read_unlock();
 }
+#endif
 
 /* Take this CPU down. */
 static int take_cpu_down(void *_param)

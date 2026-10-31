@@ -873,6 +873,7 @@ static int check_kill_permission(int sig, struct kernel_siginfo *info,
  * CONTEXT:
  * Must be called with @task->sighand->siglock held.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void ptrace_trap_notify(struct task_struct *t)
 {
 	WARN_ON_ONCE(!(t->ptrace & PT_SEIZED));
@@ -881,6 +882,7 @@ static void ptrace_trap_notify(struct task_struct *t)
 	task_set_jobctl_pending(t, JOBCTL_TRAP_NOTIFY);
 	ptrace_signal_wake_up(t, t->jobctl & JOBCTL_LISTENING);
 }
+#endif
 
 /*
  * Handle magic process-wide effects of stop/continue signals. Unlike
@@ -923,11 +925,16 @@ static bool prepare_signal(int sig, struct task_struct *p, bool force)
 		for_each_thread(p, t) {
 			flush_sigqueue_mask(p, &flush, &t->pending);
 			task_clear_jobctl_pending(t, JOBCTL_STOP_PENDING);
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+			t->jobctl &= ~JOBCTL_STOPPED;
+			wake_up_state(t, __TASK_STOPPED);
+#else
 			if (likely(!(t->ptrace & PT_SEIZED))) {
 				t->jobctl &= ~JOBCTL_STOPPED;
 				wake_up_state(t, __TASK_STOPPED);
 			} else
 				ptrace_trap_notify(t);
+#endif
 		}
 
 		/*
@@ -1882,6 +1889,7 @@ int force_sig_seccomp(int syscall, int reason, bool force_coredump)
 /* For the crazy architectures that include trap information in
  * the errno field, instead of an actual errno value.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int force_sig_ptrace_errno_trap(int errno, void __user *addr)
 {
 	struct kernel_siginfo info;
@@ -1893,6 +1901,7 @@ int force_sig_ptrace_errno_trap(int errno, void __user *addr)
 	info.si_addr  = addr;
 	return force_sig_info(&info);
 }
+#endif
 
 /* For the rare architectures that include trap information using
  * si_trapno.
@@ -2251,6 +2260,7 @@ void do_notify_pidfd(struct task_struct *task)
  * Returns true if our parent ignored us and so we've switched to
  * self-reaping.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 bool do_notify_parent(struct task_struct *tsk, int sig)
 {
 	struct kernel_siginfo info;
@@ -2348,6 +2358,7 @@ bool do_notify_parent(struct task_struct *tsk, int sig)
 
 	return autoreap;
 }
+#endif
 
 /**
  * do_notify_parent_cldstop - notify parent of stopped/continued state change
@@ -2362,6 +2373,7 @@ bool do_notify_parent(struct task_struct *tsk, int sig)
  * CONTEXT:
  * Must be called with tasklist_lock at least read locked.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void do_notify_parent_cldstop(struct task_struct *tsk,
 				     bool for_ptracer, int why)
 {
@@ -2419,6 +2431,7 @@ static void do_notify_parent_cldstop(struct task_struct *tsk,
 	__wake_up_parent(tsk, parent);
 	spin_unlock_irqrestore(&sighand->siglock, flags);
 }
+#endif
 
 /*
  * This must be called with current->sighand->siglock held.
@@ -2432,6 +2445,7 @@ static void do_notify_parent_cldstop(struct task_struct *tsk,
  * with.  If the code did not stop because the tracer is gone,
  * the stop signal remains unchanged unless clear_code.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int ptrace_stop(int exit_code, int why, unsigned long message,
 		       kernel_siginfo_t *info)
 	__releases(&current->sighand->siglock)
@@ -2582,7 +2596,9 @@ static int ptrace_stop(int exit_code, int why, unsigned long message,
 	recalc_sigpending_tsk(current);
 	return exit_code;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int ptrace_do_notify(int signr, int exit_code, int why, unsigned long message)
 {
 	kernel_siginfo_t info;
@@ -2596,7 +2612,9 @@ static int ptrace_do_notify(int signr, int exit_code, int why, unsigned long mes
 	/* Let the debugger run.  */
 	return ptrace_stop(exit_code, why, message, &info);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int ptrace_notify(int exit_code, unsigned long message)
 {
 	int signr;
@@ -2610,6 +2628,7 @@ int ptrace_notify(int exit_code, unsigned long message)
 	spin_unlock_irq(&current->sighand->siglock);
 	return signr;
 }
+#endif
 
 /**
  * do_signal_stop - handle group stop for SIGSTOP and other stop signals
@@ -2633,6 +2652,7 @@ int ptrace_notify(int exit_code, unsigned long message)
  * %false if group stop is already cancelled or ptrace trap is scheduled.
  * %true if participated in group stop.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static bool do_signal_stop(int signr)
 	__releases(&current->sighand->siglock)
 {
@@ -2735,6 +2755,7 @@ static bool do_signal_stop(int signr)
 		return false;
 	}
 }
+#endif
 
 /**
  * do_jobctl_trap - take care of ptrace jobctl traps
@@ -2751,6 +2772,7 @@ static bool do_signal_stop(int signr)
  * Must be called with @current->sighand->siglock held, which may be
  * released and re-acquired before returning with intervening sleep.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void do_jobctl_trap(void)
 {
 	struct signal_struct *signal = current->signal;
@@ -2768,6 +2790,7 @@ static void do_jobctl_trap(void)
 		ptrace_stop(signr, CLD_STOPPED, 0, NULL);
 	}
 }
+#endif
 
 /**
  * do_freezer_trap - handle the freezer jobctl trap
@@ -2814,6 +2837,7 @@ static void do_freezer_trap(void)
 		task_work_run();
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int ptrace_signal(int signr, kernel_siginfo_t *info, enum pid_type type)
 {
 	/*
@@ -2859,6 +2883,7 @@ static int ptrace_signal(int signr, kernel_siginfo_t *info, enum pid_type type)
 
 	return signr;
 }
+#endif
 
 static void hide_si_addr_tag_bits(struct ksignal *ksig)
 {
@@ -2882,6 +2907,7 @@ static void hide_si_addr_tag_bits(struct ksignal *ksig)
 	}
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 bool get_signal(struct ksignal *ksig)
 {
 	struct sighand_struct *sighand = current->sighand;
@@ -3129,6 +3155,7 @@ relock:
 out:
 	return signr > 0;
 }
+#endif
 
 /**
  * signal_delivered - called after signal delivery to update blocked signals
@@ -3160,6 +3187,7 @@ static void signal_delivered(struct ksignal *ksig, int stepping)
 		ptrace_notify(SIGTRAP, 0);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void signal_setup_done(int failed, struct ksignal *ksig, int stepping)
 {
 	if (failed)
@@ -3167,6 +3195,7 @@ void signal_setup_done(int failed, struct ksignal *ksig, int stepping)
 	else
 		signal_delivered(ksig, stepping);
 }
+#endif
 
 /*
  * It could be that complete_signal() picked us to notify about the
@@ -3199,6 +3228,7 @@ static void retarget_shared_pending(struct task_struct *tsk, sigset_t *which)
 	}
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void exit_signals(struct task_struct *tsk)
 {
 	LIST_HEAD(sigq_list);
@@ -3242,6 +3272,7 @@ void exit_signals(struct task_struct *tsk)
 		read_unlock(&tasklist_lock);
 	}
 }
+#endif
 
 /*
  * System call entry points.
@@ -4497,6 +4528,7 @@ static inline void sigaltstack_lock(void) { }
 static inline void sigaltstack_unlock(void) { }
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int
 do_sigaltstack (const stack_t *ss, stack_t *oss, unsigned long sp,
 		size_t min_ss_size)
@@ -4554,6 +4586,7 @@ do_sigaltstack (const stack_t *ss, stack_t *oss, unsigned long sp,
 	}
 	return ret;
 }
+#endif
 
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(sigaltstack,const stack_t __user *,uss, stack_t __user *,uoss)
@@ -4571,6 +4604,7 @@ SYSCALL_DEFINE2(sigaltstack,const stack_t __user *,uss, stack_t __user *,uoss)
 }
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int restore_altstack(const stack_t __user *uss)
 {
 	stack_t new;
@@ -4581,6 +4615,7 @@ int restore_altstack(const stack_t __user *uss)
 	/* squash all but EFAULT for now */
 	return 0;
 }
+#endif
 
 int __save_altstack(stack_t __user *uss, unsigned long sp)
 {

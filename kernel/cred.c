@@ -403,6 +403,7 @@ int commit_creds(struct cred *new)
 	get_cred(new); /* we will require a ref for the subj creds too */
 
 	/* dumpability changes */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!uid_eq(old->euid, new->euid) ||
 	    !gid_eq(old->egid, new->egid) ||
 	    !uid_eq(old->fsuid, new->fsuid) ||
@@ -422,6 +423,7 @@ int commit_creds(struct cred *new)
 		 */
 		smp_wmb();
 	}
+#endif
 
 	/* alter the thread keyring */
 	if (!uid_eq(new->fsuid, old->fsuid))

@@ -63,3 +63,7 @@ CFLAGS_version-timestamp.o := -include include/generated/utsversion.h
 
 obj-$(CONFIG_MODELOS) += modelos.o
 obj-$(CONFIG_MODELOS_RUST) += modelos_rust.o
+
+ifdef CONFIG_MODELOS_KERNEL_ONLY
+obj-y := $(filter-out mounts.o noinitramfs.o initramfs.o,$(obj-y))
+endif

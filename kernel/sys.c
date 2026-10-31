@@ -1921,6 +1921,7 @@ static void accumulate_thread_rusage(struct task_struct *t, struct rusage *r)
 	r->ru_oublock += task_io_get_oublock(t);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void getrusage(struct task_struct *p, int who, struct rusage *r)
 {
 	struct task_struct *t;
@@ -2008,6 +2009,7 @@ out_children:
 	r->ru_utime = ns_to_kernel_old_timeval(utime);
 	r->ru_stime = ns_to_kernel_old_timeval(stime);
 }
+#endif
 
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(getrusage, int, who, struct rusage __user *, ru)

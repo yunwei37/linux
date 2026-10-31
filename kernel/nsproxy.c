@@ -27,6 +27,31 @@
 #include <linux/cgroup.h>
 #include <linux/perf_event.h>
 
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+struct nsproxy init_nsproxy = {
+	.count			= REFCOUNT_INIT(1),
+	.uts_ns			= &init_uts_ns,
+#if defined(CONFIG_POSIX_MQUEUE) || defined(CONFIG_SYSVIPC)
+	.ipc_ns			= &init_ipc_ns,
+#endif
+	.mnt_ns			= NULL,
+	.pid_ns_for_children	= &init_pid_ns,
+#ifdef CONFIG_NET
+	.net_ns			= &init_net,
+#endif
+#ifdef CONFIG_CGROUPS
+	.cgroup_ns		= &init_cgroup_ns,
+#endif
+#ifdef CONFIG_TIME_NS
+	.time_ns		= &init_time_ns,
+	.time_ns_for_children	= &init_time_ns,
+#endif
+};
+
+int __init nsproxy_cache_init(void) { return 0; }
+int copy_namespaces(u64 flags, struct task_struct *tsk) { tsk->nsproxy=&init_nsproxy; return 0; }
+void exit_nsproxy_namespaces(struct task_struct *p) { p->nsproxy=NULL; }
+#else
 static struct kmem_cache *nsproxy_cachep;
 
 struct nsproxy init_nsproxy = {
@@ -64,6 +89,7 @@ static inline struct nsproxy *create_nsproxy(void)
  * Return the newly created nsproxy.  Do not attach this to the task,
  * leave it to the caller to do proper locking and attach it to task.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct nsproxy *create_new_namespaces(u64 flags,
 	struct task_struct *tsk, struct user_namespace *user_ns,
 	struct fs_struct *new_fs)
@@ -139,6 +165,7 @@ out_ns:
 	kmem_cache_free(nsproxy_cachep, new_nsp);
 	return ERR_PTR(err);
 }
+#endif
 
 /*
  * called from clone.  This now handles copy for nsproxy and all
@@ -146,6 +173,10 @@ out_ns:
  */
 int copy_namespaces(u64 flags, struct task_struct *tsk)
 {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	tsk->nsproxy = &init_nsproxy;
+	return 0;
+#else
 	struct nsproxy *old_ns = tsk->nsproxy;
 	struct user_namespace *user_ns = task_cred_xxx(tsk, user_ns);
 	struct nsproxy *new_ns;
@@ -181,8 +212,10 @@ int copy_namespaces(u64 flags, struct task_struct *tsk)
 
 	tsk->nsproxy = new_ns;
 	return 0;
+#endif
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void free_nsproxy(struct nsproxy *ns)
 {
 	put_mnt_ns(ns->mnt_ns);
@@ -195,6 +228,7 @@ void free_nsproxy(struct nsproxy *ns)
 	put_net(ns->net_ns);
 	kmem_cache_free(nsproxy_cachep, ns);
 }
+#endif
 
 /*
  * Called from unshare. Unshare all the namespaces part of nsproxy.
@@ -226,6 +260,7 @@ out:
 	return err;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void switch_task_namespaces(struct task_struct *p, struct nsproxy *new)
 {
 	struct nsproxy *ns;
@@ -240,6 +275,7 @@ void switch_task_namespaces(struct task_struct *p, struct nsproxy *new)
 	if (ns)
 		put_nsproxy(ns);
 }
+#endif
 
 void exit_nsproxy_namespaces(struct task_struct *p)
 {
@@ -580,3 +616,5 @@ int __init nsproxy_cache_init(void)
 	nsproxy_cachep = KMEM_CACHE(nsproxy, SLAB_PANIC|SLAB_ACCOUNT);
 	return 0;
 }
+
+#endif

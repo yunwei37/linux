@@ -1381,6 +1381,7 @@ static ssize_t extract_xarray_to_sg(struct iov_iter *iter,
  * The iov_iter_extract_mode() function should be used to query how cleanup
  * should be performed.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 ssize_t extract_iter_to_sg(struct iov_iter *iter, size_t maxsize,
 			   struct sg_table *sgtable, unsigned int sg_max,
 			   iov_iter_extraction_t extraction_flags)
@@ -1411,4 +1412,5 @@ ssize_t extract_iter_to_sg(struct iov_iter *iter, size_t maxsize,
 		return -EIO;
 	}
 }
+#endif
 EXPORT_SYMBOL_GPL(extract_iter_to_sg);

@@ -514,6 +514,7 @@ void free_task(struct task_struct *tsk)
 }
 EXPORT_SYMBOL(free_task);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void dup_mm_exe_file(struct mm_struct *mm, struct mm_struct *oldmm)
 {
 	struct file *exe_file;
@@ -527,6 +528,7 @@ void dup_mm_exe_file(struct mm_struct *mm, struct mm_struct *oldmm)
 	if (exe_file && exe_file_deny_write_access(exe_file))
 		pr_warn_once("exe_file_deny_write_access() failed in %s\n", __func__);
 }
+#endif
 
 #ifdef CONFIG_MMU
 static inline int mm_alloc_pgd(struct mm_struct *mm)
@@ -672,6 +674,7 @@ static void cleanup_lazy_tlbs(struct mm_struct *mm)
  * is dropped: either by a lazy thread or by
  * mmput. Free the page directory and the mm.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void __mmdrop(struct mm_struct *mm)
 {
 	BUG_ON(mm == &init_mm);
@@ -693,8 +696,10 @@ void __mmdrop(struct mm_struct *mm)
 
 	free_mm(mm);
 }
+#endif
 EXPORT_SYMBOL_GPL(__mmdrop);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void mmdrop_async_fn(struct work_struct *work)
 {
 	struct mm_struct *mm;
@@ -702,7 +707,9 @@ static void mmdrop_async_fn(struct work_struct *work)
 	mm = container_of(work, struct mm_struct, async_put_work);
 	__mmdrop(mm);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void mmdrop_async(struct mm_struct *mm)
 {
 	if (unlikely(atomic_dec_and_test(&mm->mm_count))) {
@@ -710,6 +717,7 @@ static void mmdrop_async(struct mm_struct *mm)
 		schedule_work(&mm->async_put_work);
 	}
 }
+#endif
 
 static inline void free_signal_struct(struct signal_struct *sig)
 {
@@ -719,8 +727,10 @@ static inline void free_signal_struct(struct signal_struct *sig)
 	 * __mmdrop is not safe to call from softirq context on x86 due to
 	 * pgd_dtor so postpone it to the async context
 	 */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (sig->oom_mm)
 		mmdrop_async(sig->oom_mm);
+#endif
 	kmem_cache_free(signal_cachep, sig);
 }
 
@@ -1115,6 +1125,7 @@ fail_mm_init:
 /*
  * Allocate and initialize an mm_struct.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 struct mm_struct *mm_alloc(void)
 {
 	struct mm_struct *mm;
@@ -1126,8 +1137,10 @@ struct mm_struct *mm_alloc(void)
 	memset(mm, 0, sizeof(*mm));
 	return mm_init(mm, current, current_user_ns());
 }
+#endif
 EXPORT_SYMBOL_IF_KUNIT(mm_alloc);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static inline void __mmput(struct mm_struct *mm)
 {
 	VM_BUG_ON(atomic_read(&mm->mm_users));
@@ -1150,10 +1163,12 @@ static inline void __mmput(struct mm_struct *mm)
 	futex_hash_free(mm);
 	mmdrop(mm);
 }
+#endif
 
 /*
  * Decrement the use count and release all resources for an mm.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void mmput(struct mm_struct *mm)
 {
 	might_sleep();
@@ -1161,9 +1176,11 @@ void mmput(struct mm_struct *mm)
 	if (atomic_dec_and_test(&mm->mm_users))
 		__mmput(mm);
 }
+#endif
 EXPORT_SYMBOL_GPL(mmput);
 
 #if defined(CONFIG_MMU) || defined(CONFIG_FUTEX_PRIVATE_HASH)
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void mmput_async_fn(struct work_struct *work)
 {
 	struct mm_struct *mm = container_of(work, struct mm_struct,
@@ -1171,7 +1188,9 @@ static void mmput_async_fn(struct work_struct *work)
 
 	__mmput(mm);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void mmput_async(struct mm_struct *mm)
 {
 	if (atomic_dec_and_test(&mm->mm_users)) {
@@ -1179,6 +1198,7 @@ void mmput_async(struct mm_struct *mm)
 		schedule_work(&mm->async_put_work);
 	}
 }
+#endif
 EXPORT_SYMBOL_GPL(mmput_async);
 #endif
 
@@ -1195,6 +1215,7 @@ EXPORT_SYMBOL_GPL(mmput_async);
  *
  * Can only fail if new_exe_file != NULL.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int set_mm_exe_file(struct mm_struct *mm, struct file *new_exe_file)
 {
 	struct file *old_exe_file;
@@ -1222,6 +1243,7 @@ int set_mm_exe_file(struct mm_struct *mm, struct file *new_exe_file)
 	}
 	return 0;
 }
+#endif
 
 /**
  * replace_mm_exe_file - replace a reference to the mm's executable file
@@ -1232,6 +1254,7 @@ int set_mm_exe_file(struct mm_struct *mm, struct file *new_exe_file)
  *
  * Main user is sys_prctl(PR_SET_MM_MAP/EXE_FILE).
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int replace_mm_exe_file(struct mm_struct *mm, struct file *new_exe_file)
 {
 	struct vm_area_struct *vma;
@@ -1275,6 +1298,7 @@ int replace_mm_exe_file(struct mm_struct *mm, struct file *new_exe_file)
 	}
 	return 0;
 }
+#endif
 
 /**
  * get_mm_exe_file - acquire a reference to the mm's executable file
@@ -1283,6 +1307,7 @@ int replace_mm_exe_file(struct mm_struct *mm, struct file *new_exe_file)
  * Returns %NULL if mm has no associated executable file.
  * User must release file via fput().
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 struct file *get_mm_exe_file(struct mm_struct *mm)
 {
 	struct file *exe_file;
@@ -1292,6 +1317,7 @@ struct file *get_mm_exe_file(struct mm_struct *mm)
 	rcu_read_unlock();
 	return exe_file;
 }
+#endif
 
 /**
  * get_task_exe_file - acquire a reference to the task's executable file
@@ -1301,6 +1327,7 @@ struct file *get_mm_exe_file(struct mm_struct *mm)
  * this is a kernel thread with borrowed mm (see the comment above get_task_mm).
  * User must release file via fput().
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 struct file *get_task_exe_file(struct task_struct *task)
 {
 	struct file *exe_file = NULL;
@@ -1316,6 +1343,7 @@ struct file *get_task_exe_file(struct task_struct *task)
 	task_unlock(task);
 	return exe_file;
 }
+#endif
 
 /**
  * get_task_mm - acquire a reference to the task's mm
@@ -1327,6 +1355,7 @@ struct file *get_task_exe_file(struct task_struct *task)
  * bumping up the use count.  User must release the mm via mmput()
  * after use.  Typically used by /proc and ptrace.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 struct mm_struct *get_task_mm(struct task_struct *task)
 {
 	struct mm_struct *mm;
@@ -1341,6 +1370,7 @@ struct mm_struct *get_task_mm(struct task_struct *task)
 	task_unlock(task);
 	return mm;
 }
+#endif
 EXPORT_SYMBOL_GPL(get_task_mm);
 
 static bool may_access_mm(struct mm_struct *mm, struct task_struct *task, unsigned int mode)
@@ -1354,6 +1384,7 @@ static bool may_access_mm(struct mm_struct *mm, struct task_struct *task, unsign
 	return false;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 struct mm_struct *mm_access(struct task_struct *task, unsigned int mode)
 {
 	struct mm_struct *mm;
@@ -1374,6 +1405,7 @@ struct mm_struct *mm_access(struct task_struct *task, unsigned int mode)
 
 	return mm;
 }
+#endif
 
 static void complete_vfork_done(struct task_struct *tsk)
 {
@@ -1421,6 +1453,7 @@ static int wait_for_vfork_done(struct task_struct *child,
  * restoring the old one. . .
  * Eric Biederman 10 January 1998
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void mm_release(struct task_struct *tsk, struct mm_struct *mm)
 {
 	uprobe_free_utask(tsk);
@@ -1453,18 +1486,23 @@ static void mm_release(struct task_struct *tsk, struct mm_struct *mm)
 	if (tsk->vfork_done)
 		complete_vfork_done(tsk);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void exit_mm_release(struct task_struct *tsk, struct mm_struct *mm)
 {
 	futex_exit_release(tsk);
 	mm_release(tsk, mm);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void exec_mm_release(struct task_struct *tsk, struct mm_struct *mm)
 {
 	futex_exec_release(tsk);
 	mm_release(tsk, mm);
 }
+#endif
 
 /**
  * dup_mm() - duplicates an existing mm structure
@@ -1519,6 +1557,11 @@ fail_nomem:
 
 static int copy_mm(u64 clone_flags, struct task_struct *tsk)
 {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	tsk->mm = NULL;
+	tsk->active_mm = NULL;
+	return 0;
+#else
 	struct mm_struct *mm, *oldmm;
 
 	tsk->min_flt = tsk->maj_flt = 0;
@@ -1553,10 +1596,15 @@ static int copy_mm(u64 clone_flags, struct task_struct *tsk)
 	tsk->active_mm = mm;
 	sched_mm_cid_fork(tsk);
 	return 0;
+#endif
 }
 
 static int copy_fs(u64 clone_flags, struct task_struct *tsk)
 {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	tsk->fs = NULL;
+	return 0;
+#else
 	struct fs_struct *fs = current->fs;
 	if (clone_flags & CLONE_FS) {
 		/* tsk->fs is already what we want */
@@ -1574,11 +1622,16 @@ static int copy_fs(u64 clone_flags, struct task_struct *tsk)
 	if (!tsk->fs)
 		return -ENOMEM;
 	return 0;
+#endif
 }
 
 static int copy_files(u64 clone_flags, struct task_struct *tsk,
 		      int no_files)
 {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	tsk->files = NULL;
+	return 0;
+#else
 	struct files_struct *oldf, *newf;
 
 	/*
@@ -1604,6 +1657,7 @@ static int copy_files(u64 clone_flags, struct task_struct *tsk,
 
 	tsk->files = newf;
 	return 0;
+#endif
 }
 
 static int copy_sighand(u64 clone_flags, struct task_struct *tsk)
@@ -1829,6 +1883,7 @@ static inline void rcu_copy_process(struct task_struct *p)
  *         error, a negative error code is returned from the function and the
  *         last argument remains unchanged.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int pidfd_prepare(struct pid *pid, unsigned int flags, struct file **ret_file)
 {
 	struct file *pidfs_file;
@@ -1872,6 +1927,7 @@ int pidfd_prepare(struct pid *pid, unsigned int flags, struct file **ret_file)
 	*ret_file = pidfs_file;
 	return take_fd(pidfd);
 }
+#endif
 
 static void __delayed_free_task(struct rcu_head *rhp)
 {
@@ -2214,6 +2270,7 @@ __latent_entropy struct task_struct *copy_process(
 	 * descriptor table (so that the pidfd doesn't leak into the child
 	 * if the fd table isn't shared).
 	 */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (clone_flags & CLONE_PIDFD) {
 		int flags = (clone_flags & CLONE_THREAD) ? PIDFD_THREAD : 0;
 
@@ -2230,6 +2287,7 @@ __latent_entropy struct task_struct *copy_process(
 		if (retval)
 			goto bad_fork_put_pidfd;
 	}
+#endif
 
 #ifdef CONFIG_BLOCK
 	p->plug = NULL;
@@ -2247,7 +2305,9 @@ __latent_entropy struct task_struct *copy_process(
 	 * Syscall tracing and stepping should be turned off in the
 	 * child regardless of CLONE_PTRACE.
 	 */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	user_disable_single_step(p);
+#endif
 	clear_task_syscall_work(p, SYSCALL_TRACE);
 #if defined(CONFIG_GENERIC_ENTRY) || defined(TIF_SYSCALL_EMU)
 	clear_task_syscall_work(p, SYSCALL_EMU);
@@ -2376,7 +2436,11 @@ __latent_entropy struct task_struct *copy_process(
 
 	init_task_pid_links(p);
 	if (likely(p->pid)) {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+		p->ptrace = 0;
+#else
 		ptrace_init_task(p, (clone_flags & CLONE_PTRACE) || trace);
+#endif
 
 		init_task_pid(p, PIDTYPE_PID, pid);
 		if (thread_group_leader(p)) {
@@ -2421,8 +2485,10 @@ __latent_entropy struct task_struct *copy_process(
 	syscall_tracepoint_update(p);
 	write_unlock_irq(&tasklist_lock);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (pidfile)
 		fd_install(pidfd, pidfile);
+#endif
 
 	proc_fork_connector(p);
 	sched_post_fork(p);
@@ -2433,7 +2499,9 @@ __latent_entropy struct task_struct *copy_process(
 	uprobe_copy_process(p, clone_flags);
 	user_events_fork(p, clone_flags);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	copy_oom_score_adj(clone_flags, p);
+#endif
 
 	return p;
 
@@ -2444,10 +2512,12 @@ bad_fork_core_free:
 bad_fork_cancel_cgroup:
 	cgroup_cancel_fork(p, args);
 bad_fork_put_pidfd:
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (clone_flags & CLONE_PIDFD) {
 		fput(pidfile);
 		put_unused_fd(pidfd);
 	}
+#endif
 bad_fork_free_pid:
 	if (pid != &init_struct_pid)
 		free_pid(pid);
@@ -2457,21 +2527,30 @@ bad_fork_cleanup_io:
 	if (p->io_context)
 		exit_io_context(p);
 bad_fork_cleanup_namespaces:
+
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	exit_nsproxy_namespaces(p);
+#endif
 bad_fork_cleanup_mm:
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (p->mm) {
 		mm_clear_owner(p->mm, p);
 		mmput(p->mm);
 	}
+#endif
 bad_fork_cleanup_signal:
 	if (!(clone_flags & CLONE_THREAD))
 		free_signal_struct(p->signal);
 bad_fork_cleanup_sighand:
 	__cleanup_sighand(p->sighand);
 bad_fork_cleanup_fs:
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	exit_fs(p); /* blocking */
+#endif
 bad_fork_cleanup_files:
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	exit_files(p); /* blocking */
+#endif
 bad_fork_cleanup_semundo:
 	exit_sem(p);
 bad_fork_cleanup_security:
@@ -2598,6 +2677,7 @@ pid_t kernel_clone(struct kernel_clone_args *args)
 	 * requested, no event is reported; otherwise, report if the event
 	 * for the type of forking is enabled.
 	 */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!(clone_flags & CLONE_UNTRACED)) {
 		if (clone_flags & CLONE_VFORK)
 			trace = PTRACE_EVENT_VFORK;
@@ -2609,6 +2689,8 @@ pid_t kernel_clone(struct kernel_clone_args *args)
 		if (likely(!ptrace_event_enabled(current, trace)))
 			trace = 0;
 	}
+#endif
+
 
 	p = copy_process(NULL, trace, NUMA_NO_NODE, args);
 	add_latent_entropy();
@@ -2643,6 +2725,7 @@ pid_t kernel_clone(struct kernel_clone_args *args)
 
 	wake_up_new_task(p);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	/* forking complete and child started to run, tell ptracer */
 	if (unlikely(trace))
 		ptrace_event_pid(trace, pid);
@@ -2651,6 +2734,8 @@ pid_t kernel_clone(struct kernel_clone_args *args)
 		if (!wait_for_vfork_done(p, &vfork))
 			ptrace_event_pid(PTRACE_EVENT_VFORK_DONE, pid);
 	}
+#endif
+
 
 	put_pid(pid);
 	return nr;
@@ -2967,6 +3052,7 @@ static void sighand_ctor(void *data)
 	init_waitqueue_head(&sighand->signalfd_wqh);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void __init mm_cache_init(void)
 {
 	unsigned int mm_size;
@@ -2985,6 +3071,7 @@ void __init mm_cache_init(void)
 			sizeof_field(struct mm_struct, saved_auxv),
 			NULL);
 }
+#endif
 
 void __init proc_caches_init(void)
 {
@@ -2996,6 +3083,7 @@ void __init proc_caches_init(void)
 			sizeof(struct signal_struct), 0,
 			SLAB_HWCACHE_ALIGN|SLAB_PANIC|SLAB_ACCOUNT,
 			NULL);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	files_cachep = kmem_cache_create("files_cache",
 			sizeof(struct files_struct), 0,
 			SLAB_HWCACHE_ALIGN|SLAB_PANIC|SLAB_ACCOUNT,
@@ -3005,6 +3093,7 @@ void __init proc_caches_init(void)
 			SLAB_HWCACHE_ALIGN|SLAB_PANIC|SLAB_ACCOUNT,
 			NULL);
 	mmap_init();
+#endif
 	nsproxy_cache_init();
 }
 
@@ -3065,6 +3154,7 @@ static int unshare_fs(unsigned long unshare_flags, struct fs_struct **new_fsp)
 /*
  * Unshare file descriptor table if it is being shared
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int unshare_fd(unsigned long unshare_flags, struct files_struct **new_fdp)
 {
 	struct files_struct *fd = current->files;
@@ -3079,6 +3169,7 @@ static int unshare_fd(unsigned long unshare_flags, struct files_struct **new_fdp
 
 	return 0;
 }
+#endif
 
 /*
  * unshare allows a process to 'unshare' part of the process
@@ -3088,6 +3179,7 @@ static int unshare_fd(unsigned long unshare_flags, struct files_struct **new_fdp
  * constructed. Here we are modifying the current, active,
  * task_struct.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int ksys_unshare(unsigned long unshare_flags)
 {
 	struct fs_struct *fs, *new_fs = NULL;
@@ -3209,6 +3301,7 @@ bad_unshare_cleanup_fs:
 bad_unshare_out:
 	return err;
 }
+#endif
 
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(unshare, unsigned long, unshare_flags)
@@ -3223,6 +3316,7 @@ SYSCALL_DEFINE1(unshare, unsigned long, unshare_flags)
  *	the exec layer of the kernel.
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int unshare_files(void)
 {
 	struct task_struct *task = current;
@@ -3240,6 +3334,7 @@ int unshare_files(void)
 	put_files_struct(old);
 	return 0;
 }
+#endif
 
 static int sysctl_max_threads(const struct ctl_table *table, int write,
 		       void *buffer, size_t *lenp, loff_t *ppos)

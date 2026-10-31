@@ -44,3 +44,7 @@ obj-$(CONFIG_PS3_FLASH)		+= ps3flash.o
 obj-$(CONFIG_XILLYBUS_CLASS)	+= xillybus/
 obj-$(CONFIG_POWERNV_OP_PANEL)	+= powernv-op-panel.o
 obj-$(CONFIG_ADI)		+= adi.o
+
+ifdef CONFIG_MODELOS_KERNEL_ONLY
+obj-y := $(filter-out mem.o misc.o,$(obj-y))
+endif

@@ -557,6 +557,7 @@ pgprot_t dma_pgprot(struct device *dev, pgprot_t prot, unsigned long attrs)
  * Returns %true if @dev supports dma_mmap_coherent() and dma_mmap_attrs() to
  * map DMA allocations to userspace.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 bool dma_can_mmap(struct device *dev)
 {
 	const struct dma_map_ops *ops = get_dma_ops(dev);
@@ -567,6 +568,7 @@ bool dma_can_mmap(struct device *dev)
 		return true;
 	return ops->mmap != NULL;
 }
+#endif
 EXPORT_SYMBOL_GPL(dma_can_mmap);
 
 /**
@@ -582,6 +584,7 @@ EXPORT_SYMBOL_GPL(dma_can_mmap);
  * space.  The coherent DMA buffer must not be freed by the driver until the
  * user space mapping has been released.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int dma_mmap_attrs(struct device *dev, struct vm_area_struct *vma,
 		void *cpu_addr, dma_addr_t dma_addr, size_t size,
 		unsigned long attrs)
@@ -598,6 +601,7 @@ int dma_mmap_attrs(struct device *dev, struct vm_area_struct *vma,
 		return -ENXIO;
 	return ops->mmap(dev, vma, cpu_addr, dma_addr, size, attrs);
 }
+#endif
 EXPORT_SYMBOL(dma_mmap_attrs);
 
 u64 dma_get_required_mask(struct device *dev)
@@ -761,6 +765,7 @@ void dma_free_pages(struct device *dev, size_t size, struct page *page,
 }
 EXPORT_SYMBOL_GPL(dma_free_pages);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int dma_mmap_pages(struct device *dev, struct vm_area_struct *vma,
 		size_t size, struct page *page)
 {
@@ -772,6 +777,7 @@ int dma_mmap_pages(struct device *dev, struct vm_area_struct *vma,
 			       page_to_pfn(page) + vma->vm_pgoff,
 			       vma_pages(vma) << PAGE_SHIFT, vma->vm_page_prot);
 }
+#endif
 EXPORT_SYMBOL_GPL(dma_mmap_pages);
 
 static struct sg_table *alloc_single_sgt(struct device *dev, size_t size,
@@ -864,6 +870,7 @@ void dma_vunmap_noncontiguous(struct device *dev, void *vaddr)
 }
 EXPORT_SYMBOL_GPL(dma_vunmap_noncontiguous);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int dma_mmap_noncontiguous(struct device *dev, struct vm_area_struct *vma,
 		size_t size, struct sg_table *sgt)
 {
@@ -871,6 +878,7 @@ int dma_mmap_noncontiguous(struct device *dev, struct vm_area_struct *vma,
 		return iommu_dma_mmap_noncontiguous(dev, vma, size, sgt);
 	return dma_mmap_pages(dev, vma, size, sg_page(sgt->sgl));
 }
+#endif
 EXPORT_SYMBOL_GPL(dma_mmap_noncontiguous);
 
 static int dma_supported(struct device *dev, u64 mask)

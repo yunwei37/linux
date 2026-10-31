@@ -493,6 +493,9 @@ fw_get_filesystem_firmware(struct device *device, struct fw_priv *fw_priv,
 					     size_t in_size,
 					     const void *in_buffer))
 {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	return -ENOENT;
+#else
 	size_t size;
 	int i, len, maxlen = 0;
 	int rc = -ENOENT;
@@ -591,6 +594,7 @@ fw_get_filesystem_firmware(struct device *device, struct fw_priv *fw_priv,
 	__putname(path);
 
 	return rc;
+#endif
 }
 
 /* firmware holds the ownership of pages */

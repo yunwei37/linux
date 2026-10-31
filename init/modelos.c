@@ -68,3 +68,12 @@ void __noreturn modelos_enter(void)
 	for (;;)
 		schedule_timeout_uninterruptible(MAX_SCHEDULE_TIMEOUT);
 }
+
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+void __set_task_comm(struct task_struct *tsk, const char *buf, bool exec)
+{
+	size_t len = min(strlen(buf), sizeof(tsk->comm) - 1);
+	memcpy(tsk->comm, buf, len);
+	memset(&tsk->comm[len], 0, sizeof(tsk->comm) - len);
+}
+#endif

@@ -456,6 +456,7 @@ EXPORT_SYMBOL(file_ns_capable);
  *
  * Return true if the inode uid and gid are within the namespace.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 bool privileged_wrt_inode_uidgid(struct user_namespace *ns,
 				 struct mnt_idmap *idmap,
 				 const struct inode *inode)
@@ -463,6 +464,7 @@ bool privileged_wrt_inode_uidgid(struct user_namespace *ns,
 	return vfsuid_has_mapping(ns, i_uid_into_vfsuid(idmap, inode)) &&
 	       vfsgid_has_mapping(ns, i_gid_into_vfsgid(idmap, inode));
 }
+#endif
 
 /**
  * capable_wrt_inode_uidgid - Check nsown_capable and uid and gid mapped

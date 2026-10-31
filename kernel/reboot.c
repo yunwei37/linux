@@ -870,7 +870,9 @@ static int __orderly_reboot(void)
 
 	if (ret) {
 		pr_warn("Failed to start orderly reboot: forcing the issue\n");
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		emergency_sync();
+#endif
 		kernel_restart(NULL);
 	}
 
@@ -891,7 +893,9 @@ static int __orderly_poweroff(bool force)
 		 * poweroff asap.  Or not even bother syncing if we're doing an
 		 * emergency shutdown?
 		 */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		emergency_sync();
+#endif
 		kernel_power_off();
 	}
 

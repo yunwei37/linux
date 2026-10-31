@@ -41,6 +41,7 @@
  * Source/target buffer must be kernel space,
  * Do not walk the page table directly, use get_user_pages
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int ptrace_access_vm(struct task_struct *tsk, unsigned long addr,
 		     void *buf, int len, unsigned int gup_flags)
 {
@@ -64,6 +65,7 @@ int ptrace_access_vm(struct task_struct *tsk, unsigned long addr,
 
 	return ret;
 }
+#endif
 
 
 void __ptrace_link(struct task_struct *child, struct task_struct *new_parent,

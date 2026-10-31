@@ -27,3 +27,7 @@ CFLAGS_REMOVE_entry_fred.o	+= -pg $(CC_FLAGS_FTRACE)
 obj-$(CONFIG_X86_FRED)		+= entry_64_fred.o entry_fred.o
 
 obj-$(CONFIG_IA32_EMULATION)	+= entry_64_compat.o syscall_32.o
+
+ifdef CONFIG_MODELOS_KERNEL_ONLY
+obj-y := $(filter-out vdso/ vsyscall/,$(obj-y))
+endif

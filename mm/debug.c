@@ -102,8 +102,10 @@ static void __dump_folio(struct folio *folio, struct page *page,
 		type = "ksm ";
 	else if (folio_test_anon(folio))
 		type = "anon ";
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	else if (mapping)
 		dump_mapping(mapping);
+#endif
 	BUILD_BUG_ON(ARRAY_SIZE(pageflag_names) != __NR_PAGEFLAGS + 1);
 
 	/*

@@ -918,8 +918,10 @@ void __init fpu__init_system_xstate(unsigned int legacy_size)
 	 * Update info used for ptrace frames; use standard-format size and no
 	 * supervisor xstates:
 	 */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	update_regset_xstate_info(fpu_user_cfg.max_size,
 				  fpu_user_cfg.max_features);
+#endif
 
 	/*
 	 * init_fpstate excludes dynamic states as they are large but init
@@ -1141,6 +1143,7 @@ static void copy_feature(bool from_xstate, struct membuf *to, void *xstate,
  *
  * It supports partial copy but @to.pos always starts from zero.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void __copy_xstate_to_uabi_buf(struct membuf to, struct fpstate *fpstate,
 			       u64 xfeatures, u32 pkru_val,
 			       enum xstate_copy_mode copy_mode)
@@ -1252,6 +1255,7 @@ out:
 	if (to.left)
 		membuf_zero(&to, to.left);
 }
+#endif
 
 /**
  * copy_xstate_to_uabi_buf - Copy kernel saved xstate to a UABI buffer
@@ -1265,6 +1269,7 @@ out:
  *
  * It supports partial copy but @to.pos always starts from zero.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void copy_xstate_to_uabi_buf(struct membuf to, struct task_struct *tsk,
 			     enum xstate_copy_mode copy_mode)
 {
@@ -1272,6 +1277,7 @@ void copy_xstate_to_uabi_buf(struct membuf to, struct task_struct *tsk,
 				  x86_task_fpu(tsk)->fpstate->user_xfeatures,
 				  tsk->thread.pkru, copy_mode);
 }
+#endif
 
 static int copy_from_buffer(void *dst, unsigned int offset, unsigned int size,
 			    const void *kbuf, const void __user *ubuf)
@@ -1837,6 +1843,7 @@ EXPORT_SYMBOL_GPL(xstate_get_guest_group_perm);
  * e.g. for AMX which requires XFEATURE_XTILE_CFG(17) and
  * XFEATURE_XTILE_DATA(18) this would be XFEATURE_XTILE_DATA(18).
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 long fpu_xstate_prctl(int option, unsigned long arg2)
 {
 	u64 __user *uptr = (u64 __user *)arg2;
@@ -1877,6 +1884,7 @@ long fpu_xstate_prctl(int option, unsigned long arg2)
 		return -EINVAL;
 	}
 }
+#endif
 
 #ifdef CONFIG_PROC_PID_ARCH_STATUS
 /*

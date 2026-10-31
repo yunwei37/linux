@@ -62,6 +62,7 @@ static unsigned long get_align_bits(struct file *filp)
 	return va_align.bits & get_align_mask(filp);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int __init control_va_addr_alignment(char *str)
 {
 	/* guard against enabling this on other CPU families */
@@ -84,6 +85,7 @@ static int __init control_va_addr_alignment(char *str)
 
 	return 1;
 }
+#endif
 __setup("align_va_addr=", control_va_addr_alignment);
 
 #ifndef CONFIG_MODELOS_KERNEL_ONLY

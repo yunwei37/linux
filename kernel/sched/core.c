@@ -5169,7 +5169,9 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 	__releases(rq->lock)
 {
 	struct rq *rq = this_rq();
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	struct mm_struct *mm = rq->prev_mm;
+#endif
 	unsigned int prev_state;
 
 	/*
@@ -5237,10 +5239,12 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 	 *   provided by mmdrop_lazy_tlb(),
 	 * - a sync_core for SYNC_CORE.
 	 */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (mm) {
 		membarrier_mm_sync_core_before_usermode(mm);
 		mmdrop_lazy_tlb_sched(mm);
 	}
+#endif
 
 	if (unlikely(prev_state == TASK_DEAD)) {
 		if (prev->sched_class->task_dead)
@@ -5302,6 +5306,10 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	 */
 	arch_start_context_switch(prev);
 
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	next->active_mm = &init_mm;
+	prev->active_mm = NULL;
+#else
 	/*
 	 * kernel -> kernel   lazy + transfer active
 	 *   user -> kernel   lazy + mmgrab_lazy_tlb() active
@@ -5342,6 +5350,8 @@ context_switch(struct rq *rq, struct task_struct *prev,
 
 	/* switch_mm_cid() requires the memory barriers above. */
 	switch_mm_cid(rq, prev, next);
+
+#endif
 
 	prepare_lock_switch(rq, next, rf);
 

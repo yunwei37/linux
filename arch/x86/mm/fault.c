@@ -138,7 +138,7 @@ is_prefetch(struct pt_regs *regs, unsigned long error_code, unsigned long addr)
 	if (error_code & X86_PF_INSTR)
 		return 0;
 
-	instr = (void *)convert_ip_to_linear(current, regs);
+	instr = (void *)(IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY) ? regs->ip : convert_ip_to_linear(current, regs));
 	max_instr = instr + 15;
 
 	/*
@@ -1472,7 +1472,11 @@ handle_page_fault(struct pt_regs *regs, unsigned long error_code,
 	if (unlikely(fault_in_kernel_space(address))) {
 		do_kern_addr_fault(regs, error_code, address);
 	} else {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+		do_kern_addr_fault(regs, error_code, address);
+#else
 		do_user_addr_fault(regs, error_code, address);
+#endif
 	}
 	/*
 	 * page fault handling might have reenabled interrupts,

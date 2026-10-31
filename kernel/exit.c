@@ -261,7 +261,9 @@ repeat:
 	dec_rlimit_ucounts(task_ucounts(p), UCOUNT_RLIMIT_NPROC, 1);
 	rcu_read_unlock();
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	pidfs_exit(p);
+#endif
 	cgroup_release(p);
 
 	/*
@@ -271,7 +273,9 @@ repeat:
 	thread_pid = get_pid(task_pid(p));
 
 	write_lock_irq(&tasklist_lock);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	ptrace_release_task(p);
+#endif
 	__exit_signal(&post, p);
 
 	/*
@@ -280,6 +284,7 @@ repeat:
 	 * group leader's parent process. (if it wants notification.)
 	 */
 	zap_leader = 0;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	leader = p->group_leader;
 	if (leader != p && thread_group_empty(leader)
 			&& leader->exit_state == EXIT_ZOMBIE) {
@@ -296,6 +301,7 @@ repeat:
 			leader->exit_state = EXIT_DEAD;
 	}
 
+#endif
 	write_unlock_irq(&tasklist_lock);
 	proc_flush_pid(thread_pid);
 	put_pid(thread_pid);
@@ -559,6 +565,9 @@ void mm_update_next_owner(struct mm_struct *mm)
  */
 static void exit_mm(void)
 {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	/* Kernel workers never own a user mm. */
+#else
 	struct mm_struct *mm = current->mm;
 
 	exit_mm_release(current, mm);
@@ -592,6 +601,7 @@ static void exit_mm(void)
 	mmput(mm);
 	if (test_thread_flag(TIF_MEMDIE))
 		exit_oom_victim();
+#endif
 }
 
 static struct task_struct *find_alive_thread(struct task_struct *p)
@@ -746,6 +756,12 @@ static void forget_original_parent(struct task_struct *father,
  */
 static void exit_notify(struct task_struct *tsk, int group_dead)
 {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	write_lock_irq(&tasklist_lock);
+	tsk->exit_state = EXIT_DEAD;
+	write_unlock_irq(&tasklist_lock);
+	release_task(tsk);
+#else
 	bool autoreap;
 	struct task_struct *p, *n;
 	LIST_HEAD(dead);
@@ -787,6 +803,7 @@ static void exit_notify(struct task_struct *tsk, int group_dead)
 		list_del_init(&p->ptrace_entry);
 		release_task(p);
 	}
+#endif
 }
 
 #ifdef CONFIG_DEBUG_STACK_USAGE
@@ -921,12 +938,18 @@ void __noreturn do_exit(long code)
 	kmsan_task_exit(tsk);
 
 	synchronize_group_exit(tsk, code);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	ptrace_event(PTRACE_EVENT_EXIT, code);
+#endif
 	user_events_exit(tsk);
 
 	io_uring_files_cancel();
 	sched_mm_cid_exit(tsk);
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	tsk->flags |= PF_EXITING;
+#else
 	exit_signals(tsk);  /* sets PF_EXITING */
+#endif
 
 	seccomp_filter_release(tsk);
 
@@ -974,11 +997,18 @@ void __noreturn do_exit(long code)
 
 	exit_sem(tsk);
 	exit_shm(tsk);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	exit_files(tsk);
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	exit_fs(tsk);
+#endif
 	if (group_dead)
 		disassociate_ctty(1);
+
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	exit_nsproxy_namespaces(tsk);
+#endif
 	exit_task_work(tsk);
 	exit_thread(tsk);
 
@@ -1006,8 +1036,10 @@ void __noreturn do_exit(long code)
 	if (tsk->io_context)
 		exit_io_context(tsk);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (tsk->splice_pipe)
 		free_pipe_info(tsk->splice_pipe);
+#endif
 
 	if (tsk->task_frag.page)
 		put_page(tsk->task_frag.page);
@@ -1016,8 +1048,10 @@ void __noreturn do_exit(long code)
 
 	check_stack_usage();
 	preempt_disable();
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (tsk->nr_dirtied)
 		__this_cpu_add(dirty_throttle_leaks, tsk->nr_dirtied);
+#endif
 	exit_rcu();
 	exit_tasks_rcu_finish();
 
@@ -1098,6 +1132,7 @@ SYSCALL_DEFINE1(exit, int, error_code)
  * Take down every thread in the group.  This is called by fatal signals
  * as well as by sys_exit_group (below).
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void __noreturn
 do_group_exit(int exit_code)
 {
@@ -1127,6 +1162,7 @@ do_group_exit(int exit_code)
 	do_exit(exit_code);
 	/* NOTREACHED */
 }
+#endif
 
 /*
  * this kills every thread in the thread group. Note that any externally
@@ -1142,6 +1178,7 @@ SYSCALL_DEFINE1(exit_group, int, error_code)
 }
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int eligible_pid(struct wait_opts *wo, struct task_struct *p)
 {
 	return	wo->wo_type == PIDTYPE_MAX ||
@@ -1743,6 +1780,7 @@ static long do_wait(struct wait_opts *wo)
 	return retval;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int kernel_waitid_prepare(struct wait_opts *wo, int which, pid_t upid,
 			  struct waitid_info *infop, int options,
 			  struct rusage *ru)
@@ -1802,6 +1840,7 @@ int kernel_waitid_prepare(struct wait_opts *wo, int which, pid_t upid,
 
 	return 0;
 }
+#endif
 
 static long kernel_waitid(int which, pid_t upid, struct waitid_info *infop,
 			  int options, struct rusage *ru)
@@ -2023,3 +2062,5 @@ __weak __function_aligned void abort(void)
 	panic("Oops failed to kill thread");
 }
 EXPORT_SYMBOL(abort);
+
+#endif

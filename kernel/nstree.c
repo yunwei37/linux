@@ -18,12 +18,14 @@ struct ns_tree {
        int type;
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 struct ns_tree mnt_ns_tree = {
 	.ns_tree = RB_ROOT,
 	.ns_list = LIST_HEAD_INIT(mnt_ns_tree.ns_list),
 	.ns_tree_lock = __SEQLOCK_UNLOCKED(mnt_ns_tree.ns_tree_lock),
 	.type = CLONE_NEWNS,
 };
+#endif
 
 struct ns_tree net_ns_tree = {
 	.ns_tree = RB_ROOT,
@@ -158,8 +160,10 @@ static struct ns_tree *ns_tree_from_type(int ns_type)
 		return &cgroup_ns_tree;
 	case CLONE_NEWIPC:
 		return &ipc_ns_tree;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	case CLONE_NEWNS:
 		return &mnt_ns_tree;
+#endif
 	case CLONE_NEWNET:
 		return &net_ns_tree;
 	case CLONE_NEWPID:

@@ -59,3 +59,7 @@ obj-$(CONFIG_X86_MEM_ENCRYPT)	+= mem_encrypt.o
 obj-$(CONFIG_AMD_MEM_ENCRYPT)	+= mem_encrypt_amd.o
 
 obj-$(CONFIG_AMD_MEM_ENCRYPT)	+= mem_encrypt_boot.o
+
+ifdef CONFIG_MODELOS_KERNEL_ONLY
+obj-y := $(filter-out mmap.o,$(obj-y))
+endif

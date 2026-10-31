@@ -1566,6 +1566,7 @@ EXPORT_SYMBOL(kthread_destroy_worker);
  * kthread_use_mm - make the calling kthread operate on an address space
  * @mm: address space to operate on
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void kthread_use_mm(struct mm_struct *mm)
 {
 	struct mm_struct *active_mm;
@@ -1606,12 +1607,14 @@ void kthread_use_mm(struct mm_struct *mm)
 	 */
 	mmdrop_lazy_tlb(active_mm);
 }
+#endif
 EXPORT_SYMBOL_GPL(kthread_use_mm);
 
 /**
  * kthread_unuse_mm - reverse the effect of kthread_use_mm()
  * @mm: address space to operate on
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void kthread_unuse_mm(struct mm_struct *mm)
 {
 	struct task_struct *tsk = current;
@@ -1639,6 +1642,7 @@ void kthread_unuse_mm(struct mm_struct *mm)
 
 	mmdrop(mm);
 }
+#endif
 EXPORT_SYMBOL_GPL(kthread_unuse_mm);
 
 #ifdef CONFIG_BLK_CGROUP
