@@ -2230,3 +2230,12 @@ config MODELOS_KERNEL_ONLY
  help
    Source specialization for kernel workers only. No syscall ABI, user
    segments, exec, or return-to-user path. Not a normal Linux ABI.
+
+config MODELOS_NVIDIA
+ bool "Built-in modified NVIDIA RM and direct submission sketch"
+ depends on MODELOS_KERNEL_ONLY && PCI
+ select FW_LOADER
+ help
+   No character devices, procfs, ioctl, user mmap or dynamic module loader.
+   This compiles the RM core and its kernel-only OS layer. GPU functionality
+   requires matching built-in GSP firmware and a dedicated hardware test.
