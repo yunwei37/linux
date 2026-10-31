@@ -2090,6 +2090,7 @@ void hrtimer_setup_sleeper_on_stack(struct hrtimer_sleeper *sl,
 }
 EXPORT_SYMBOL_GPL(hrtimer_setup_sleeper_on_stack);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int nanosleep_copyout(struct restart_block *restart, struct timespec64 *ts)
 {
 	switch(restart->nanosleep.type) {
@@ -2183,6 +2184,8 @@ out:
 	destroy_hrtimer_on_stack(&t.timer);
 	return ret;
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #ifdef CONFIG_64BIT
 

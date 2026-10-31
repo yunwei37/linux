@@ -1489,6 +1489,7 @@ int group_send_sig_info(int sig, struct kernel_siginfo *info,
  * control characters do (^C, ^Z etc)
  * - the caller must hold at least a readlock on tasklist_lock
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int __kill_pgrp_info(int sig, struct kernel_siginfo *info, struct pid *pgrp)
 {
 	struct task_struct *p = NULL;
@@ -1508,6 +1509,7 @@ int __kill_pgrp_info(int sig, struct kernel_siginfo *info, struct pid *pgrp)
 
 	return ret;
 }
+#endif
 
 static int kill_pid_info_type(int sig, struct kernel_siginfo *info,
 				struct pid *pid, enum pid_type type)
@@ -1945,10 +1947,12 @@ static int kill_pgrp_info(int sig, struct kernel_siginfo *info, struct pid *pgrp
 	return ret;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int kill_pgrp(struct pid *pid, int sig, int priv)
 {
 	return kill_pgrp_info(sig, __si_special(priv), pid);
 }
+#endif
 EXPORT_SYMBOL(kill_pgrp);
 
 int kill_pid(struct pid *pid, int sig, int priv)
@@ -3616,6 +3620,7 @@ static inline char __user *si_expansion(const siginfo_t __user *info)
 	return ((char __user *)info) + sizeof(struct kernel_siginfo);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int copy_siginfo_to_user(siginfo_t __user *to, const kernel_siginfo_t *from)
 {
 	char __user *expansion = si_expansion(to);
@@ -3625,7 +3630,9 @@ int copy_siginfo_to_user(siginfo_t __user *to, const kernel_siginfo_t *from)
 		return -EFAULT;
 	return 0;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int post_copy_siginfo_from_user(kernel_siginfo_t *info,
 				       const siginfo_t __user *from)
 {
@@ -3648,7 +3655,9 @@ static int post_copy_siginfo_from_user(kernel_siginfo_t *info,
 	}
 	return 0;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int __copy_siginfo_from_user(int signo, kernel_siginfo_t *to,
 				    const siginfo_t __user *from)
 {
@@ -3657,13 +3666,16 @@ static int __copy_siginfo_from_user(int signo, kernel_siginfo_t *to,
 	to->si_signo = signo;
 	return post_copy_siginfo_from_user(to, from);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int copy_siginfo_from_user(kernel_siginfo_t *to, const siginfo_t __user *from)
 {
 	if (copy_from_user(to, from, sizeof(struct kernel_siginfo)))
 		return -EFAULT;
 	return post_copy_siginfo_from_user(to, from);
 }
+#endif
 
 #ifdef CONFIG_COMPAT
 /**

@@ -117,6 +117,7 @@ Efault:
  * Safely read from user address @src to the buffer at @dst. If a kernel fault
  * happens, handle that and return -EFAULT.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 long copy_from_user_nofault(void *dst, const void __user *src, size_t size)
 {
 	long ret = -EFAULT;
@@ -135,6 +136,7 @@ long copy_from_user_nofault(void *dst, const void __user *src, size_t size)
 		return -EFAULT;
 	return 0;
 }
+#endif
 EXPORT_SYMBOL_GPL(copy_from_user_nofault);
 
 /**
@@ -146,6 +148,7 @@ EXPORT_SYMBOL_GPL(copy_from_user_nofault);
  * Safely write to address @dst from the buffer at @src.  If a kernel fault
  * happens, handle that and return -EFAULT.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 long copy_to_user_nofault(void __user *dst, const void *src, size_t size)
 {
 	long ret = -EFAULT;
@@ -160,6 +163,7 @@ long copy_to_user_nofault(void __user *dst, const void *src, size_t size)
 		return -EFAULT;
 	return 0;
 }
+#endif
 EXPORT_SYMBOL_GPL(copy_to_user_nofault);
 
 /**
@@ -180,6 +184,7 @@ EXPORT_SYMBOL_GPL(copy_to_user_nofault);
  * If @count is smaller than the length of the string, copies @count-1 bytes,
  * sets the last byte of @dst buffer to NUL and returns @count.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 long strncpy_from_user_nofault(char *dst, const void __user *unsafe_addr,
 			      long count)
 {
@@ -201,6 +206,7 @@ long strncpy_from_user_nofault(char *dst, const void __user *unsafe_addr,
 
 	return ret;
 }
+#endif
 
 /**
  * strnlen_user_nofault: - Get the size of a user string INCLUDING final NUL.
@@ -218,6 +224,7 @@ long strncpy_from_user_nofault(char *dst, const void __user *unsafe_addr,
  * Unlike strnlen_user, this can be used from IRQ handler etc. because
  * it disables pagefaults.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 long strnlen_user_nofault(const void __user *unsafe_addr, long count)
 {
 	int ret;
@@ -228,6 +235,7 @@ long strnlen_user_nofault(const void __user *unsafe_addr, long count)
 
 	return ret;
 }
+#endif
 
 void __copy_overflow(int size, unsigned long count)
 {

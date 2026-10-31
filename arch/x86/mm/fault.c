@@ -1204,6 +1204,7 @@ NOKPROBE_SYMBOL(do_kern_addr_fault);
  * The one exception is AC flag handling, which is, per the x86
  * architecture, special for WRUSS.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static inline
 void do_user_addr_fault(struct pt_regs *regs,
 			unsigned long error_code,
@@ -1447,6 +1448,7 @@ done:
 			BUG();
 	}
 }
+#endif
 NOKPROBE_SYMBOL(do_user_addr_fault);
 
 static __always_inline void

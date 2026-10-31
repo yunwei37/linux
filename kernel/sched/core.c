@@ -5284,8 +5284,10 @@ asmlinkage __visible void schedule_tail(struct task_struct *prev)
 	trace_sched_exit_tp(true);
 	preempt_enable();
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (current->set_child_tid)
 		put_user(task_pid_vnr(current), current->set_child_tid);
+#endif
 
 	calculate_sigpending();
 }

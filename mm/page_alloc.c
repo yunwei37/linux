@@ -4736,6 +4736,16 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 						struct alloc_context *ac)
 {
 #ifdef CONFIG_MODELOS_KERNEL_ONLY
+	/* No user/file reclaim. Preserve the no-fail contract for kernel users. */
+	if (gfp_mask & __GFP_NOFAIL) {
+		struct page *page;
+		do {
+			page = get_page_from_freelist(gfp_mask, order, ALLOC_WMARK_MIN, ac);
+			if (page)
+				return page;
+			schedule_timeout_uninterruptible(1);
+		} while (1);
+	}
 	warn_alloc(gfp_mask, NULL, "ModelOS kernel allocation failed, order:%u", order);
 	return NULL;
 #else

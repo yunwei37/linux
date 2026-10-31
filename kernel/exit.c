@@ -249,10 +249,12 @@ void __weak release_thread(struct task_struct *dead_task)
 void release_task(struct task_struct *p)
 {
 	struct release_task_post post;
-	struct task_struct *leader;
 	struct pid *thread_pid;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
+	struct task_struct *leader;
 	int zap_leader;
 repeat:
+#endif
 	memset(&post, 0, sizeof(post));
 
 	/* don't need to get the RCU readlock here - the process is dead and
@@ -283,8 +285,8 @@ repeat:
 	 * group, and the leader is zombie, then notify the
 	 * group leader's parent process. (if it wants notification.)
 	 */
-	zap_leader = 0;
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
+	zap_leader = 0;
 	leader = p->group_leader;
 	if (leader != p && thread_group_empty(leader)
 			&& leader->exit_state == EXIT_ZOMBIE) {
@@ -322,9 +324,11 @@ repeat:
 
 	put_task_struct_rcu_user(p);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	p = leader;
 	if (unlikely(zap_leader))
 		goto repeat;
+#endif
 }
 
 int rcuwait_wake_up(struct rcuwait *w)
@@ -364,6 +368,7 @@ EXPORT_SYMBOL_GPL(rcuwait_wake_up);
  *
  * "I ask you, have you ever known what it is to be an orphan?"
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int will_become_orphaned_pgrp(struct pid *pgrp,
 					struct task_struct *ignored_task)
 {
@@ -382,7 +387,9 @@ static int will_become_orphaned_pgrp(struct pid *pgrp,
 
 	return 1;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int is_current_pgrp_orphaned(void)
 {
 	int retval;
@@ -393,7 +400,9 @@ int is_current_pgrp_orphaned(void)
 
 	return retval;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static bool has_stopped_jobs(struct pid *pgrp)
 {
 	struct task_struct *p;
@@ -405,12 +414,14 @@ static bool has_stopped_jobs(struct pid *pgrp)
 
 	return false;
 }
+#endif
 
 /*
  * Check to see if any process groups have become orphaned as
  * a result of our exiting, and if they have any stopped jobs,
  * send them a SIGHUP and then a SIGCONT. (POSIX 3.2.2.2)
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void
 kill_orphaned_pgrp(struct task_struct *tsk, struct task_struct *parent)
 {
@@ -436,6 +447,7 @@ kill_orphaned_pgrp(struct task_struct *tsk, struct task_struct *parent)
 		__kill_pgrp_info(SIGCONT, SEND_SIG_PRIV, pgrp);
 	}
 }
+#endif
 
 static void coredump_task_exit(struct task_struct *tsk,
 			       struct core_state *core_state)
@@ -563,11 +575,9 @@ void mm_update_next_owner(struct mm_struct *mm)
  * Turn us into a lazy TLB process if we
  * aren't already..
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void exit_mm(void)
 {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	/* Kernel workers never own a user mm. */
-#else
 	struct mm_struct *mm = current->mm;
 
 	exit_mm_release(current, mm);
@@ -601,9 +611,10 @@ static void exit_mm(void)
 	mmput(mm);
 	if (test_thread_flag(TIF_MEMDIE))
 		exit_oom_victim();
-#endif
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct task_struct *find_alive_thread(struct task_struct *p)
 {
 	struct task_struct *t;
@@ -749,6 +760,8 @@ static void forget_original_parent(struct task_struct *father,
 	}
 	list_splice_tail_init(&father->children, &reaper->children);
 }
+
+#endif
 
 /*
  * Send signals to all our closest relatives so that they know
@@ -990,7 +1003,18 @@ void __noreturn do_exit(long code)
 	 */
 	perf_event_exit_task(tsk);
 
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	/* Extracted from mm_release: kernel thread lifetime, no mm or user TID. */
+	task_lock(tsk);
+	if (tsk->vfork_done) {
+		struct completion *exited = tsk->vfork_done;
+		tsk->vfork_done = NULL;
+		complete(exited);
+	}
+	task_unlock(tsk);
+#else
 	exit_mm();
+#endif
 
 	if (group_dead)
 		acct_process();

@@ -103,6 +103,7 @@ copy_stack_frame(const struct stack_frame_user __user *fp,
 	return ret;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void arch_stack_walk_user(stack_trace_consume_fn consume_entry, void *cookie,
 			  const struct pt_regs *regs)
 {
@@ -127,4 +128,5 @@ void arch_stack_walk_user(stack_trace_consume_fn consume_entry, void *cookie,
 		fp = frame.next_fp;
 	}
 }
+#endif
 

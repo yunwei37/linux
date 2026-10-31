@@ -396,6 +396,7 @@ EXPORT_SYMBOL(kstrtobool);
  * Since "base" would be a nonsense argument, this open-codes the
  * _from_user helper instead of using the helper macro below.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int kstrtobool_from_user(const char __user *s, size_t count, bool *res)
 {
 	/* Longest string needed to differentiate, newline, terminator */
@@ -433,3 +434,5 @@ kstrto_from_user(kstrtou16_from_user,	kstrtou16,	u16);
 kstrto_from_user(kstrtos16_from_user,	kstrtos16,	s16);
 kstrto_from_user(kstrtou8_from_user,	kstrtou8,	u8);
 kstrto_from_user(kstrtos8_from_user,	kstrtos8,	s8);
+
+#endif

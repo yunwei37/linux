@@ -38,6 +38,16 @@ static int modelos_worker(void *data)
 	return 0;
 }
 
+/* Exercise real kthread return/stop after deleting user exit paths. */
+static int modelos_lifecycle_probe(void *unused)
+{
+
+	complete(unused);
+	while (!kthread_should_stop())
+		schedule_timeout_interruptible(1);
+	return 37;
+}
+
 void __noreturn modelos_enter(void)
 {
 	unsigned int cpu, workers = 0;
@@ -46,6 +56,24 @@ void __noreturn modelos_enter(void)
 	asm volatile("mov %%cs,%0" : "=r" (cs));
 	pr_info("MODELOS_PRIVILEGE cpl=%u cs=0x%x active_mm_init=%u\n",
 		cs & 3, cs, current->active_mm == &init_mm);
+
+	{
+		DECLARE_COMPLETION_ONSTACK(started);
+		struct task_struct *probe;
+
+		probe = kthread_run(modelos_lifecycle_probe, &started,
+						      "modelos-exit-check");
+		int result;
+
+		if (IS_ERR(probe)) {
+			result = PTR_ERR(probe);
+		} else {
+			wait_for_completion(&started);
+
+			result = kthread_stop(probe);
+		}
+		pr_info("MODELOS_KTHREAD_EXIT result=%d expected=37\n", result);
+	}
 
 	for_each_online_cpu(cpu) {
 		struct task_struct *task;

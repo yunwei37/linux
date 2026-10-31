@@ -2291,7 +2291,7 @@ void syscall_init(void)
 	wrmsrl(MSR_LSTAR, 0);
 	wrmsrl(MSR_CSTAR, 0);
 	wrmsrl(MSR_STAR, 0);
-	wrmsrl(MSR_IA32_SYSENTER_CS, 0);
+	wrmsr_safe(MSR_IA32_SYSENTER_CS, 0, 0);
 #endif
 }
 #endif /* CONFIG_X86_64 */

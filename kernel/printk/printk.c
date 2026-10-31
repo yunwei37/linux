@@ -1575,6 +1575,7 @@ static u64 find_first_fitting_seq(u64 start_seq, u64 max_seq, size_t size,
 }
 
 /* The caller is responsible for making sure @size is greater than 0. */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int syslog_print(char __user *buf, int size)
 {
 	struct printk_info info;
@@ -1678,7 +1679,9 @@ out:
 	kfree(text);
 	return len;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int syslog_print_all(char __user *buf, int size, bool clear)
 {
 	struct printk_info info;
@@ -1730,6 +1733,7 @@ static int syslog_print_all(char __user *buf, int size, bool clear)
 	kfree(text);
 	return len;
 }
+#endif
 
 static void syslog_clear(void)
 {
@@ -1738,6 +1742,7 @@ static void syslog_clear(void)
 	mutex_unlock(&syslog_lock);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int do_syslog(int type, char __user *buf, int len, int source)
 {
 	struct printk_info info;
@@ -1850,6 +1855,7 @@ int do_syslog(int type, char __user *buf, int len, int source)
 
 	return error;
 }
+#endif
 
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(syslog, int, type, char __user *, buf, int, len)

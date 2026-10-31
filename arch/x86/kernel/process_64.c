@@ -527,6 +527,7 @@ void x86_gsbase_write_task(struct task_struct *task, unsigned long gsbase)
 	task->thread.gsbase = gsbase;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void
 start_thread_common(struct pt_regs *regs, unsigned long new_ip,
 		    unsigned long new_sp,
@@ -594,6 +595,8 @@ void compat_start_thread(struct pt_regs *regs, u32 new_ip, u32 new_sp, bool x32)
 			    x32 ? __USER_CS : __USER32_CS,
 			    __USER_DS, __USER_DS);
 }
+#endif
+
 #endif
 
 /*

@@ -2081,6 +2081,7 @@ __latent_entropy struct task_struct *copy_process(
 	p->flags &= ~PF_KTHREAD;
 	if (args->kthread)
 		p->flags |= PF_KTHREAD;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (args->user_worker) {
 		/*
 		 * Mark us a user worker, and block any signal that isn't
@@ -2092,14 +2093,22 @@ __latent_entropy struct task_struct *copy_process(
 	if (args->io_thread)
 		p->flags |= PF_IO_WORKER;
 
+#endif
+
 	if (args->name)
 		strscpy_pad(p->comm, args->name, sizeof(p->comm));
 
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	p->set_child_tid = NULL;
+	p->clear_child_tid = NULL;
+#else
 	p->set_child_tid = (clone_flags & CLONE_CHILD_SETTID) ? args->child_tid : NULL;
 	/*
 	 * Clear TID on mm_release()?
 	 */
 	p->clear_child_tid = (clone_flags & CLONE_CHILD_CLEARTID) ? args->child_tid : NULL;
+
+#endif
 
 	ftrace_graph_init_task(p);
 
@@ -2707,6 +2716,7 @@ pid_t kernel_clone(struct kernel_clone_args *args)
 	pid = get_task_pid(p, PIDTYPE_PID);
 	nr = pid_vnr(pid);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (clone_flags & CLONE_PARENT_SETTID)
 		put_user(nr, args->parent_tid);
 
@@ -2715,6 +2725,8 @@ pid_t kernel_clone(struct kernel_clone_args *args)
 		init_completion(&vfork);
 		get_task_struct(p);
 	}
+
+#endif
 
 	if (IS_ENABLED(CONFIG_LRU_GEN_WALKS_MMU) && !(clone_flags & CLONE_VM)) {
 		/* lock the task to synchronize with memcg migration */
@@ -2762,6 +2774,7 @@ pid_t kernel_thread(int (*fn)(void *), void *arg, const char *name,
 /*
  * Create a user mode thread.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 pid_t user_mode_thread(int (*fn)(void *), void *arg, unsigned long flags)
 {
 	struct kernel_clone_args args = {
@@ -2773,6 +2786,7 @@ pid_t user_mode_thread(int (*fn)(void *), void *arg, unsigned long flags)
 
 	return kernel_clone(&args);
 }
+#endif
 
 #ifdef __ARCH_WANT_SYS_FORK
 #ifndef CONFIG_MODELOS_KERNEL_ONLY

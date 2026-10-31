@@ -21,6 +21,7 @@
  * @maskp: pointer to bitmap array that will contain result.
  * @nmaskbits: size of bitmap, in bits.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int bitmap_parse_user(const char __user *ubuf,
 			unsigned int ulen, unsigned long *maskp,
 			int nmaskbits)
@@ -37,6 +38,7 @@ int bitmap_parse_user(const char __user *ubuf,
 	kfree(buf);
 	return ret;
 }
+#endif
 EXPORT_SYMBOL(bitmap_parse_user);
 
 /**
@@ -418,6 +420,7 @@ EXPORT_SYMBOL(bitmap_parselist);
  *
  * Wrapper for bitmap_parselist(), providing it with user buffer.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int bitmap_parselist_user(const char __user *ubuf,
 			unsigned int ulen, unsigned long *maskp,
 			int nmaskbits)
@@ -434,6 +437,7 @@ int bitmap_parselist_user(const char __user *ubuf,
 	kfree(buf);
 	return ret;
 }
+#endif
 EXPORT_SYMBOL(bitmap_parselist_user);
 
 static const char *bitmap_get_x32_reverse(const char *start,

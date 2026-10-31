@@ -891,6 +891,7 @@ EXPORT_SYMBOL_GPL(timespec64_add_safe);
  *
  * Return: 0 on success or negative errno on error
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int get_timespec64(struct timespec64 *ts,
 		   const struct __kernel_timespec __user *uts)
 {
@@ -1077,3 +1078,5 @@ int put_old_itimerspec32(const struct itimerspec64 *its,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(put_old_itimerspec32);
+
+#endif

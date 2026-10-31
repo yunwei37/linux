@@ -343,3 +343,8 @@ endif
 ifdef CONFIG_MODELOS_KERNEL_ONLY
 obj-y += modelos-ucs2.o
 endif
+
+ifdef CONFIG_MODELOS_KERNEL_ONLY
+obj-y := $(filter-out usercopy.o strncpy_from_user.o strnlen_user.o,$(obj-y))
+lib-y := $(filter-out usercopy.o strncpy_from_user.o strnlen_user.o,$(lib-y))
+endif
