@@ -239,6 +239,7 @@ static inline int kexec_load_check(unsigned long nr_segments,
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(kexec_load, unsigned long, entry, unsigned long, nr_segments,
 		struct kexec_segment __user *, segments, unsigned long, flags)
 {
@@ -263,8 +264,10 @@ SYSCALL_DEFINE4(kexec_load, unsigned long, entry, unsigned long, nr_segments,
 
 	return result;
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(kexec_load, compat_ulong_t, entry,
 		       compat_ulong_t, nr_segments,
 		       struct compat_kexec_segment __user *, segments,
@@ -306,4 +309,5 @@ fail:
 	kfree(ksegments);
 	return result;
 }
+#endif
 #endif

@@ -3250,11 +3250,13 @@ void exit_signals(struct task_struct *tsk)
 /**
  *  sys_restart_syscall - restart a system call
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(restart_syscall)
 {
 	struct restart_block *restart = &current->restart_block;
 	return restart->fn(restart);
 }
+#endif
 
 long do_no_restart_syscall(struct restart_block *param)
 {
@@ -3393,6 +3395,7 @@ int set_compat_user_sigmask(const compat_sigset_t __user *umask,
  *  @oset: previous value of signal mask if non-null
  *  @sigsetsize: size of sigset_t type
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(rt_sigprocmask, int, how, sigset_t __user *, nset,
 		sigset_t __user *, oset, size_t, sigsetsize)
 {
@@ -3422,8 +3425,10 @@ SYSCALL_DEFINE4(rt_sigprocmask, int, how, sigset_t __user *, nset,
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(rt_sigprocmask, int, how, compat_sigset_t __user *, nset,
 		compat_sigset_t __user *, oset, compat_size_t, sigsetsize)
 {
@@ -3447,6 +3452,7 @@ COMPAT_SYSCALL_DEFINE4(rt_sigprocmask, int, how, compat_sigset_t __user *, nset,
 	return oset ? put_compat_sigset(oset, &old_set, sizeof(*oset)) : 0;
 }
 #endif
+#endif
 
 static void do_sigpending(sigset_t *set)
 {
@@ -3465,6 +3471,7 @@ static void do_sigpending(sigset_t *set)
  *  @uset: stores pending signals
  *  @sigsetsize: size of sigset_t type or larger
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(rt_sigpending, sigset_t __user *, uset, size_t, sigsetsize)
 {
 	sigset_t set;
@@ -3479,8 +3486,10 @@ SYSCALL_DEFINE2(rt_sigpending, sigset_t __user *, uset, size_t, sigsetsize)
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(rt_sigpending, compat_sigset_t __user *, uset,
 		compat_size_t, sigsetsize)
 {
@@ -3493,6 +3502,7 @@ COMPAT_SYSCALL_DEFINE2(rt_sigpending, compat_sigset_t __user *, uset,
 
 	return put_compat_sigset(uset, &set, sigsetsize);
 }
+#endif
 #endif
 
 static const struct {
@@ -3879,6 +3889,7 @@ static int do_sigtimedwait(const sigset_t *which, kernel_siginfo_t *info,
  *  @uts: upper bound on process time suspension
  *  @sigsetsize: size of sigset_t type
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(rt_sigtimedwait, const sigset_t __user *, uthese,
 		siginfo_t __user *, uinfo,
 		const struct __kernel_timespec __user *, uts,
@@ -3910,8 +3921,10 @@ SYSCALL_DEFINE4(rt_sigtimedwait, const sigset_t __user *, uthese,
 
 	return ret;
 }
+#endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(rt_sigtimedwait_time32, const sigset_t __user *, uthese,
 		siginfo_t __user *, uinfo,
 		const struct old_timespec32 __user *, uts,
@@ -3943,8 +3956,10 @@ SYSCALL_DEFINE4(rt_sigtimedwait_time32, const sigset_t __user *, uthese,
 	return ret;
 }
 #endif
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(rt_sigtimedwait_time64, compat_sigset_t __user *, uthese,
 		struct compat_siginfo __user *, uinfo,
 		struct __kernel_timespec __user *, uts, compat_size_t, sigsetsize)
@@ -3974,8 +3989,10 @@ COMPAT_SYSCALL_DEFINE4(rt_sigtimedwait_time64, compat_sigset_t __user *, uthese,
 
 	return ret;
 }
+#endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(rt_sigtimedwait_time32, compat_sigset_t __user *, uthese,
 		struct compat_siginfo __user *, uinfo,
 		struct old_timespec32 __user *, uts, compat_size_t, sigsetsize)
@@ -4007,6 +4024,7 @@ COMPAT_SYSCALL_DEFINE4(rt_sigtimedwait_time32, compat_sigset_t __user *, uthese,
 }
 #endif
 #endif
+#endif
 
 static void prepare_kill_siginfo(int sig, struct kernel_siginfo *info,
 				 enum pid_type type)
@@ -4024,6 +4042,7 @@ static void prepare_kill_siginfo(int sig, struct kernel_siginfo *info,
  *  @pid: the PID of the process
  *  @sig: signal to be sent
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(kill, pid_t, pid, int, sig)
 {
 	struct kernel_siginfo info;
@@ -4032,6 +4051,7 @@ SYSCALL_DEFINE2(kill, pid_t, pid, int, sig)
 
 	return kill_something_info(sig, &info, pid);
 }
+#endif
 
 /*
  * Verify that the signaler and signalee either are in the same pid namespace
@@ -4140,6 +4160,7 @@ static int do_pidfd_send_signal(struct pid *pid, int sig, enum pid_type type,
  *
  * Return: 0 on success, negative errno on failure
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(pidfd_send_signal, int, pidfd, int, sig,
 		siginfo_t __user *, info, unsigned int, flags)
 {
@@ -4192,6 +4213,7 @@ SYSCALL_DEFINE4(pidfd_send_signal, int, pidfd, int, sig,
 
 	return ret;
 }
+#endif
 
 static int
 do_send_specific(pid_t tgid, pid_t pid, int sig, struct kernel_siginfo *info)
@@ -4242,6 +4264,7 @@ static int do_tkill(pid_t tgid, pid_t pid, int sig)
  *  exists but it's not belonging to the target process anymore. This
  *  method solves the problem of threads exiting and PIDs getting reused.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(tgkill, pid_t, tgid, pid_t, pid, int, sig)
 {
 	/* This is only valid for single tasks */
@@ -4250,6 +4273,7 @@ SYSCALL_DEFINE3(tgkill, pid_t, tgid, pid_t, pid, int, sig)
 
 	return do_tkill(tgid, pid, sig);
 }
+#endif
 
 /**
  *  sys_tkill - send signal to one specific task
@@ -4258,6 +4282,7 @@ SYSCALL_DEFINE3(tgkill, pid_t, tgid, pid_t, pid, int, sig)
  *
  *  Send a signal to only one task, even if it's a CLONE_THREAD task.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(tkill, pid_t, pid, int, sig)
 {
 	/* This is only valid for single tasks */
@@ -4266,6 +4291,7 @@ SYSCALL_DEFINE2(tkill, pid_t, pid, int, sig)
 
 	return do_tkill(0, pid, sig);
 }
+#endif
 
 static int do_rt_sigqueueinfo(pid_t pid, int sig, kernel_siginfo_t *info)
 {
@@ -4286,6 +4312,7 @@ static int do_rt_sigqueueinfo(pid_t pid, int sig, kernel_siginfo_t *info)
  *  @sig: signal to be sent
  *  @uinfo: signal info to be sent
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(rt_sigqueueinfo, pid_t, pid, int, sig,
 		siginfo_t __user *, uinfo)
 {
@@ -4295,8 +4322,10 @@ SYSCALL_DEFINE3(rt_sigqueueinfo, pid_t, pid, int, sig,
 		return ret;
 	return do_rt_sigqueueinfo(pid, sig, &info);
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(rt_sigqueueinfo,
 			compat_pid_t, pid,
 			int, sig,
@@ -4308,6 +4337,7 @@ COMPAT_SYSCALL_DEFINE3(rt_sigqueueinfo,
 		return ret;
 	return do_rt_sigqueueinfo(pid, sig, &info);
 }
+#endif
 #endif
 
 static int do_rt_tgsigqueueinfo(pid_t tgid, pid_t pid, int sig, kernel_siginfo_t *info)
@@ -4326,6 +4356,7 @@ static int do_rt_tgsigqueueinfo(pid_t tgid, pid_t pid, int sig, kernel_siginfo_t
 	return do_send_specific(tgid, pid, sig, info);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(rt_tgsigqueueinfo, pid_t, tgid, pid_t, pid, int, sig,
 		siginfo_t __user *, uinfo)
 {
@@ -4335,8 +4366,10 @@ SYSCALL_DEFINE4(rt_tgsigqueueinfo, pid_t, tgid, pid_t, pid, int, sig,
 		return ret;
 	return do_rt_tgsigqueueinfo(tgid, pid, sig, &info);
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(rt_tgsigqueueinfo,
 			compat_pid_t, tgid,
 			compat_pid_t, pid,
@@ -4349,6 +4382,7 @@ COMPAT_SYSCALL_DEFINE4(rt_tgsigqueueinfo,
 		return ret;
 	return do_rt_tgsigqueueinfo(tgid, pid, sig, &info);
 }
+#endif
 #endif
 
 /*
@@ -4521,6 +4555,7 @@ do_sigaltstack (const stack_t *ss, stack_t *oss, unsigned long sp,
 	return ret;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(sigaltstack,const stack_t __user *,uss, stack_t __user *,uoss)
 {
 	stack_t new, old;
@@ -4534,6 +4569,7 @@ SYSCALL_DEFINE2(sigaltstack,const stack_t __user *,uss, stack_t __user *,uoss)
 		err = -EFAULT;
 	return err;
 }
+#endif
 
 int restore_altstack(const stack_t __user *uss)
 {
@@ -4585,12 +4621,14 @@ static int do_compat_sigaltstack(const compat_stack_t __user *uss_ptr,
 	return ret;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(sigaltstack,
 			const compat_stack_t __user *, uss_ptr,
 			compat_stack_t __user *, uoss_ptr)
 {
 	return do_compat_sigaltstack(uss_ptr, uoss_ptr);
 }
+#endif
 
 int compat_restore_altstack(const compat_stack_t __user *uss)
 {
@@ -4617,6 +4655,7 @@ int __compat_save_altstack(compat_stack_t __user *uss, unsigned long sp)
  *  sys_sigpending - examine pending signals
  *  @uset: where mask of pending signal is returned
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(sigpending, old_sigset_t __user *, uset)
 {
 	sigset_t set;
@@ -4631,8 +4670,10 @@ SYSCALL_DEFINE1(sigpending, old_sigset_t __user *, uset)
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE1(sigpending, compat_old_sigset_t __user *, set32)
 {
 	sigset_t set;
@@ -4641,6 +4682,7 @@ COMPAT_SYSCALL_DEFINE1(sigpending, compat_old_sigset_t __user *, set32)
 
 	return put_user(set.sig[0], set32);
 }
+#endif
 #endif
 
 #endif
@@ -4656,6 +4698,7 @@ COMPAT_SYSCALL_DEFINE1(sigpending, compat_old_sigset_t __user *, set32)
  * others support only sys_rt_sigprocmask.
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(sigprocmask, int, how, old_sigset_t __user *, nset,
 		old_sigset_t __user *, oset)
 {
@@ -4694,6 +4737,7 @@ SYSCALL_DEFINE3(sigprocmask, int, how, old_sigset_t __user *, nset,
 
 	return 0;
 }
+#endif
 #endif /* __ARCH_WANT_SYS_SIGPROCMASK */
 
 #ifndef CONFIG_ODD_RT_SIGACTION
@@ -4704,6 +4748,7 @@ SYSCALL_DEFINE3(sigprocmask, int, how, old_sigset_t __user *, nset,
  *  @oact: used to save the previous sigaction
  *  @sigsetsize: size of sigset_t type
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(rt_sigaction, int, sig,
 		const struct sigaction __user *, act,
 		struct sigaction __user *, oact,
@@ -4728,7 +4773,9 @@ SYSCALL_DEFINE4(rt_sigaction, int, sig,
 
 	return 0;
 }
+#endif
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(rt_sigaction, int, sig,
 		const struct compat_sigaction __user *, act,
 		struct compat_sigaction __user *, oact,
@@ -4773,9 +4820,11 @@ COMPAT_SYSCALL_DEFINE4(rt_sigaction, int, sig,
 	return ret;
 }
 #endif
+#endif
 #endif /* !CONFIG_ODD_RT_SIGACTION */
 
 #ifdef CONFIG_OLD_SIGACTION
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(sigaction, int, sig,
 		const struct old_sigaction __user *, act,
 	        struct old_sigaction __user *, oact)
@@ -4811,7 +4860,9 @@ SYSCALL_DEFINE3(sigaction, int, sig,
 	return ret;
 }
 #endif
+#endif
 #ifdef CONFIG_COMPAT_OLD_SIGACTION
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(sigaction, int, sig,
 		const struct compat_old_sigaction __user *, act,
 	        struct compat_old_sigaction __user *, oact)
@@ -4852,18 +4903,22 @@ COMPAT_SYSCALL_DEFINE3(sigaction, int, sig,
 	return ret;
 }
 #endif
+#endif
 
 #ifdef CONFIG_SGETMASK_SYSCALL
 
 /*
  * For backwards compatibility.  Functionality superseded by sigprocmask.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(sgetmask)
 {
 	/* SMP safe */
 	return current->blocked.sig[0];
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(ssetmask, int, newmask)
 {
 	int old = current->blocked.sig[0];
@@ -4874,12 +4929,14 @@ SYSCALL_DEFINE1(ssetmask, int, newmask)
 
 	return old;
 }
+#endif
 #endif /* CONFIG_SGETMASK_SYSCALL */
 
 #ifdef __ARCH_WANT_SYS_SIGNAL
 /*
  * For backwards compatibility.  Functionality superseded by sigaction.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(signal, int, sig, __sighandler_t, handler)
 {
 	struct k_sigaction new_sa, old_sa;
@@ -4893,10 +4950,12 @@ SYSCALL_DEFINE2(signal, int, sig, __sighandler_t, handler)
 
 	return ret ? ret : (unsigned long)old_sa.sa.sa_handler;
 }
+#endif
 #endif /* __ARCH_WANT_SYS_SIGNAL */
 
 #ifdef __ARCH_WANT_SYS_PAUSE
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(pause)
 {
 	while (!signal_pending(current)) {
@@ -4905,6 +4964,7 @@ SYSCALL_DEFINE0(pause)
 	}
 	return -ERESTARTNOHAND;
 }
+#endif
 
 #endif
 
@@ -4927,6 +4987,7 @@ static int sigsuspend(sigset_t *set)
  *  @unewset: new signal mask value
  *  @sigsetsize: size of sigset_t type
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(rt_sigsuspend, sigset_t __user *, unewset, size_t, sigsetsize)
 {
 	sigset_t newset;
@@ -4939,8 +5000,10 @@ SYSCALL_DEFINE2(rt_sigsuspend, sigset_t __user *, unewset, size_t, sigsetsize)
 		return -EFAULT;
 	return sigsuspend(&newset);
 }
+#endif
  
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(rt_sigsuspend, compat_sigset_t __user *, unewset, compat_size_t, sigsetsize)
 {
 	sigset_t newset;
@@ -4954,8 +5017,10 @@ COMPAT_SYSCALL_DEFINE2(rt_sigsuspend, compat_sigset_t __user *, unewset, compat_
 	return sigsuspend(&newset);
 }
 #endif
+#endif
 
 #ifdef CONFIG_OLD_SIGSUSPEND
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(sigsuspend, old_sigset_t, mask)
 {
 	sigset_t blocked;
@@ -4963,13 +5028,16 @@ SYSCALL_DEFINE1(sigsuspend, old_sigset_t, mask)
 	return sigsuspend(&blocked);
 }
 #endif
+#endif
 #ifdef CONFIG_OLD_SIGSUSPEND3
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(sigsuspend, int, unused1, int, unused2, old_sigset_t, mask)
 {
 	sigset_t blocked;
 	siginitset(&blocked, mask);
 	return sigsuspend(&blocked);
 }
+#endif
 #endif
 
 __weak const char *arch_vma_name(struct vm_area_struct *vma)

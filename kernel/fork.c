@@ -1744,12 +1744,14 @@ static void copy_seccomp(struct task_struct *p)
 #endif
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(set_tid_address, int __user *, tidptr)
 {
 	current->clear_child_tid = tidptr;
 
 	return task_pid_vnr(current);
 }
+#endif
 
 static void rt_mutex_init_task(struct task_struct *p)
 {
@@ -2688,6 +2690,7 @@ pid_t user_mode_thread(int (*fn)(void *), void *arg, unsigned long flags)
 }
 
 #ifdef __ARCH_WANT_SYS_FORK
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(fork)
 {
 #ifdef CONFIG_MMU
@@ -2702,8 +2705,10 @@ SYSCALL_DEFINE0(fork)
 #endif
 }
 #endif
+#endif
 
 #ifdef __ARCH_WANT_SYS_VFORK
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(vfork)
 {
 	struct kernel_clone_args args = {
@@ -2714,9 +2719,11 @@ SYSCALL_DEFINE0(vfork)
 	return kernel_clone(&args);
 }
 #endif
+#endif
 
 #ifdef __ARCH_WANT_SYS_CLONE
 #ifdef CONFIG_CLONE_BACKWARDS
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(clone, unsigned long, clone_flags, unsigned long, newsp,
 		 int __user *, parent_tidptr,
 		 unsigned long, tls,
@@ -2751,6 +2758,7 @@ SYSCALL_DEFINE5(clone, unsigned long, clone_flags, unsigned long, newsp,
 
 	return kernel_clone(&args);
 }
+#endif
 #endif
 
 static noinline int copy_clone_args_from_user(struct kernel_clone_args *kargs,
@@ -2889,6 +2897,7 @@ static bool clone3_args_valid(struct kernel_clone_args *kargs)
  * Return: On success, a positive PID for the child process.
  *         On error, a negative errno number.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clone3, struct clone_args __user *, uargs, size_t, size)
 {
 	int err;
@@ -2912,6 +2921,7 @@ SYSCALL_DEFINE2(clone3, struct clone_args __user *, uargs, size_t, size)
 
 	return kernel_clone(&kargs);
 }
+#endif
 
 void walk_process_tree(struct task_struct *top, proc_visitor visitor, void *data)
 {
@@ -3200,10 +3210,12 @@ bad_unshare_out:
 	return err;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(unshare, unsigned long, unshare_flags)
 {
 	return ksys_unshare(unshare_flags);
 }
+#endif
 
 /*
  *	Helper to unshare the files of the current task.

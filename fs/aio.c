@@ -1379,6 +1379,7 @@ static long read_events(struct kioctx *ctx, long min_nr, long nr,
  *	pointer is passed for ctxp.  Will fail with -ENOSYS if not
  *	implemented.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(io_setup, unsigned, nr_events, aio_context_t __user *, ctxp)
 {
 	struct kioctx *ioctx = NULL;
@@ -1408,8 +1409,10 @@ SYSCALL_DEFINE2(io_setup, unsigned, nr_events, aio_context_t __user *, ctxp)
 out:
 	return ret;
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(io_setup, unsigned, nr_events, u32 __user *, ctx32p)
 {
 	struct kioctx *ioctx = NULL;
@@ -1441,6 +1444,7 @@ out:
 	return ret;
 }
 #endif
+#endif
 
 /* sys_io_destroy:
  *	Destroy the aio_context specified.  May cancel any outstanding 
@@ -1448,6 +1452,7 @@ out:
  *	implemented.  May fail with -EINVAL if the context pointed to
  *	is invalid.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(io_destroy, aio_context_t, ctx)
 {
 	struct kioctx *ioctx = lookup_ioctx(ctx);
@@ -1477,6 +1482,7 @@ SYSCALL_DEFINE1(io_destroy, aio_context_t, ctx)
 	pr_debug("EINVAL: invalid context id\n");
 	return -EINVAL;
 }
+#endif
 
 static void aio_remove_iocb(struct aio_kiocb *iocb)
 {
@@ -2079,6 +2085,7 @@ static int io_submit_one(struct kioctx *ctx, struct iocb __user *user_iocb,
  *	are available to queue any iocbs.  Will return 0 if nr is 0.  Will
  *	fail with -ENOSYS if not implemented.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(io_submit, aio_context_t, ctx_id, long, nr,
 		struct iocb __user * __user *, iocbpp)
 {
@@ -2119,8 +2126,10 @@ SYSCALL_DEFINE3(io_submit, aio_context_t, ctx_id, long, nr,
 	percpu_ref_put(&ctx->users);
 	return i ? i : ret;
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(io_submit, compat_aio_context_t, ctx_id,
 		       int, nr, compat_uptr_t __user *, iocbpp)
 {
@@ -2162,6 +2171,7 @@ COMPAT_SYSCALL_DEFINE3(io_submit, compat_aio_context_t, ctx_id,
 	return i ? i : ret;
 }
 #endif
+#endif
 
 /* sys_io_cancel:
  *	Attempts to cancel an iocb previously passed to io_submit.  If
@@ -2173,6 +2183,7 @@ COMPAT_SYSCALL_DEFINE3(io_submit, compat_aio_context_t, ctx_id,
  *	invalid.  May fail with -EAGAIN if the iocb specified was not
  *	cancelled.  Will fail with -ENOSYS if not implemented.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(io_cancel, aio_context_t, ctx_id, struct iocb __user *, iocb,
 		struct io_event __user *, result)
 {
@@ -2214,6 +2225,7 @@ SYSCALL_DEFINE3(io_cancel, aio_context_t, ctx_id, struct iocb __user *, iocb,
 
 	return ret;
 }
+#endif
 
 static long do_io_getevents(aio_context_t ctx_id,
 		long min_nr,
@@ -2248,6 +2260,7 @@ static long do_io_getevents(aio_context_t ctx_id,
  */
 #ifdef CONFIG_64BIT
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(io_getevents, aio_context_t, ctx_id,
 		long, min_nr,
 		long, nr,
@@ -2265,6 +2278,7 @@ SYSCALL_DEFINE5(io_getevents, aio_context_t, ctx_id,
 		ret = -EINTR;
 	return ret;
 }
+#endif
 
 #endif
 
@@ -2273,6 +2287,7 @@ struct __aio_sigset {
 	size_t		sigsetsize;
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(io_pgetevents,
 		aio_context_t, ctx_id,
 		long, min_nr,
@@ -2305,9 +2320,11 @@ SYSCALL_DEFINE6(io_pgetevents,
 
 	return ret;
 }
+#endif
 
 #if defined(CONFIG_COMPAT_32BIT_TIME) && !defined(CONFIG_64BIT)
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(io_pgetevents_time32,
 		aio_context_t, ctx_id,
 		long, min_nr,
@@ -2341,11 +2358,13 @@ SYSCALL_DEFINE6(io_pgetevents_time32,
 
 	return ret;
 }
+#endif
 
 #endif
 
 #if defined(CONFIG_COMPAT_32BIT_TIME)
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(io_getevents_time32, __u32, ctx_id,
 		__s32, min_nr,
 		__s32, nr,
@@ -2363,6 +2382,7 @@ SYSCALL_DEFINE5(io_getevents_time32, __u32, ctx_id,
 		ret = -EINTR;
 	return ret;
 }
+#endif
 
 #endif
 
@@ -2375,6 +2395,7 @@ struct __compat_aio_sigset {
 
 #if defined(CONFIG_COMPAT_32BIT_TIME)
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE6(io_pgetevents,
 		compat_aio_context_t, ctx_id,
 		compat_long_t, min_nr,
@@ -2407,9 +2428,11 @@ COMPAT_SYSCALL_DEFINE6(io_pgetevents,
 
 	return ret;
 }
+#endif
 
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE6(io_pgetevents_time64,
 		compat_aio_context_t, ctx_id,
 		compat_long_t, min_nr,
@@ -2442,4 +2465,5 @@ COMPAT_SYSCALL_DEFINE6(io_pgetevents_time64,
 
 	return ret;
 }
+#endif
 #endif

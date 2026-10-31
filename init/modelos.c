@@ -16,13 +16,25 @@ static DEFINE_PER_CPU(struct completion, modelos_started);
 static int modelos_worker(void *data)
 {
 	unsigned int cpu = (unsigned long)data;
+	u64 iterations = 0, value = cpu + 1, start = ktime_get_ns(), next = start + 10ULL * NSEC_PER_SEC;
+	unsigned short cs;
 
 	pr_info("worker cpu=%u actual_cpu=%u pid=%d mm=%s online\n",
 		cpu, raw_smp_processor_id(), current->pid,
 		current->mm ? "present" : "none");
 	complete(per_cpu_ptr(&modelos_started, cpu));
-	while (!kthread_should_stop())
-		schedule_timeout_interruptible(HZ);
+	while (!kthread_should_stop()) {
+		unsigned int i;
+		for (i = 0; i < 65536; i++) { value = value * 6364136223846793005ULL + 1; barrier(); }
+		iterations += 65536;
+		if (ktime_get_ns() >= next) {
+			asm volatile("mov %%cs,%0" : "=r" (cs));
+			pr_info("MODELOS_BUSY cpu=%u elapsed_s=%llu iterations=%llu value=%llu cpl=%u mm=%s\n",
+				cpu, (ktime_get_ns()-start)/NSEC_PER_SEC, iterations, value, cs & 3, current->mm ? "present" : "none");
+			next += 10ULL * NSEC_PER_SEC;
+		}
+		cond_resched();
+	}
 	return 0;
 }
 

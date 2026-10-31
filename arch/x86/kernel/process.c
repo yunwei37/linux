@@ -163,6 +163,10 @@ __visible void ret_from_fork(struct task_struct *prev, struct pt_regs *regs,
 {
 	schedule_tail(prev);
 
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	fn(fn_arg);
+	do_exit(0);
+#else
 	/* Is this a kernel thread? */
 	if (unlikely(fn)) {
 		fn(fn_arg);
@@ -175,6 +179,7 @@ __visible void ret_from_fork(struct task_struct *prev, struct pt_regs *regs,
 	}
 
 	syscall_exit_to_user_mode(regs);
+#endif
 }
 
 int copy_thread(struct task_struct *p, const struct kernel_clone_args *args)
@@ -1070,6 +1075,7 @@ unsigned long __get_wchan(struct task_struct *p)
 	return addr;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(arch_prctl, int, option, unsigned long, arg2)
 {
 	switch (option) {
@@ -1090,8 +1096,11 @@ SYSCALL_DEFINE2(arch_prctl, int, option, unsigned long, arg2)
 
 	return -EINVAL;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(ni_syscall)
 {
 	return -ENOSYS;
 }
+#endif

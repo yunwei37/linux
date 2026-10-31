@@ -23,6 +23,7 @@
  * is also included for convenience as at least systemd uses it.
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_settime, const clockid_t, which_clock,
 		const struct __kernel_timespec __user *, tp)
 {
@@ -35,6 +36,7 @@ SYSCALL_DEFINE2(clock_settime, const clockid_t, which_clock,
 
 	return do_sys_settimeofday64(&new_tp, NULL);
 }
+#endif
 
 static int do_clock_gettime(clockid_t which_clock, struct timespec64 *tp)
 {
@@ -57,6 +59,7 @@ static int do_clock_gettime(clockid_t which_clock, struct timespec64 *tp)
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_gettime, const clockid_t, which_clock,
 		struct __kernel_timespec __user *, tp)
 {
@@ -71,7 +74,9 @@ SYSCALL_DEFINE2(clock_gettime, const clockid_t, which_clock,
 		return -EFAULT;
 	return 0;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_getres, const clockid_t, which_clock, struct __kernel_timespec __user *, tp)
 {
 	struct timespec64 rtn_tp = {
@@ -90,7 +95,9 @@ SYSCALL_DEFINE2(clock_getres, const clockid_t, which_clock, struct __kernel_time
 		return -EINVAL;
 	}
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(clock_nanosleep, const clockid_t, which_clock, int, flags,
 		const struct __kernel_timespec __user *, rqtp,
 		struct __kernel_timespec __user *, rmtp)
@@ -123,9 +130,11 @@ SYSCALL_DEFINE4(clock_nanosleep, const clockid_t, which_clock, int, flags,
 				 HRTIMER_MODE_ABS : HRTIMER_MODE_REL,
 				 which_clock);
 }
+#endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_settime32, const clockid_t, which_clock,
 		struct old_timespec32 __user *, tp)
 {
@@ -138,7 +147,9 @@ SYSCALL_DEFINE2(clock_settime32, const clockid_t, which_clock,
 
 	return do_sys_settimeofday64(&new_tp, NULL);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_gettime32, clockid_t, which_clock,
 		struct old_timespec32 __user *, tp)
 {
@@ -153,7 +164,9 @@ SYSCALL_DEFINE2(clock_gettime32, clockid_t, which_clock,
 		return -EFAULT;
 	return 0;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_getres_time32, clockid_t, which_clock,
 		struct old_timespec32 __user *, tp)
 {
@@ -173,7 +186,9 @@ SYSCALL_DEFINE2(clock_getres_time32, clockid_t, which_clock,
 		return -EINVAL;
 	}
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(clock_nanosleep_time32, clockid_t, which_clock, int, flags,
 		struct old_timespec32 __user *, rqtp,
 		struct old_timespec32 __user *, rmtp)
@@ -206,4 +221,5 @@ SYSCALL_DEFINE4(clock_nanosleep_time32, clockid_t, which_clock, int, flags,
 				 HRTIMER_MODE_ABS : HRTIMER_MODE_REL,
 				 which_clock);
 }
+#endif
 #endif

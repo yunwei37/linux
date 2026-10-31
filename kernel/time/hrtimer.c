@@ -2186,6 +2186,7 @@ out:
 
 #ifdef CONFIG_64BIT
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(nanosleep, struct __kernel_timespec __user *, rqtp,
 		struct __kernel_timespec __user *, rmtp)
 {
@@ -2203,11 +2204,13 @@ SYSCALL_DEFINE2(nanosleep, struct __kernel_timespec __user *, rqtp,
 	return hrtimer_nanosleep(timespec64_to_ktime(tu), HRTIMER_MODE_REL,
 				 CLOCK_MONOTONIC);
 }
+#endif
 
 #endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(nanosleep_time32, struct old_timespec32 __user *, rqtp,
 		       struct old_timespec32 __user *, rmtp)
 {
@@ -2225,6 +2228,7 @@ SYSCALL_DEFINE2(nanosleep_time32, struct old_timespec32 __user *, rqtp,
 	return hrtimer_nanosleep(timespec64_to_ktime(tu), HRTIMER_MODE_REL,
 				 CLOCK_MONOTONIC);
 }
+#endif
 #endif
 
 /*

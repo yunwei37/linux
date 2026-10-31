@@ -2132,6 +2132,7 @@ EXPORT_SYMBOL(locks_lock_inode_wait);
  *
  *	%LOCK_MAND support has been removed from the kernel.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
 {
 	int can_sleep, error, type;
@@ -2181,6 +2182,7 @@ SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
 	locks_release_private(&fl);
 	return error;
 }
+#endif
 
 /**
  * vfs_test_lock - test file byte range lock

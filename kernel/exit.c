@@ -1087,10 +1087,12 @@ void __noreturn make_task_dead(int signr)
 	do_exit(signr);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(exit, int, error_code)
 {
 	do_exit((error_code&0xff)<<8);
 }
+#endif
 
 /*
  * Take down every thread in the group.  This is called by fatal signals
@@ -1131,12 +1133,14 @@ do_group_exit(int exit_code)
  * wait4()-ing process will get the correct exit code - even if this
  * thread is not the thread group leader.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(exit_group, int, error_code)
 {
 	do_group_exit((error_code & 0xff) << 8);
 	/* NOTREACHED */
 	return 0;
 }
+#endif
 
 static int eligible_pid(struct wait_opts *wo, struct task_struct *p)
 {
@@ -1817,6 +1821,7 @@ static long kernel_waitid(int which, pid_t upid, struct waitid_info *infop,
 	return ret;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(waitid, int, which, pid_t, upid, struct siginfo __user *,
 		infop, int, options, struct rusage __user *, ru)
 {
@@ -1849,6 +1854,7 @@ Efault:
 	user_write_access_end();
 	return -EFAULT;
 }
+#endif
 
 long kernel_wait4(pid_t upid, int __user *stat_addr, int options,
 		  struct rusage *ru)
@@ -1909,6 +1915,7 @@ int kernel_wait(pid_t pid, int *stat)
 	return ret;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(wait4, pid_t, upid, int __user *, stat_addr,
 		int, options, struct rusage __user *, ru)
 {
@@ -1921,6 +1928,7 @@ SYSCALL_DEFINE4(wait4, pid_t, upid, int __user *, stat_addr,
 	}
 	return err;
 }
+#endif
 
 #ifdef __ARCH_WANT_SYS_WAITPID
 
@@ -1928,14 +1936,17 @@ SYSCALL_DEFINE4(wait4, pid_t, upid, int __user *, stat_addr,
  * sys_waitpid() remains for compatibility. waitpid() should be
  * implemented by calling sys_wait4() from libc.a.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(waitpid, pid_t, pid, int __user *, stat_addr, int, options)
 {
 	return kernel_wait4(pid, stat_addr, options, NULL);
 }
+#endif
 
 #endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(wait4,
 	compat_pid_t, pid,
 	compat_uint_t __user *, stat_addr,
@@ -1950,7 +1961,9 @@ COMPAT_SYSCALL_DEFINE4(wait4,
 	}
 	return err;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(waitid,
 		int, which, compat_pid_t, pid,
 		struct compat_siginfo __user *, infop, int, options,
@@ -1992,6 +2005,7 @@ Efault:
 	user_write_access_end();
 	return -EFAULT;
 }
+#endif
 #endif
 
 /*

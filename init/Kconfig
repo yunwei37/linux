@@ -2222,3 +2222,11 @@ config MODELOS_RUST
 	depends on MODELOS && RUST
 	help
 	  Run a built-in Rust entry after initcalls, then use the C worker bridge.
+
+config MODELOS_KERNEL_ONLY
+ bool "Delete user execution support"
+ depends on MODELOS && X86_64 && !IA32_EMULATION && !X86_X32_ABI && !X86_FRED && !XEN
+ select HAVE_LD_DEAD_CODE_DATA_ELIMINATION
+ help
+   Source specialization for kernel workers only. No syscall ABI, user
+   segments, exec, or return-to-user path. Not a normal Linux ABI.

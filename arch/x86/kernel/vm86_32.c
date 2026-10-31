@@ -167,12 +167,15 @@ Efault:
 static int do_vm86_irq_handling(int subfunction, int irqnumber);
 static long do_sys_vm86(struct vm86plus_struct __user *user_vm86, bool plus);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(vm86old, struct vm86_struct __user *, user_vm86)
 {
 	return do_sys_vm86((struct vm86plus_struct __user *) user_vm86, false);
 }
+#endif
 
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(vm86, unsigned long, cmd, unsigned long, arg)
 {
 	switch (cmd) {
@@ -194,6 +197,7 @@ SYSCALL_DEFINE2(vm86, unsigned long, cmd, unsigned long, arg)
 	/* we come here only for functions VM86_ENTER, VM86_ENTER_NO_BYPASS */
 	return do_sys_vm86((struct vm86plus_struct __user *) arg, true);
 }
+#endif
 
 
 static long do_sys_vm86(struct vm86plus_struct __user *user_vm86, bool plus)

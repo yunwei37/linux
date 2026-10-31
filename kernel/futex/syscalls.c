@@ -25,6 +25,7 @@
  * @head:	pointer to the list-head
  * @len:	length of the list-head, as userspace expects
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(set_robust_list, struct robust_list_head __user *, head,
 		size_t, len)
 {
@@ -38,6 +39,7 @@ SYSCALL_DEFINE2(set_robust_list, struct robust_list_head __user *, head,
 
 	return 0;
 }
+#endif
 
 static inline void __user *futex_task_robust_list(struct task_struct *p, bool compat)
 {
@@ -95,6 +97,7 @@ err_put:
  * @head_ptr:	pointer to a list-head pointer, the kernel fills it in
  * @len_ptr:	pointer to a length field, the kernel fills in the header size
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(get_robust_list, int, pid,
 		struct robust_list_head __user * __user *, head_ptr,
 		size_t __user *, len_ptr)
@@ -108,6 +111,7 @@ SYSCALL_DEFINE3(get_robust_list, int, pid,
 		return -EFAULT;
 	return put_user(head, head_ptr);
 }
+#endif
 
 long do_futex(u32 __user *uaddr, int op, u32 val, ktime_t *timeout,
 		u32 __user *uaddr2, u32 val2, u32 val3)
@@ -185,6 +189,7 @@ futex_init_timeout(u32 cmd, u32 op, struct timespec64 *ts, ktime_t *t)
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(futex, u32 __user *, uaddr, int, op, u32, val,
 		const struct __kernel_timespec __user *, utime,
 		u32 __user *, uaddr2, u32, val3)
@@ -206,6 +211,7 @@ SYSCALL_DEFINE6(futex, u32 __user *, uaddr, int, op, u32, val,
 
 	return do_futex(uaddr, op, val, tp, uaddr2, (unsigned long)utime, val3);
 }
+#endif
 
 /**
  * futex_parse_waitv - Parse a waitv array from userspace
@@ -315,6 +321,7 @@ static inline void futex2_destroy_timeout(struct hrtimer_sleeper *to)
  * smallest index, nor the one most recently woken, nor...)
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(futex_waitv, struct futex_waitv __user *, waiters,
 		unsigned int, nr_futexes, unsigned int, flags,
 		struct __kernel_timespec __user *, timeout, clockid_t, clockid)
@@ -351,6 +358,7 @@ destroy_timer:
 		futex2_destroy_timeout(&to);
 	return ret;
 }
+#endif
 
 /*
  * sys_futex_wake - Wake a number of futexes
@@ -363,6 +371,7 @@ destroy_timer:
  * futex2 family of calls.
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(futex_wake,
 		void __user *, uaddr,
 		unsigned long, mask,
@@ -381,6 +390,7 @@ SYSCALL_DEFINE4(futex_wake,
 
 	return futex_wake(uaddr, FLAGS_STRICT | flags, nr, mask);
 }
+#endif
 
 /*
  * sys_futex_wait - Wait on a futex
@@ -395,6 +405,7 @@ SYSCALL_DEFINE4(futex_wake,
  * futex2 familiy of calls.
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(futex_wait,
 		void __user *, uaddr,
 		unsigned long, val,
@@ -427,6 +438,7 @@ SYSCALL_DEFINE6(futex_wait,
 
 	return ret;
 }
+#endif
 
 /*
  * sys_futex_requeue - Requeue a waiter from one futex to another
@@ -439,6 +451,7 @@ SYSCALL_DEFINE6(futex_wait,
  * futex2 family of calls.
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(futex_requeue,
 		struct futex_waitv __user *, waiters,
 		unsigned int, flags,
@@ -473,8 +486,10 @@ SYSCALL_DEFINE4(futex_requeue,
 			     u64_to_user_ptr(futexes[1].w.uaddr), futexes[1].w.flags,
 			     nr_wake, nr_requeue, &cmpval, 0);
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(set_robust_list,
 		struct compat_robust_list_head __user *, head,
 		compat_size_t, len)
@@ -486,7 +501,9 @@ COMPAT_SYSCALL_DEFINE2(set_robust_list,
 
 	return 0;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(get_robust_list, int, pid,
 			compat_uptr_t __user *, head_ptr,
 			compat_size_t __user *, len_ptr)
@@ -500,9 +517,11 @@ COMPAT_SYSCALL_DEFINE3(get_robust_list, int, pid,
 		return -EFAULT;
 	return put_user(ptr_to_compat(head), head_ptr);
 }
+#endif
 #endif /* CONFIG_COMPAT */
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(futex_time32, u32 __user *, uaddr, int, op, u32, val,
 		const struct old_timespec32 __user *, utime, u32 __user *, uaddr2,
 		u32, val3)
@@ -522,5 +541,6 @@ SYSCALL_DEFINE6(futex_time32, u32 __user *, uaddr, int, op, u32, val,
 
 	return do_futex(uaddr, op, val, tp, uaddr2, (unsigned long)utime, val3);
 }
+#endif
 #endif /* CONFIG_COMPAT_32BIT_TIME */
 

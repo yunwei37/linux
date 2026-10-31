@@ -716,6 +716,7 @@ static int path_setxattrat(int dfd, const char __user *pathname,
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(setxattrat, int, dfd, const char __user *, pathname, unsigned int, at_flags,
 		const char __user *, name, const struct xattr_args __user *, uargs,
 		size_t, usize)
@@ -739,14 +740,18 @@ SYSCALL_DEFINE6(setxattrat, int, dfd, const char __user *, pathname, unsigned in
 			       u64_to_user_ptr(args.value), args.size,
 			       args.flags);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(setxattr, const char __user *, pathname,
 		const char __user *, name, const void __user *, value,
 		size_t, size, int, flags)
 {
 	return path_setxattrat(AT_FDCWD, pathname, 0, name, value, size, flags);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(lsetxattr, const char __user *, pathname,
 		const char __user *, name, const void __user *, value,
 		size_t, size, int, flags)
@@ -754,13 +759,16 @@ SYSCALL_DEFINE5(lsetxattr, const char __user *, pathname,
 	return path_setxattrat(AT_FDCWD, pathname, AT_SYMLINK_NOFOLLOW, name,
 			       value, size, flags);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(fsetxattr, int, fd, const char __user *, name,
 		const void __user *,value, size_t, size, int, flags)
 {
 	return path_setxattrat(fd, NULL, AT_EMPTY_PATH, name,
 			       value, size, flags);
 }
+#endif
 
 /*
  * Extended attribute GET operations
@@ -860,6 +868,7 @@ static ssize_t path_getxattrat(int dfd, const char __user *pathname,
 	}
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(getxattrat, int, dfd, const char __user *, pathname, unsigned int, at_flags,
 		const char __user *, name, struct xattr_args __user *, uargs, size_t, usize)
 {
@@ -884,25 +893,32 @@ SYSCALL_DEFINE6(getxattrat, int, dfd, const char __user *, pathname, unsigned in
 	return path_getxattrat(dfd, pathname, at_flags, name,
 			       u64_to_user_ptr(args.value), args.size);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(getxattr, const char __user *, pathname,
 		const char __user *, name, void __user *, value, size_t, size)
 {
 	return path_getxattrat(AT_FDCWD, pathname, 0, name, value, size);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(lgetxattr, const char __user *, pathname,
 		const char __user *, name, void __user *, value, size_t, size)
 {
 	return path_getxattrat(AT_FDCWD, pathname, AT_SYMLINK_NOFOLLOW, name,
 			       value, size);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(fgetxattr, int, fd, const char __user *, name,
 		void __user *, value, size_t, size)
 {
 	return path_getxattrat(fd, NULL, AT_EMPTY_PATH, name, value, size);
 }
+#endif
 
 /*
  * Extended attribute LIST operations
@@ -988,29 +1004,37 @@ static ssize_t path_listxattrat(int dfd, const char __user *pathname,
 	return filename_listxattr(dfd, filename, lookup_flags, list, size);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(listxattrat, int, dfd, const char __user *, pathname,
 		unsigned int, at_flags,
 		char __user *, list, size_t, size)
 {
 	return path_listxattrat(dfd, pathname, at_flags, list, size);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(listxattr, const char __user *, pathname, char __user *, list,
 		size_t, size)
 {
 	return path_listxattrat(AT_FDCWD, pathname, 0, list, size);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(llistxattr, const char __user *, pathname, char __user *, list,
 		size_t, size)
 {
 	return path_listxattrat(AT_FDCWD, pathname, AT_SYMLINK_NOFOLLOW, list, size);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(flistxattr, int, fd, char __user *, list, size_t, size)
 {
 	return path_listxattrat(fd, NULL, AT_EMPTY_PATH, list, size);
 }
+#endif
 
 /*
  * Extended attribute REMOVE operations
@@ -1088,28 +1112,36 @@ static int path_removexattrat(int dfd, const char __user *pathname,
 	return filename_removexattr(dfd, filename, lookup_flags, &kname);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(removexattrat, int, dfd, const char __user *, pathname,
 		unsigned int, at_flags, const char __user *, name)
 {
 	return path_removexattrat(dfd, pathname, at_flags, name);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(removexattr, const char __user *, pathname,
 		const char __user *, name)
 {
 	return path_removexattrat(AT_FDCWD, pathname, 0, name);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(lremovexattr, const char __user *, pathname,
 		const char __user *, name)
 {
 	return path_removexattrat(AT_FDCWD, pathname, AT_SYMLINK_NOFOLLOW, name);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(fremovexattr, int, fd, const char __user *, name)
 {
 	return path_removexattrat(fd, NULL, AT_EMPTY_PATH, name);
 }
+#endif
 
 int xattr_list_one(char **buffer, ssize_t *remaining_size, const char *name)
 {

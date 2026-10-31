@@ -1577,6 +1577,7 @@ static ssize_t vmsplice_to_pipe(struct file *file, struct iov_iter *iter,
  * Currently we punt and implement it as a normal copy, see pipe_to_user().
  *
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(vmsplice, int, fd, const struct iovec __user *, uiov,
 		unsigned long, nr_segs, unsigned int, flags)
 {
@@ -1614,7 +1615,9 @@ SYSCALL_DEFINE4(vmsplice, int, fd, const struct iovec __user *, uiov,
 	kfree(iov);
 	return error;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(splice, int, fd_in, loff_t __user *, off_in,
 		int, fd_out, loff_t __user *, off_out,
 		size_t, len, unsigned int, flags)
@@ -1636,6 +1639,7 @@ SYSCALL_DEFINE6(splice, int, fd_in, loff_t __user *, off_in,
 	return __do_splice(fd_file(in), off_in, fd_file(out), off_out,
 					    len, flags);
 }
+#endif
 
 /*
  * Make sure there's data to read. Wait for input if we can, otherwise
@@ -1976,6 +1980,7 @@ ssize_t do_tee(struct file *in, struct file *out, size_t len,
 	return ret;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(tee, int, fdin, int, fdout, size_t, len, unsigned int, flags)
 {
 	if (unlikely(flags & ~SPLICE_F_ALL))
@@ -1994,3 +1999,4 @@ SYSCALL_DEFINE4(tee, int, fdin, int, fdout, size_t, len, unsigned int, flags)
 
 	return do_tee(fd_file(in), fd_file(out), len, flags);
 }
+#endif

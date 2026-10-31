@@ -533,6 +533,7 @@ static void commit_nsset(struct nsset *nsset)
 	nsset->nsproxy = NULL;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(setns, int, fd, int, flags)
 {
 	CLASS(fd, f)(fd);
@@ -572,6 +573,7 @@ SYSCALL_DEFINE2(setns, int, fd, int, flags)
 out:
 	return err;
 }
+#endif
 
 int __init nsproxy_cache_init(void)
 {

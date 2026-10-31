@@ -134,6 +134,7 @@ static inline int cap_get_target_pid(pid_t pid, kernel_cap_t *pEp,
  *
  * Returns 0 on success and < 0 on error.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(capget, cap_user_header_t, header, cap_user_data_t, dataptr)
 {
 	int ret = 0;
@@ -189,6 +190,7 @@ SYSCALL_DEFINE2(capget, cap_user_header_t, header, cap_user_data_t, dataptr)
 
 	return 0;
 }
+#endif
 
 static kernel_cap_t mk_kernel_cap(u32 low, u32 high)
 {
@@ -213,6 +215,7 @@ static kernel_cap_t mk_kernel_cap(u32 low, u32 high)
  *
  * Returns 0 on success and < 0 on error.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(capset, cap_user_header_t, header, const cap_user_data_t, data)
 {
 	struct __user_cap_data_struct kdata[2] = { { 0, }, };
@@ -261,6 +264,7 @@ error:
 	abort_creds(new);
 	return ret;
 }
+#endif
 
 /**
  * has_ns_capability - Does a task have a capability in a specific user ns

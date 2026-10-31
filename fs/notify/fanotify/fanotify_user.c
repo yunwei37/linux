@@ -1591,6 +1591,7 @@ static struct hlist_head *fanotify_alloc_merge_hash(void)
 }
 
 /* fanotify syscalls */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(fanotify_init, unsigned int, flags, unsigned int, event_f_flags)
 {
 	struct user_namespace *user_ns = current_user_ns();
@@ -1767,6 +1768,7 @@ out_destroy_group:
 	fsnotify_destroy_group(group);
 	return fd;
 }
+#endif
 
 static int fanotify_test_fsid(struct dentry *dentry, unsigned int flags,
 			      struct fan_fsid *fsid)
@@ -2171,12 +2173,14 @@ path_put_and_out:
 }
 
 #ifndef CONFIG_ARCH_SPLIT_ARG64
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(fanotify_mark, int, fanotify_fd, unsigned int, flags,
 			      __u64, mask, int, dfd,
 			      const char  __user *, pathname)
 {
 	return do_fanotify_mark(fanotify_fd, flags, mask, dfd, pathname);
 }
+#endif
 #endif
 
 #if defined(CONFIG_ARCH_SPLIT_ARG64) || defined(CONFIG_COMPAT)

@@ -4427,16 +4427,20 @@ out1:
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
 		unsigned int, dev)
 {
 	return do_mknodat(dfd, getname(filename), mode, dev);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(mknod, const char __user *, filename, umode_t, mode, unsigned, dev)
 {
 	return do_mknodat(AT_FDCWD, getname(filename), mode, dev);
 }
+#endif
 
 /**
  * vfs_mkdir - create directory returning correct dentry if possible
@@ -4531,15 +4535,19 @@ out_putname:
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, umode_t, mode)
 {
 	return do_mkdirat(dfd, getname(pathname), mode);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(mkdir, const char __user *, pathname, umode_t, mode)
 {
 	return do_mkdirat(AT_FDCWD, getname(pathname), mode);
 }
+#endif
 
 /**
  * vfs_rmdir - remove directory
@@ -4650,10 +4658,12 @@ exit1:
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
 {
 	return do_rmdir(AT_FDCWD, getname(pathname));
 }
+#endif
 
 /**
  * vfs_unlink - unlink a filesystem object
@@ -4801,6 +4811,7 @@ slashes:
 	goto exit3;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(unlinkat, int, dfd, const char __user *, pathname, int, flag)
 {
 	if ((flag & ~AT_REMOVEDIR) != 0)
@@ -4810,11 +4821,14 @@ SYSCALL_DEFINE3(unlinkat, int, dfd, const char __user *, pathname, int, flag)
 		return do_rmdir(dfd, getname(pathname));
 	return do_unlinkat(dfd, getname(pathname));
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(unlink, const char __user *, pathname)
 {
 	return do_unlinkat(AT_FDCWD, getname(pathname));
 }
+#endif
 
 /**
  * vfs_symlink - create symlink
@@ -4886,16 +4900,20 @@ out_putnames:
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(symlinkat, const char __user *, oldname,
 		int, newdfd, const char __user *, newname)
 {
 	return do_symlinkat(getname(oldname), newdfd, getname(newname));
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(symlink, const char __user *, oldname, const char __user *, newname)
 {
 	return do_symlinkat(getname(oldname), AT_FDCWD, getname(newname));
 }
+#endif
 
 /**
  * vfs_link - create a new link
@@ -5066,17 +5084,21 @@ out_putnames:
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
 		int, newdfd, const char __user *, newname, int, flags)
 {
 	return do_linkat(olddfd, getname_uflags(oldname, flags),
 		newdfd, getname(newname), flags);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(link, const char __user *, oldname, const char __user *, newname)
 {
 	return do_linkat(AT_FDCWD, getname(oldname), AT_FDCWD, getname(newname), 0);
 }
+#endif
 
 /**
  * vfs_rename - rename a filesystem object
@@ -5425,25 +5447,31 @@ put_names:
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(renameat2, int, olddfd, const char __user *, oldname,
 		int, newdfd, const char __user *, newname, unsigned int, flags)
 {
 	return do_renameat2(olddfd, getname(oldname), newdfd, getname(newname),
 				flags);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
 		int, newdfd, const char __user *, newname)
 {
 	return do_renameat2(olddfd, getname(oldname), newdfd, getname(newname),
 				0);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(rename, const char __user *, oldname, const char __user *, newname)
 {
 	return do_renameat2(AT_FDCWD, getname(oldname), AT_FDCWD,
 				getname(newname), 0);
 }
+#endif
 
 int readlink_copy(char __user *buffer, int buflen, const char *link, int linklen)
 {

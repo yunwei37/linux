@@ -686,7 +686,11 @@ static noinline void __ref __noreturn rest_init(void)
 	 * the init task will end up wanting to create kthreads, which, if
 	 * we schedule it before we create kthreadd, will OOPS.
 	 */
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	pid = kernel_thread(kernel_init, NULL, NULL, CLONE_FS | CLONE_FILES);
+#else
 	pid = user_mode_thread(kernel_init, NULL, CLONE_FS);
+#endif
 	/*
 	 * Pin init on the boot CPU. Task migration is not properly working
 	 * until sched_init_smp() has been run. It will set the allowed

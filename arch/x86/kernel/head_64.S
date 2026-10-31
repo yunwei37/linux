@@ -388,7 +388,11 @@ SYM_INNER_LABEL(common_startup_64, SYM_L_LOCAL)
 	 * EFER writes if no change was made (for TDX guest)
 	 */
 	movl    %eax, %edx
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	btsl	$_EFER_SCE, %eax	/* Enable System Call */
+#else
+	btrl $_EFER_SCE, %eax
+#endif
 	btl	$20,%edi		/* No Execute supported? */
 	jnc     1f
 	btsl	$_EFER_NX, %eax

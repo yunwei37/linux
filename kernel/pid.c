@@ -643,6 +643,7 @@ static int pidfd_create(struct pid *pid, unsigned int flags)
  * Return: On success, a cloexec pidfd is returned.
  *         On error, a negative errno number will be returned.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(pidfd_open, pid_t, pid, unsigned int, flags)
 {
 	int fd;
@@ -663,6 +664,7 @@ SYSCALL_DEFINE2(pidfd_open, pid_t, pid, unsigned int, flags)
 	put_pid(p);
 	return fd;
 }
+#endif
 
 #ifdef CONFIG_SYSCTL
 static struct ctl_table_set *pid_table_root_lookup(struct ctl_table_root *root)
@@ -873,6 +875,7 @@ static int pidfd_getfd(struct pid *pid, int fd)
  * Return: On success, a cloexec file descriptor is returned.
  *         On error, a negative errno number will be returned.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(pidfd_getfd, int, pidfd, int, fd,
 		unsigned int, flags)
 {
@@ -892,3 +895,4 @@ SYSCALL_DEFINE3(pidfd_getfd, int, pidfd, int, fd,
 
 	return pidfd_getfd(pid, fd);
 }
+#endif

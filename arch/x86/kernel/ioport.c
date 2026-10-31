@@ -155,10 +155,12 @@ long ksys_ioperm(unsigned long from, unsigned long num, int turn_on)
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(ioperm, unsigned long, from, unsigned long, num, int, turn_on)
 {
 	return ksys_ioperm(from, num, turn_on);
 }
+#endif
 
 /*
  * The sys_iopl functionality depends on the level argument, which if
@@ -176,6 +178,7 @@ SYSCALL_DEFINE3(ioperm, unsigned long, from, unsigned long, num, int, turn_on)
  *
  * IOPL is strictly per thread and inherited on fork.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(iopl, unsigned int, level)
 {
 	struct thread_struct *t = &current->thread;
@@ -201,6 +204,7 @@ SYSCALL_DEFINE1(iopl, unsigned int, level)
 	task_update_io_bitmap();
 	return 0;
 }
+#endif
 
 #else /* CONFIG_X86_IOPL_IOPERM */
 
@@ -208,13 +212,17 @@ long ksys_ioperm(unsigned long from, unsigned long num, int turn_on)
 {
 	return -ENOSYS;
 }
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(ioperm, unsigned long, from, unsigned long, num, int, turn_on)
 {
 	return -ENOSYS;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(iopl, unsigned int, level)
 {
 	return -ENOSYS;
 }
+#endif
 #endif

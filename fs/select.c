@@ -719,11 +719,13 @@ static int kern_select(int n, fd_set __user *inp, fd_set __user *outp,
 	return poll_select_finish(&end_time, tvp, PT_TIMEVAL, ret);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(select, int, n, fd_set __user *, inp, fd_set __user *, outp,
 		fd_set __user *, exp, struct __kernel_old_timeval __user *, tvp)
 {
 	return kern_select(n, inp, outp, exp, tvp);
 }
+#endif
 
 static long do_pselect(int n, fd_set __user *inp, fd_set __user *outp,
 		       fd_set __user *exp, void __user *tsp,
@@ -790,6 +792,7 @@ Efault:
 	return -EFAULT;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(pselect6, int, n, fd_set __user *, inp, fd_set __user *, outp,
 		fd_set __user *, exp, struct __kernel_timespec __user *, tsp,
 		void __user *, sig)
@@ -801,9 +804,11 @@ SYSCALL_DEFINE6(pselect6, int, n, fd_set __user *, inp, fd_set __user *, outp,
 
 	return do_pselect(n, inp, outp, exp, tsp, x.p, x.size, PT_TIMESPEC);
 }
+#endif
 
 #if defined(CONFIG_COMPAT_32BIT_TIME) && !defined(CONFIG_64BIT)
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(pselect6_time32, int, n, fd_set __user *, inp, fd_set __user *, outp,
 		fd_set __user *, exp, struct old_timespec32 __user *, tsp,
 		void __user *, sig)
@@ -815,6 +820,7 @@ SYSCALL_DEFINE6(pselect6_time32, int, n, fd_set __user *, inp, fd_set __user *, 
 
 	return do_pselect(n, inp, outp, exp, tsp, x.p, x.size, PT_OLD_TIMESPEC);
 }
+#endif
 
 #endif
 
@@ -825,6 +831,7 @@ struct sel_arg_struct {
 	struct __kernel_old_timeval __user *tvp;
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(old_select, struct sel_arg_struct __user *, arg)
 {
 	struct sel_arg_struct a;
@@ -833,6 +840,7 @@ SYSCALL_DEFINE1(old_select, struct sel_arg_struct __user *, arg)
 		return -EFAULT;
 	return kern_select(a.n, a.inp, a.outp, a.exp, a.tvp);
 }
+#endif
 #endif
 
 struct poll_list {
@@ -1059,6 +1067,7 @@ static long do_restart_poll(struct restart_block *restart_block)
 	return ret;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(poll, struct pollfd __user *, ufds, unsigned int, nfds,
 		int, timeout_msecs)
 {
@@ -1091,7 +1100,9 @@ SYSCALL_DEFINE3(poll, struct pollfd __user *, ufds, unsigned int, nfds,
 	}
 	return ret;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(ppoll, struct pollfd __user *, ufds, unsigned int, nfds,
 		struct __kernel_timespec __user *, tsp, const sigset_t __user *, sigmask,
 		size_t, sigsetsize)
@@ -1115,9 +1126,11 @@ SYSCALL_DEFINE5(ppoll, struct pollfd __user *, ufds, unsigned int, nfds,
 	ret = do_sys_poll(ufds, nfds, to);
 	return poll_select_finish(&end_time, tsp, PT_TIMESPEC, ret);
 }
+#endif
 
 #if defined(CONFIG_COMPAT_32BIT_TIME) && !defined(CONFIG_64BIT)
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(ppoll_time32, struct pollfd __user *, ufds, unsigned int, nfds,
 		struct old_timespec32 __user *, tsp, const sigset_t __user *, sigmask,
 		size_t, sigsetsize)
@@ -1141,6 +1154,7 @@ SYSCALL_DEFINE5(ppoll_time32, struct pollfd __user *, ufds, unsigned int, nfds,
 	ret = do_sys_poll(ufds, nfds, to);
 	return poll_select_finish(&end_time, tsp, PT_OLD_TIMESPEC, ret);
 }
+#endif
 #endif
 
 #ifdef CONFIG_COMPAT
@@ -1279,12 +1293,14 @@ static int do_compat_select(int n, compat_ulong_t __user *inp,
 	return poll_select_finish(&end_time, tvp, PT_OLD_TIMEVAL, ret);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(select, int, n, compat_ulong_t __user *, inp,
 	compat_ulong_t __user *, outp, compat_ulong_t __user *, exp,
 	struct old_timeval32 __user *, tvp)
 {
 	return do_compat_select(n, inp, outp, exp, tvp);
 }
+#endif
 
 struct compat_sel_arg_struct {
 	compat_ulong_t n;
@@ -1294,6 +1310,7 @@ struct compat_sel_arg_struct {
 	compat_uptr_t tvp;
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE1(old_select, struct compat_sel_arg_struct __user *, arg)
 {
 	struct compat_sel_arg_struct a;
@@ -1303,6 +1320,7 @@ COMPAT_SYSCALL_DEFINE1(old_select, struct compat_sel_arg_struct __user *, arg)
 	return do_compat_select(a.n, compat_ptr(a.inp), compat_ptr(a.outp),
 				compat_ptr(a.exp), compat_ptr(a.tvp));
 }
+#endif
 
 static long do_compat_pselect(int n, compat_ulong_t __user *inp,
 	compat_ulong_t __user *outp, compat_ulong_t __user *exp,
@@ -1359,6 +1377,7 @@ Efault:
 	return -EFAULT;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE6(pselect6_time64, int, n, compat_ulong_t __user *, inp,
 	compat_ulong_t __user *, outp, compat_ulong_t __user *, exp,
 	struct __kernel_timespec __user *, tsp, void __user *, sig)
@@ -1371,9 +1390,11 @@ COMPAT_SYSCALL_DEFINE6(pselect6_time64, int, n, compat_ulong_t __user *, inp,
 	return do_compat_pselect(n, inp, outp, exp, tsp, compat_ptr(x.p),
 				 x.size, PT_TIMESPEC);
 }
+#endif
 
 #if defined(CONFIG_COMPAT_32BIT_TIME)
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE6(pselect6_time32, int, n, compat_ulong_t __user *, inp,
 	compat_ulong_t __user *, outp, compat_ulong_t __user *, exp,
 	struct old_timespec32 __user *, tsp, void __user *, sig)
@@ -1386,10 +1407,12 @@ COMPAT_SYSCALL_DEFINE6(pselect6_time32, int, n, compat_ulong_t __user *, inp,
 	return do_compat_pselect(n, inp, outp, exp, tsp, compat_ptr(x.p),
 				 x.size, PT_OLD_TIMESPEC);
 }
+#endif
 
 #endif
 
 #if defined(CONFIG_COMPAT_32BIT_TIME)
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(ppoll_time32, struct pollfd __user *, ufds,
 	unsigned int,  nfds, struct old_timespec32 __user *, tsp,
 	const compat_sigset_t __user *, sigmask, compat_size_t, sigsetsize)
@@ -1414,8 +1437,10 @@ COMPAT_SYSCALL_DEFINE5(ppoll_time32, struct pollfd __user *, ufds,
 	return poll_select_finish(&end_time, tsp, PT_OLD_TIMESPEC, ret);
 }
 #endif
+#endif
 
 /* New compat syscall for 64 bit time_t*/
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(ppoll_time64, struct pollfd __user *, ufds,
 	unsigned int,  nfds, struct __kernel_timespec __user *, tsp,
 	const compat_sigset_t __user *, sigmask, compat_size_t, sigsetsize)
@@ -1439,5 +1464,6 @@ COMPAT_SYSCALL_DEFINE5(ppoll_time64, struct pollfd __user *, ufds,
 	ret = do_sys_poll(ufds, nfds, to);
 	return poll_select_finish(&end_time, tsp, PT_TIMESPEC, ret);
 }
+#endif
 
 #endif

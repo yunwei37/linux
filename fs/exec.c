@@ -2025,6 +2025,7 @@ void set_dumpable(struct mm_struct *mm, int value)
 	__mm_flags_set_mask_dumpable(mm, value);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(execve,
 		const char __user *, filename,
 		const char __user *const __user *, argv,
@@ -2032,7 +2033,9 @@ SYSCALL_DEFINE3(execve,
 {
 	return do_execve(getname(filename), argv, envp);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(execveat,
 		int, fd, const char __user *, filename,
 		const char __user *const __user *, argv,
@@ -2043,15 +2046,19 @@ SYSCALL_DEFINE5(execveat,
 			   getname_uflags(filename, flags),
 			   argv, envp, flags);
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(execve, const char __user *, filename,
 	const compat_uptr_t __user *, argv,
 	const compat_uptr_t __user *, envp)
 {
 	return compat_do_execve(getname(filename), argv, envp);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(execveat, int, fd,
 		       const char __user *, filename,
 		       const compat_uptr_t __user *, argv,
@@ -2062,6 +2069,7 @@ COMPAT_SYSCALL_DEFINE5(execveat, int, fd,
 				  getname_uflags(filename, flags),
 				  argv, envp, flags);
 }
+#endif
 #endif
 
 #ifdef CONFIG_SYSCTL

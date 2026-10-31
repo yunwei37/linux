@@ -364,6 +364,7 @@ static unsigned long trampoline_check_ip(unsigned long tramp)
 	return tramp + (uretprobe_syscall_check - uretprobe_trampoline_entry);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(uretprobe)
 {
 	struct pt_regs *regs = task_pt_regs(current);
@@ -431,6 +432,7 @@ sigill:
 	force_sig(SIGILL);
 	return -1;
 }
+#endif
 
 /*
  * If arch_uprobe->insn doesn't use rip-relative addressing, return
@@ -815,6 +817,7 @@ struct uprobe_syscall_args {
 	unsigned long retaddr;
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(uprobe)
 {
 	struct pt_regs *regs = task_pt_regs(current);
@@ -892,6 +895,7 @@ sigill:
 	force_sig(SIGILL);
 	return -1;
 }
+#endif
 
 asm (
 	".pushsection .rodata\n"

@@ -624,6 +624,7 @@ static int membarrier_get_registrations(void)
  *        smp_mb()           X           O            O
  *        sys_membarrier()   O           O            O
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(membarrier, int, cmd, unsigned int, flags, int, cpu_id)
 {
 	switch (cmd) {
@@ -677,3 +678,4 @@ SYSCALL_DEFINE3(membarrier, int, cmd, unsigned int, flags, int, cpu_id)
 		return -EINVAL;
 	}
 }
+#endif

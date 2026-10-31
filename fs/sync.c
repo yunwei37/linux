@@ -108,11 +108,13 @@ void ksys_sync(void)
 		laptop_sync_completion();
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(sync)
 {
 	ksys_sync();
 	return 0;
 }
+#endif
 
 static void do_sync_work(struct work_struct *work)
 {
@@ -146,6 +148,7 @@ void emergency_sync(void)
 /*
  * sync a single super
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(syncfs, int, fd)
 {
 	CLASS(fd, f)(fd);
@@ -164,6 +167,7 @@ SYSCALL_DEFINE1(syncfs, int, fd)
 
 	return ret ? ret : ret2;
 }
+#endif
 
 /**
  * vfs_fsync_range - helper to sync a range of data & metadata to disk
@@ -212,15 +216,19 @@ static int do_fsync(unsigned int fd, int datasync)
 	return vfs_fsync(fd_file(f), datasync);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(fsync, unsigned int, fd)
 {
 	return do_fsync(fd, 0);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(fdatasync, unsigned int, fd)
 {
 	return do_fsync(fd, 1);
 }
+#endif
 
 int sync_file_range(struct file *file, loff_t offset, loff_t nbytes,
 		    unsigned int flags)
@@ -360,13 +368,16 @@ int ksys_sync_file_range(int fd, loff_t offset, loff_t nbytes,
 	return sync_file_range(fd_file(f), offset, nbytes, flags);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(sync_file_range, int, fd, loff_t, offset, loff_t, nbytes,
 				unsigned int, flags)
 {
 	return ksys_sync_file_range(fd, offset, nbytes, flags);
 }
+#endif
 
 #if defined(CONFIG_COMPAT) && defined(__ARCH_WANT_COMPAT_SYNC_FILE_RANGE)
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE6(sync_file_range, int, fd, compat_arg_u64_dual(offset),
 		       compat_arg_u64_dual(nbytes), unsigned int, flags)
 {
@@ -374,11 +385,14 @@ COMPAT_SYSCALL_DEFINE6(sync_file_range, int, fd, compat_arg_u64_dual(offset),
 				    compat_arg_u64_glue(nbytes), flags);
 }
 #endif
+#endif
 
 /* It would be nice if people remember that not all the world's an i386
    when they introduce new system calls */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(sync_file_range2, int, fd, unsigned int, flags,
 				 loff_t, offset, loff_t, nbytes)
 {
 	return ksys_sync_file_range(fd, offset, nbytes, flags);
 }
+#endif

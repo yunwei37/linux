@@ -2184,6 +2184,7 @@ static inline bool userfaultfd_syscall_allowed(int flags)
 	return sysctl_unprivileged_userfaultfd;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(userfaultfd, int, flags)
 {
 	if (!userfaultfd_syscall_allowed(flags))
@@ -2191,6 +2192,7 @@ SYSCALL_DEFINE1(userfaultfd, int, flags)
 
 	return new_userfaultfd(flags);
 }
+#endif
 
 static long userfaultfd_dev_ioctl(struct file *file, unsigned int cmd, unsigned long flags)
 {

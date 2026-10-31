@@ -216,9 +216,12 @@ DEFINE_PER_CPU_PAGE_ALIGNED(struct gdt_page, gdt_page) = { .gdt = {
 	[GDT_ENTRY_KERNEL32_CS]		= GDT_ENTRY_INIT(DESC_CODE32, 0, 0xfffff),
 	[GDT_ENTRY_KERNEL_CS]		= GDT_ENTRY_INIT(DESC_CODE64, 0, 0xfffff),
 	[GDT_ENTRY_KERNEL_DS]		= GDT_ENTRY_INIT(DESC_DATA64, 0, 0xfffff),
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	[GDT_ENTRY_DEFAULT_USER32_CS]	= GDT_ENTRY_INIT(DESC_CODE32 | DESC_USER, 0, 0xfffff),
 	[GDT_ENTRY_DEFAULT_USER_DS]	= GDT_ENTRY_INIT(DESC_DATA64 | DESC_USER, 0, 0xfffff),
 	[GDT_ENTRY_DEFAULT_USER_CS]	= GDT_ENTRY_INIT(DESC_CODE64 | DESC_USER, 0, 0xfffff),
+#endif
+
 #else
 	[GDT_ENTRY_KERNEL_CS]		= GDT_ENTRY_INIT(DESC_CODE32, 0, 0xfffff),
 	[GDT_ENTRY_KERNEL_DS]		= GDT_ENTRY_INIT(DESC_DATA32, 0, 0xfffff),
@@ -2228,6 +2231,7 @@ static void wrmsrq_cstar(unsigned long val)
 		wrmsrq(MSR_CSTAR, val);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static inline void idt_syscall_init(void)
 {
 	wrmsrq(MSR_LSTAR, (unsigned long)entry_SYSCALL_64);
@@ -2264,8 +2268,11 @@ static inline void idt_syscall_init(void)
 }
 
 /* May not be marked __init: used by software suspend */
+#endif
+
 void syscall_init(void)
 {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	/* The default user and kernel segments */
 	wrmsr(MSR_STAR, 0, (__USER32_CS << 16) | __KERNEL_CS);
 
@@ -2278,6 +2285,14 @@ void syscall_init(void)
 	 */
 	if (!cpu_feature_enabled(X86_FEATURE_FRED))
 		idt_syscall_init();
+#else
+	/* SYSCALL is architecturally disabled, no replacement entry. */
+	wrmsrl(MSR_EFER, native_read_msr(MSR_EFER) & ~EFER_SCE);
+	wrmsrl(MSR_LSTAR, 0);
+	wrmsrl(MSR_CSTAR, 0);
+	wrmsrl(MSR_STAR, 0);
+	wrmsrl(MSR_IA32_SYSENTER_CS, 0);
+#endif
 }
 #endif /* CONFIG_X86_64 */
 

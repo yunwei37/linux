@@ -361,6 +361,7 @@ out_free_image:
 	return ret;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(kexec_file_load, int, kernel_fd, int, initrd_fd,
 		unsigned long, cmdline_len, const char __user *, cmdline_ptr,
 		unsigned long, flags)
@@ -468,6 +469,7 @@ out:
 	kimage_free(image);
 	return ret;
 }
+#endif
 
 static int locate_mem_hole_top_down(unsigned long start, unsigned long end,
 				    struct kexec_buf *kbuf)

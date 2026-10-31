@@ -730,16 +730,20 @@ ssize_t ksys_readahead(int fd, loff_t offset, size_t count)
 	return vfs_fadvise(fd_file(f), offset, count, POSIX_FADV_WILLNEED);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(readahead, int, fd, loff_t, offset, size_t, count)
 {
 	return ksys_readahead(fd, offset, count);
 }
+#endif
 
 #if defined(CONFIG_COMPAT) && defined(__ARCH_WANT_COMPAT_READAHEAD)
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(readahead, int, fd, compat_arg_u64_dual(offset), size_t, count)
 {
 	return ksys_readahead(fd, compat_arg_u64_glue(offset), count);
 }
+#endif
 #endif
 
 /**

@@ -84,6 +84,7 @@
  * with them due to bugs in both AMD and Intel CPUs.
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYM_CODE_START(entry_SYSCALL_64)
 	UNWIND_HINT_ENTRY
 	ENDBR
@@ -168,6 +169,8 @@ SYM_INNER_LABEL(entry_SYSRETQ_end, SYM_L_GLOBAL)
 	ANNOTATE_NOENDBR
 	int3
 SYM_CODE_END(entry_SYSCALL_64)
+#endif
+
 
 /*
  * %rdi: prev task
@@ -244,6 +247,7 @@ SYM_CODE_START(ret_from_fork_asm)
 	movq	%r12, %rcx		/* fn_arg */
 	call	ret_from_fork
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	/*
 	 * Set the stack state to what is expected for the target function
 	 * -- at this point the register set should be a valid user set
@@ -257,6 +261,8 @@ SYM_CODE_START(ret_from_fork_asm)
 #else
 	jmp	swapgs_restore_regs_and_return_to_usermode
 #endif
+#endif
+
 SYM_CODE_END(ret_from_fork_asm)
 .popsection
 
@@ -407,8 +413,10 @@ SYM_CODE_START(\asmsym)
 	 * If the entry is from userspace, switch stacks and treat it as
 	 * a normal entry.
 	 */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	testb	$3, CS-ORIG_RAX(%rsp)
 	jnz	.Lfrom_usermode_switch_stack_\@
+#endif
 
 	/* paranoid_entry returns GS information for paranoid_exit in EBX. */
 	call	paranoid_entry
@@ -422,8 +430,10 @@ SYM_CODE_START(\asmsym)
 	jmp	paranoid_exit
 
 	/* Switch to the regular task stack and use the noist entry point */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 .Lfrom_usermode_switch_stack_\@:
 	idtentry_body noist_\cfunc, has_error_code=0
+#endif
 
 _ASM_NOKPROBE(\asmsym)
 SYM_CODE_END(\asmsym)
@@ -462,8 +472,10 @@ SYM_CODE_START(\asmsym)
 	 * If the entry is from userspace, switch stacks and treat it as
 	 * a normal entry.
 	 */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	testb	$3, CS-ORIG_RAX(%rsp)
 	jnz	.Lfrom_usermode_switch_stack_\@
+#endif
 
 	/*
 	 * paranoid_entry returns SWAPGS flag for paranoid_exit in EBX.
@@ -557,6 +569,7 @@ __irqentry_text_end:
 	ANNOTATE_NOENDBR
 
 SYM_CODE_START_LOCAL(common_interrupt_return)
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYM_INNER_LABEL(swapgs_restore_regs_and_return_to_usermode, SYM_L_GLOBAL)
 	IBRS_EXIT
 #ifdef CONFIG_XEN_PV
@@ -616,6 +629,7 @@ SYM_INNER_LABEL(swapgs_restore_regs_and_return_to_usermode, SYM_L_GLOBAL)
 	jmp	.Lswapgs_and_iret
 #endif
 
+#endif
 SYM_INNER_LABEL(restore_regs_and_return_to_kernel, SYM_L_GLOBAL)
 #ifdef CONFIG_DEBUG_ENTRY
 	/* Assert that pt_regs indicates kernel mode. */
@@ -1010,6 +1024,7 @@ SYM_CODE_START(error_entry)
 	PUSH_AND_CLEAR_REGS save_ret=1
 	ENCODE_FRAME_POINTER 8
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	testb	$3, CS+8(%rsp)
 	jz	.Lerror_kernelspace
 
@@ -1042,6 +1057,7 @@ SYM_CODE_START(error_entry)
 	cmpq	%rax, RIP+8(%rsp)
 	je	.Lbstep_iret
 
+#endif
 	VALIDATE_UNRET_END
 
 	HANDLE_INTR_SAFERET 8(%rsp)
@@ -1066,6 +1082,7 @@ SYM_CODE_START(error_entry)
 	leaq	8(%rsp), %rax			/* return pt_regs pointer */
 	RET
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 .Lbstep_iret:
 	/* Fix truncated RIP */
 	movq	%rcx, RIP+8(%rsp)
@@ -1090,14 +1107,20 @@ SYM_CODE_START(error_entry)
 	call	fixup_bad_iret
 	mov	%rax, %rdi
 	jmp	sync_regs
+#endif
 SYM_CODE_END(error_entry)
+
 
 SYM_CODE_START_LOCAL(error_return)
 	UNWIND_HINT_REGS
 	DEBUG_ENTRY_ASSERT_IRQS_OFF
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	jmp restore_regs_and_return_to_kernel
+#else
 	testb	$3, CS(%rsp)
 	jz	restore_regs_and_return_to_kernel
 	jmp	swapgs_restore_regs_and_return_to_usermode
+#endif
 SYM_CODE_END(error_return)
 
 /*
@@ -1156,6 +1179,7 @@ SYM_CODE_START(asm_exc_nmi)
 	/* Use %rdx as our temp variable throughout */
 	pushq	%rdx
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	testb	$3, CS-RIP+8(%rsp)
 	jz	.Lnmi_from_kernel
 
@@ -1204,7 +1228,9 @@ SYM_CODE_START(asm_exc_nmi)
 	 */
 	jmp	swapgs_restore_regs_and_return_to_usermode
 
+#endif
 .Lnmi_from_kernel:
+
 	/*
 	 * Here's what our stack frame will look like:
 	 * +---------------------------------------------------------+
@@ -1477,6 +1503,7 @@ SYM_CODE_END(asm_exc_nmi)
  * This handles SYSCALL from 32-bit code.  There is no way to program
  * MSRs to fully disable 32-bit SYSCALL.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYM_CODE_START(entry_SYSCALL32_ignore)
 	UNWIND_HINT_END_OF_STACK
 	ENDBR
@@ -1484,6 +1511,8 @@ SYM_CODE_START(entry_SYSCALL32_ignore)
 	CLEAR_CPU_BUFFERS
 	sysretl
 SYM_CODE_END(entry_SYSCALL32_ignore)
+#endif
+
 
 .pushsection .text, "ax"
 	__FUNC_ALIGN

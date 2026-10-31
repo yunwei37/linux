@@ -1005,20 +1005,25 @@ out:
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(mprotect, unsigned long, start, size_t, len,
 		unsigned long, prot)
 {
 	return do_mprotect_pkey(start, len, prot, -1);
 }
+#endif
 
 #ifdef CONFIG_ARCH_HAS_PKEYS
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(pkey_mprotect, unsigned long, start, size_t, len,
 		unsigned long, prot, int, pkey)
 {
 	return do_mprotect_pkey(start, len, prot, pkey);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(pkey_alloc, unsigned long, flags, unsigned long, init_val)
 {
 	int pkey;
@@ -1048,7 +1053,9 @@ out:
 	mmap_write_unlock(current->mm);
 	return ret;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(pkey_free, int, pkey)
 {
 	int ret;
@@ -1063,5 +1070,6 @@ SYSCALL_DEFINE1(pkey_free, int, pkey)
 	 */
 	return ret;
 }
+#endif
 
 #endif /* CONFIG_ARCH_HAS_PKEYS */

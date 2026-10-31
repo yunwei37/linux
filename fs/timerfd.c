@@ -391,6 +391,7 @@ static const struct file_operations timerfd_fops = {
 	.unlocked_ioctl	= timerfd_ioctl,
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(timerfd_create, int, clockid, int, flags)
 {
 	int ufd;
@@ -450,6 +451,7 @@ SYSCALL_DEFINE2(timerfd_create, int, clockid, int, flags)
 	fd_install(ufd, file);
 	return ufd;
 }
+#endif
 
 static int do_timerfd_settime(int ufd, int flags, 
 		const struct itimerspec64 *new,
@@ -556,6 +558,7 @@ static int do_timerfd_gettime(int ufd, struct itimerspec64 *t)
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(timerfd_settime, int, ufd, int, flags,
 		const struct __kernel_itimerspec __user *, utmr,
 		struct __kernel_itimerspec __user *, otmr)
@@ -573,7 +576,9 @@ SYSCALL_DEFINE4(timerfd_settime, int, ufd, int, flags,
 
 	return ret;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(timerfd_gettime, int, ufd, struct __kernel_itimerspec __user *, otmr)
 {
 	struct itimerspec64 kotmr;
@@ -582,8 +587,10 @@ SYSCALL_DEFINE2(timerfd_gettime, int, ufd, struct __kernel_itimerspec __user *, 
 		return ret;
 	return put_itimerspec64(&kotmr, otmr) ? -EFAULT : 0;
 }
+#endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(timerfd_settime32, int, ufd, int, flags,
 		const struct old_itimerspec32 __user *, utmr,
 		struct old_itimerspec32 __user *, otmr)
@@ -600,7 +607,9 @@ SYSCALL_DEFINE4(timerfd_settime32, int, ufd, int, flags,
 		return -EFAULT;
 	return ret;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(timerfd_gettime32, int, ufd,
 		struct old_itimerspec32 __user *, otmr)
 {
@@ -610,4 +619,5 @@ SYSCALL_DEFINE2(timerfd_gettime32, int, ufd,
 		return ret;
 	return put_old_itimerspec32(&kotmr, otmr) ? -EFAULT : 0;
 }
+#endif
 #endif

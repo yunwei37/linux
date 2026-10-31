@@ -230,7 +230,7 @@ SECTIONS
 
 	.x86_cpu_dev.init : AT(ADDR(.x86_cpu_dev.init) - LOAD_OFFSET) {
 		__x86_cpu_dev_start = .;
-		*(.x86_cpu_dev.init)
+		KEEP(*(.x86_cpu_dev.init))
 		__x86_cpu_dev_end = .;
 	}
 
@@ -252,21 +252,21 @@ SECTIONS
 	. = ALIGN(8);
 	.retpoline_sites : AT(ADDR(.retpoline_sites) - LOAD_OFFSET) {
 		__retpoline_sites = .;
-		*(.retpoline_sites)
+		KEEP(*(.retpoline_sites))
 		__retpoline_sites_end = .;
 	}
 
 	. = ALIGN(8);
 	.return_sites : AT(ADDR(.return_sites) - LOAD_OFFSET) {
 		__return_sites = .;
-		*(.return_sites)
+		KEEP(*(.return_sites))
 		__return_sites_end = .;
 	}
 
 	. = ALIGN(8);
 	.call_sites : AT(ADDR(.call_sites) - LOAD_OFFSET) {
 		__call_sites = .;
-		*(.call_sites)
+		KEEP(*(.call_sites))
 		__call_sites_end = .;
 	}
 #endif
@@ -275,7 +275,7 @@ SECTIONS
 	. = ALIGN(8);
 	.ibt_endbr_seal : AT(ADDR(.ibt_endbr_seal) - LOAD_OFFSET) {
 		__ibt_endbr_seal = .;
-		*(.ibt_endbr_seal)
+		KEEP(*(.ibt_endbr_seal))
 		__ibt_endbr_seal_end = .;
 	}
 #endif
@@ -284,7 +284,7 @@ SECTIONS
 	. = ALIGN(8);
 	.cfi_sites : AT(ADDR(.cfi_sites) - LOAD_OFFSET) {
 		__cfi_sites = .;
-		*(.cfi_sites)
+		KEEP(*(.cfi_sites))
 		__cfi_sites_end = .;
 	}
 #endif
@@ -297,7 +297,7 @@ SECTIONS
 	. = ALIGN(8);
 	.altinstructions : AT(ADDR(.altinstructions) - LOAD_OFFSET) {
 		__alt_instructions = .;
-		*(.altinstructions)
+		KEEP(*(.altinstructions))
 		__alt_instructions_end = .;
 	}
 
@@ -313,7 +313,7 @@ SECTIONS
 	. = ALIGN(8);
 	.apicdrivers : AT(ADDR(.apicdrivers) - LOAD_OFFSET) {
 		__apicdrivers = .;
-		*(.apicdrivers);
+		KEEP(*(.apicdrivers));
 		__apicdrivers_end = .;
 	}
 
@@ -350,7 +350,7 @@ SECTIONS
 	. = ALIGN(PAGE_SIZE);
 	.smp_locks : AT(ADDR(.smp_locks) - LOAD_OFFSET) {
 		__smp_locks = .;
-		*(.smp_locks)
+		KEEP(*(.smp_locks))
 		. = ALIGN(PAGE_SIZE);
 		__smp_locks_end = .;
 	}

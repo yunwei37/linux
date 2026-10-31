@@ -243,6 +243,7 @@ Efault:
 /*
  * Do a signal return; undo the signal stack.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(rt_sigreturn)
 {
 	struct pt_regs *regs = current_pt_regs();
@@ -277,6 +278,7 @@ badframe:
 	signal_fault(regs, frame, "rt_sigreturn");
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_X86_X32_ABI
 static int x32_copy_siginfo_to_user(struct compat_siginfo __user *to,
@@ -361,6 +363,7 @@ Efault:
 	return -EFAULT;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE0(x32_rt_sigreturn)
 {
 	struct pt_regs *regs = current_pt_regs();
@@ -396,6 +399,7 @@ badframe:
 	signal_fault(regs, frame, "x32 rt_sigreturn");
 	return 0;
 }
+#endif
 #endif /* CONFIG_X86_X32_ABI */
 
 #ifdef CONFIG_COMPAT

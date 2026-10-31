@@ -846,10 +846,12 @@ long ksys_shmget(key_t key, size_t size, int shmflg)
 	return ipcget(ns, &shm_ids(ns), &shm_ops, &shm_params);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(shmget, key_t, key, size_t, size, int, shmflg)
 {
 	return ksys_shmget(key, size, shmflg);
 }
+#endif
 
 static inline unsigned long copy_shmid_to_user(void __user *buf, struct shmid64_ds *in, int version)
 {
@@ -1295,10 +1297,12 @@ static long ksys_shmctl(int shmid, int cmd, struct shmid_ds __user *buf, int ver
 	}
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(shmctl, int, shmid, int, cmd, struct shmid_ds __user *, buf)
 {
 	return ksys_shmctl(shmid, cmd, buf, IPC_64);
 }
+#endif
 
 #ifdef CONFIG_ARCH_WANT_IPC_PARSE_VERSION
 long ksys_old_shmctl(int shmid, int cmd, struct shmid_ds __user *buf)
@@ -1308,10 +1312,12 @@ long ksys_old_shmctl(int shmid, int cmd, struct shmid_ds __user *buf)
 	return ksys_shmctl(shmid, cmd, buf, version);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(old_shmctl, int, shmid, int, cmd, struct shmid_ds __user *, buf)
 {
 	return ksys_old_shmctl(shmid, cmd, buf);
 }
+#endif
 #endif
 
 #ifdef CONFIG_COMPAT
@@ -1491,10 +1497,12 @@ static long compat_ksys_shmctl(int shmid, int cmd, void __user *uptr, int versio
 	return err;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(shmctl, int, shmid, int, cmd, void __user *, uptr)
 {
 	return compat_ksys_shmctl(shmid, cmd, uptr, IPC_64);
 }
+#endif
 
 #ifdef CONFIG_ARCH_WANT_COMPAT_IPC_PARSE_VERSION
 long compat_ksys_old_shmctl(int shmid, int cmd, void __user *uptr)
@@ -1504,10 +1512,12 @@ long compat_ksys_old_shmctl(int shmid, int cmd, void __user *uptr)
 	return compat_ksys_shmctl(shmid, cmd, uptr, version);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(old_shmctl, int, shmid, int, cmd, void __user *, uptr)
 {
 	return compat_ksys_old_shmctl(shmid, cmd, uptr);
 }
+#endif
 #endif
 #endif
 
@@ -1692,6 +1702,7 @@ out:
 	return err;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(shmat, int, shmid, char __user *, shmaddr, int, shmflg)
 {
 	unsigned long ret;
@@ -1703,6 +1714,7 @@ SYSCALL_DEFINE3(shmat, int, shmid, char __user *, shmaddr, int, shmflg)
 	force_successful_syscall_return();
 	return (long)ret;
 }
+#endif
 
 #ifdef CONFIG_COMPAT
 
@@ -1710,6 +1722,7 @@ SYSCALL_DEFINE3(shmat, int, shmid, char __user *, shmaddr, int, shmflg)
 #define COMPAT_SHMLBA	SHMLBA
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(shmat, int, shmid, compat_uptr_t, shmaddr, int, shmflg)
 {
 	unsigned long ret;
@@ -1721,6 +1734,7 @@ COMPAT_SYSCALL_DEFINE3(shmat, int, shmid, compat_uptr_t, shmaddr, int, shmflg)
 	force_successful_syscall_return();
 	return (long)ret;
 }
+#endif
 #endif
 
 /*
@@ -1833,10 +1847,12 @@ long ksys_shmdt(char __user *shmaddr)
 	return retval;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(shmdt, char __user *, shmaddr)
 {
 	return ksys_shmdt(shmaddr);
 }
+#endif
 
 #ifdef CONFIG_PROC_FS
 static int sysvipc_shm_proc_show(struct seq_file *s, void *it)

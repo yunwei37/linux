@@ -741,6 +741,7 @@ static const struct user_regset_view user_x86_32_view; /* Initialized below. */
 static const struct user_regset_view user_x86_64_view; /* Initialized below. */
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 long arch_ptrace(struct task_struct *child, long request,
 		 unsigned long addr, unsigned long data)
 {
@@ -865,6 +866,7 @@ long arch_ptrace(struct task_struct *child, long request,
 
 	return ret;
 }
+#endif
 
 #ifdef CONFIG_IA32_EMULATION
 

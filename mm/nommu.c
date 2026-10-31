@@ -377,6 +377,7 @@ EXPORT_SYMBOL(vm_map_pages_zero);
  *  to a regular file.  in this case, the unmapping will need
  *  to invoke file system routines that need the global lock.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(brk, unsigned long, brk)
 {
 	struct mm_struct *mm = current->mm;
@@ -401,6 +402,7 @@ SYSCALL_DEFINE1(brk, unsigned long, brk)
 	flush_icache_user_range(mm->brk, brk);
 	return mm->brk = brk;
 }
+#endif
 
 static int sysctl_nr_trim_pages = CONFIG_NOMMU_INITIAL_TRIM_EXCESS;
 
@@ -1268,12 +1270,14 @@ out:
 	return retval;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(mmap_pgoff, unsigned long, addr, unsigned long, len,
 		unsigned long, prot, unsigned long, flags,
 		unsigned long, fd, unsigned long, pgoff)
 {
 	return ksys_mmap_pgoff(addr, len, prot, flags, fd, pgoff);
 }
+#endif
 
 #ifdef __ARCH_WANT_SYS_OLD_MMAP
 struct mmap_arg_struct {
@@ -1285,6 +1289,7 @@ struct mmap_arg_struct {
 	unsigned long offset;
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(old_mmap, struct mmap_arg_struct __user *, arg)
 {
 	struct mmap_arg_struct a;
@@ -1297,6 +1302,7 @@ SYSCALL_DEFINE1(old_mmap, struct mmap_arg_struct __user *, arg)
 	return ksys_mmap_pgoff(a.addr, a.len, a.prot, a.flags, a.fd,
 			       a.offset >> PAGE_SHIFT);
 }
+#endif
 #endif /* __ARCH_WANT_SYS_OLD_MMAP */
 
 /*
@@ -1497,10 +1503,12 @@ int vm_munmap(unsigned long addr, size_t len)
 }
 EXPORT_SYMBOL(vm_munmap);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(munmap, unsigned long, addr, size_t, len)
 {
 	return vm_munmap(addr, len);
 }
+#endif
 
 /*
  * release all the mappings made in a process's VM space
@@ -1575,6 +1583,7 @@ static unsigned long do_mremap(unsigned long addr,
 	return vma->vm_start;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
 		unsigned long, new_len, unsigned long, flags,
 		unsigned long, new_addr)
@@ -1586,6 +1595,7 @@ SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
 	mmap_write_unlock(current->mm);
 	return ret;
 }
+#endif
 
 int remap_pfn_range(struct vm_area_struct *vma, unsigned long addr,
 		unsigned long pfn, unsigned long size, pgprot_t prot)

@@ -1848,10 +1848,12 @@ int do_syslog(int type, char __user *buf, int len, int source)
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(syslog, int, type, char __user *, buf, int, len)
 {
 	return do_syslog(type, buf, len, SYSLOG_FROM_READER);
 }
+#endif
 
 /*
  * Special console_lock variants that help to reduce the risk of soft-lockups.

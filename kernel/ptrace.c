@@ -1143,6 +1143,7 @@ ptrace_set_syscall_info(struct task_struct *child, unsigned long user_size,
 }
 #endif /* CONFIG_HAVE_ARCH_TRACEHOOK */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int ptrace_request(struct task_struct *child, long request,
 		   unsigned long addr, unsigned long data)
 {
@@ -1393,7 +1394,9 @@ int ptrace_request(struct task_struct *child, long request,
 
 	return ret;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(ptrace, long, request, long, pid, unsigned long, addr,
 		unsigned long, data)
 {
@@ -1430,6 +1433,7 @@ SYSCALL_DEFINE4(ptrace, long, request, long, pid, unsigned long, addr,
  out:
 	return ret;
 }
+#endif
 
 int generic_ptrace_peekdata(struct task_struct *tsk, unsigned long addr,
 			    unsigned long data)
@@ -1533,6 +1537,7 @@ int compat_ptrace_request(struct task_struct *child, compat_long_t request,
 	return ret;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(ptrace, compat_long_t, request, compat_long_t, pid,
 		       compat_long_t, addr, compat_long_t, data)
 {
@@ -1568,4 +1573,5 @@ COMPAT_SYSCALL_DEFINE4(ptrace, compat_long_t, request, compat_long_t, pid,
  out:
 	return ret;
 }
+#endif
 #endif	/* CONFIG_COMPAT */

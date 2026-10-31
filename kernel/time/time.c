@@ -59,6 +59,7 @@ EXPORT_SYMBOL(sys_tz);
  * why not move it into the appropriate arch directory (for those
  * architectures that need it).
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(time, __kernel_old_time_t __user *, tloc)
 {
 	__kernel_old_time_t i = (__kernel_old_time_t)ktime_get_real_seconds();
@@ -70,6 +71,7 @@ SYSCALL_DEFINE1(time, __kernel_old_time_t __user *, tloc)
 	force_successful_syscall_return();
 	return i;
 }
+#endif
 
 /*
  * sys_stime() can be implemented in user-level using
@@ -78,6 +80,7 @@ SYSCALL_DEFINE1(time, __kernel_old_time_t __user *, tloc)
  * architectures that need it).
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(stime, __kernel_old_time_t __user *, tptr)
 {
 	struct timespec64 tv;
@@ -95,6 +98,7 @@ SYSCALL_DEFINE1(stime, __kernel_old_time_t __user *, tptr)
 	do_settimeofday64(&tv);
 	return 0;
 }
+#endif
 
 #endif /* __ARCH_WANT_SYS_TIME */
 
@@ -102,6 +106,7 @@ SYSCALL_DEFINE1(stime, __kernel_old_time_t __user *, tptr)
 #ifdef __ARCH_WANT_SYS_TIME32
 
 /* old_time32_t is a 32 bit "long" and needs to get converted. */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(time32, old_time32_t __user *, tloc)
 {
 	old_time32_t i;
@@ -115,7 +120,9 @@ SYSCALL_DEFINE1(time32, old_time32_t __user *, tloc)
 	force_successful_syscall_return();
 	return i;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(stime32, old_time32_t __user *, tptr)
 {
 	struct timespec64 tv;
@@ -133,10 +140,12 @@ SYSCALL_DEFINE1(stime32, old_time32_t __user *, tptr)
 	do_settimeofday64(&tv);
 	return 0;
 }
+#endif
 
 #endif /* __ARCH_WANT_SYS_TIME32 */
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(gettimeofday, struct __kernel_old_timeval __user *, tv,
 		struct timezone __user *, tz)
 {
@@ -154,6 +163,7 @@ SYSCALL_DEFINE2(gettimeofday, struct __kernel_old_timeval __user *, tv,
 	}
 	return 0;
 }
+#endif
 
 /*
  * In case for some reason the CMOS clock has not already been running
@@ -196,6 +206,7 @@ int do_sys_settimeofday64(const struct timespec64 *tv, const struct timezone *tz
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(settimeofday, struct __kernel_old_timeval __user *, tv,
 		struct timezone __user *, tz)
 {
@@ -219,8 +230,10 @@ SYSCALL_DEFINE2(settimeofday, struct __kernel_old_timeval __user *, tv,
 
 	return do_sys_settimeofday64(tv ? &new_ts : NULL, tz ? &new_tz : NULL);
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(gettimeofday, struct old_timeval32 __user *, tv,
 		       struct timezone __user *, tz)
 {
@@ -239,7 +252,9 @@ COMPAT_SYSCALL_DEFINE2(gettimeofday, struct old_timeval32 __user *, tv,
 
 	return 0;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(settimeofday, struct old_timeval32 __user *, tv,
 		       struct timezone __user *, tz)
 {
@@ -264,8 +279,10 @@ COMPAT_SYSCALL_DEFINE2(settimeofday, struct old_timeval32 __user *, tv,
 	return do_sys_settimeofday64(tv ? &new_ts : NULL, tz ? &new_tz : NULL);
 }
 #endif
+#endif
 
 #ifdef CONFIG_64BIT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(adjtimex, struct __kernel_timex __user *, txc_p)
 {
 	struct __kernel_timex txc;		/* Local copy of parameter */
@@ -280,6 +297,7 @@ SYSCALL_DEFINE1(adjtimex, struct __kernel_timex __user *, txc_p)
 	ret = do_adjtimex(&txc);
 	return copy_to_user(txc_p, &txc, sizeof(struct __kernel_timex)) ? -EFAULT : ret;
 }
+#endif
 #endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
@@ -346,6 +364,7 @@ int put_old_timex32(struct old_timex32 __user *utp, const struct __kernel_timex 
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(adjtimex_time32, struct old_timex32 __user *, utp)
 {
 	struct __kernel_timex txc;
@@ -363,6 +382,7 @@ SYSCALL_DEFINE1(adjtimex_time32, struct old_timex32 __user *, utp)
 
 	return ret;
 }
+#endif
 #endif
 
 /**

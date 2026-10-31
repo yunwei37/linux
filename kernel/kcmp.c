@@ -132,6 +132,7 @@ static int kcmp_epoll_target(struct task_struct *task1,
 }
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(kcmp, pid_t, pid1, pid_t, pid2, int, type,
 		unsigned long, idx1, unsigned long, idx2)
 {
@@ -224,6 +225,7 @@ err_no_task:
 	rcu_read_unlock();
 	return -ESRCH;
 }
+#endif
 
 static __init int kcmp_cookies_init(void)
 {

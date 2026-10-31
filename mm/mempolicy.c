@@ -1688,6 +1688,7 @@ static long kernel_mbind(unsigned long start, unsigned long len,
 	return do_mbind(start, len, lmode, mode_flags, &nodes, flags);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(set_mempolicy_home_node, unsigned long, start, unsigned long, len,
 		unsigned long, home_node, unsigned long, flags)
 {
@@ -1754,13 +1755,16 @@ SYSCALL_DEFINE4(set_mempolicy_home_node, unsigned long, start, unsigned long, le
 	mmap_write_unlock(mm);
 	return err;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(mbind, unsigned long, start, unsigned long, len,
 		unsigned long, mode, const unsigned long __user *, nmask,
 		unsigned long, maxnode, unsigned int, flags)
 {
 	return kernel_mbind(start, len, mode, nmask, maxnode, flags);
 }
+#endif
 
 /* Set the process memory policy */
 static long kernel_set_mempolicy(int mode, const unsigned long __user *nmask,
@@ -1782,11 +1786,13 @@ static long kernel_set_mempolicy(int mode, const unsigned long __user *nmask,
 	return do_set_mempolicy(lmode, mode_flags, &nodes);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(set_mempolicy, int, mode, const unsigned long __user *, nmask,
 		unsigned long, maxnode)
 {
 	return kernel_set_mempolicy(mode, nmask, maxnode);
 }
+#endif
 
 static int kernel_migrate_pages(pid_t pid, unsigned long maxnode,
 				const unsigned long __user *old_nodes,
@@ -1875,12 +1881,14 @@ out_put:
 	goto out;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(migrate_pages, pid_t, pid, unsigned long, maxnode,
 		const unsigned long __user *, old_nodes,
 		const unsigned long __user *, new_nodes)
 {
 	return kernel_migrate_pages(pid, maxnode, old_nodes, new_nodes);
 }
+#endif
 
 /* Retrieve NUMA policy */
 static int kernel_get_mempolicy(int __user *policy,
@@ -1912,12 +1920,14 @@ static int kernel_get_mempolicy(int __user *policy,
 	return err;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(get_mempolicy, int __user *, policy,
 		unsigned long __user *, nmask, unsigned long, maxnode,
 		unsigned long, addr, unsigned long, flags)
 {
 	return kernel_get_mempolicy(policy, nmask, maxnode, addr, flags);
 }
+#endif
 
 bool vma_migratable(struct vm_area_struct *vma)
 {

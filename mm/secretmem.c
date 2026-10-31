@@ -319,6 +319,7 @@ err_free_inode:
 	return ERR_PTR(err);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(memfd_secret, unsigned int, flags)
 {
 	struct file *file;
@@ -352,6 +353,7 @@ err_put_fd:
 	put_unused_fd(fd);
 	return err;
 }
+#endif
 
 static int secretmem_init_fs_context(struct fs_context *fc)
 {

@@ -8,6 +8,7 @@
 #include <linux/livepatch.h>
 #include <linux/tick.h>
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 /* Workaround to allow gradual conversion of architecture code */
 void __weak arch_do_signal_or_restart(struct pt_regs *regs) { }
 
@@ -74,6 +75,8 @@ noinstr void irqentry_exit_to_user_mode(struct pt_regs *regs)
 	instrumentation_end();
 	exit_to_user_mode();
 }
+#endif
+
 
 noinstr irqentry_state_t irqentry_enter(struct pt_regs *regs)
 {
@@ -186,10 +189,14 @@ noinstr void irqentry_exit(struct pt_regs *regs, irqentry_state_t state)
 {
 	lockdep_assert_irqs_disabled();
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	/* Check whether this returns to user mode */
 	if (user_mode(regs)) {
 		irqentry_exit_to_user_mode(regs);
-	} else if (!regs_irqs_disabled(regs)) {
+	} else
+#endif
+	if (!regs_irqs_disabled(regs)) {
+
 		/*
 		 * If RCU was not watching on entry this needs to be done
 		 * carefully and needs the same ordering of lockdep/tracing

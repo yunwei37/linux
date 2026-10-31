@@ -107,11 +107,13 @@ int ksys_ipc(unsigned int call, int first, unsigned long second,
 	}
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(ipc, unsigned int, call, int, first, unsigned long, second,
 		unsigned long, third, void __user *, ptr, long, fifth)
 {
 	return ksys_ipc(call, first, second, third, ptr, fifth);
 }
+#endif
 #endif
 
 #ifdef CONFIG_COMPAT
@@ -202,10 +204,12 @@ int compat_ksys_ipc(u32 call, int first, int second,
 	return -ENOSYS;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE6(ipc, u32, call, int, first, int, second,
 	u32, third, compat_uptr_t, ptr, u32, fifth)
 {
 	return compat_ksys_ipc(call, first, second, third, ptr, fifth);
 }
+#endif
 #endif
 #endif

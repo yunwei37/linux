@@ -2470,11 +2470,14 @@ out_free_ep:
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(epoll_create1, int, flags)
 {
 	return do_epoll_create(flags);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(epoll_create, int, size)
 {
 	if (size <= 0)
@@ -2482,6 +2485,7 @@ SYSCALL_DEFINE1(epoll_create, int, size)
 
 	return do_epoll_create(0);
 }
+#endif
 
 #ifdef CONFIG_PM_SLEEP
 static inline void ep_take_care_of_epollwakeup(struct epoll_event *epev)
@@ -2655,6 +2659,7 @@ error_tgt_fput:
  * the eventpoll file that enables the insertion/removal/change of
  * file descriptors inside the interest set.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(epoll_ctl, int, epfd, int, op, int, fd,
 		struct epoll_event __user *, event)
 {
@@ -2666,6 +2671,7 @@ SYSCALL_DEFINE4(epoll_ctl, int, epfd, int, op, int, fd,
 
 	return do_epoll_ctl(epfd, op, fd, &epds, false);
 }
+#endif
 
 static int ep_check_params(struct file *file, struct epoll_event __user *evs,
 			   int maxevents)
@@ -2737,6 +2743,7 @@ static int do_epoll_wait(int epfd, struct epoll_event __user *events,
 	return ep_poll(ep, events, maxevents, to);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(epoll_wait, int, epfd, struct epoll_event __user *, events,
 		int, maxevents, int, timeout)
 {
@@ -2745,6 +2752,7 @@ SYSCALL_DEFINE4(epoll_wait, int, epfd, struct epoll_event __user *, events,
 	return do_epoll_wait(epfd, events, maxevents,
 			     ep_timeout_to_timespec(&to, timeout));
 }
+#endif
 
 /*
  * Implement the event wait interface for the eventpoll file. It is the kernel
@@ -2771,6 +2779,7 @@ static int do_epoll_pwait(int epfd, struct epoll_event __user *events,
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(epoll_pwait, int, epfd, struct epoll_event __user *, events,
 		int, maxevents, int, timeout, const sigset_t __user *, sigmask,
 		size_t, sigsetsize)
@@ -2781,7 +2790,9 @@ SYSCALL_DEFINE6(epoll_pwait, int, epfd, struct epoll_event __user *, events,
 			      ep_timeout_to_timespec(&to, timeout),
 			      sigmask, sigsetsize);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(epoll_pwait2, int, epfd, struct epoll_event __user *, events,
 		int, maxevents, const struct __kernel_timespec __user *, timeout,
 		const sigset_t __user *, sigmask, size_t, sigsetsize)
@@ -2799,6 +2810,7 @@ SYSCALL_DEFINE6(epoll_pwait2, int, epfd, struct epoll_event __user *, events,
 	return do_epoll_pwait(epfd, events, maxevents, to,
 			      sigmask, sigsetsize);
 }
+#endif
 
 #ifdef CONFIG_COMPAT
 static int do_compat_epoll_pwait(int epfd, struct epoll_event __user *events,
@@ -2823,6 +2835,7 @@ static int do_compat_epoll_pwait(int epfd, struct epoll_event __user *events,
 	return err;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE6(epoll_pwait, int, epfd,
 		       struct epoll_event __user *, events,
 		       int, maxevents, int, timeout,
@@ -2835,7 +2848,9 @@ COMPAT_SYSCALL_DEFINE6(epoll_pwait, int, epfd,
 				     ep_timeout_to_timespec(&to, timeout),
 				     sigmask, sigsetsize);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE6(epoll_pwait2, int, epfd,
 		       struct epoll_event __user *, events,
 		       int, maxevents,
@@ -2856,6 +2871,7 @@ COMPAT_SYSCALL_DEFINE6(epoll_pwait2, int, epfd,
 	return do_compat_epoll_pwait(epfd, events, maxevents, to,
 				     sigmask, sigsetsize);
 }
+#endif
 
 #endif
 

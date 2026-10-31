@@ -110,6 +110,7 @@ static int put_itimerval(struct __kernel_old_itimerval __user *o,
 }
 
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(getitimer, int, which, struct __kernel_old_itimerval __user *, value)
 {
 	struct itimerspec64 get_buffer;
@@ -119,6 +120,7 @@ SYSCALL_DEFINE2(getitimer, int, which, struct __kernel_old_itimerval __user *, v
 		error = -EFAULT;
 	return error;
 }
+#endif
 
 #if defined(CONFIG_COMPAT) || defined(CONFIG_ALPHA)
 struct old_itimerval32 {
@@ -138,6 +140,7 @@ static int put_old_itimerval32(struct old_itimerval32 __user *o,
 	return copy_to_user(o, &v32, sizeof(struct old_itimerval32)) ? -EFAULT : 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(getitimer, int, which,
 		       struct old_itimerval32 __user *, value)
 {
@@ -148,6 +151,7 @@ COMPAT_SYSCALL_DEFINE2(getitimer, int, which,
 		error = -EFAULT;
 	return error;
 }
+#endif
 #endif
 
 /*
@@ -322,10 +326,12 @@ static unsigned int alarm_setitimer(unsigned int seconds)
  * For backwards compatibility?  This can be done in libc so Alpha
  * and all newer ports shouldn't need it.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(alarm, unsigned int, seconds)
 {
 	return alarm_setitimer(seconds);
 }
+#endif
 
 #endif
 
@@ -348,6 +354,7 @@ static int get_itimerval(struct itimerspec64 *o, const struct __kernel_old_itime
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(setitimer, int, which, struct __kernel_old_itimerval __user *, value,
 		struct __kernel_old_itimerval __user *, ovalue)
 {
@@ -373,6 +380,7 @@ SYSCALL_DEFINE3(setitimer, int, which, struct __kernel_old_itimerval __user *, v
 		return -EFAULT;
 	return 0;
 }
+#endif
 
 #if defined(CONFIG_COMPAT) || defined(CONFIG_ALPHA)
 static int get_old_itimerval32(struct itimerspec64 *o, const struct old_itimerval32 __user *i)
@@ -394,6 +402,7 @@ static int get_old_itimerval32(struct itimerspec64 *o, const struct old_itimerva
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(setitimer, int, which,
 		       struct old_itimerval32 __user *, value,
 		       struct old_itimerval32 __user *, ovalue)
@@ -419,4 +428,5 @@ COMPAT_SYSCALL_DEFINE3(setitimer, int, which,
 		return -EFAULT;
 	return 0;
 }
+#endif
 #endif

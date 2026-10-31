@@ -664,6 +664,7 @@ out:
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(modify_ldt, int , func , void __user * , ptr ,
 		unsigned long , bytecount)
 {
@@ -694,3 +695,4 @@ SYSCALL_DEFINE3(modify_ldt, int , func , void __user * , ptr ,
 	 */
 	return (unsigned int)ret;
 }
+#endif

@@ -256,6 +256,7 @@ out:
 	return error;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(setpriority, int, which, int, who, int, niceval)
 {
 	struct task_struct *g, *p;
@@ -319,6 +320,7 @@ out_unlock:
 out:
 	return error;
 }
+#endif
 
 /*
  * Ugh. To avoid negative return values, "getpriority()" will
@@ -326,6 +328,7 @@ out:
  * has been offset by 20 (ie it returns 40..1 instead of -20..19)
  * to stay compatible.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(getpriority, int, which, int, who)
 {
 	struct task_struct *g, *p;
@@ -390,6 +393,7 @@ out_unlock:
 
 	return retval;
 }
+#endif
 
 /*
  * Unprivileged users may change the real gid to the effective gid
@@ -466,10 +470,12 @@ error:
 	return retval;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(setregid, gid_t, rgid, gid_t, egid)
 {
 	return __sys_setregid(rgid, egid);
 }
+#endif
 
 /*
  * setgid() is implemented like SysV w/ SAVED_IDS
@@ -512,10 +518,12 @@ error:
 	return retval;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(setgid, gid_t, gid)
 {
 	return __sys_setgid(gid);
 }
+#endif
 
 /*
  * change the user struct in a credentials set to match the new UID
@@ -632,10 +640,12 @@ error:
 	return retval;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(setreuid, uid_t, ruid, uid_t, euid)
 {
 	return __sys_setreuid(ruid, euid);
 }
+#endif
 
 /*
  * setuid() is implemented like SysV with SAVED_IDS
@@ -695,10 +705,12 @@ error:
 	return retval;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(setuid, uid_t, uid)
 {
 	return __sys_setuid(uid);
 }
+#endif
 
 
 /*
@@ -780,11 +792,14 @@ error:
 	return retval;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(setresuid, uid_t, ruid, uid_t, euid, uid_t, suid)
 {
 	return __sys_setresuid(ruid, euid, suid);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(getresuid, uid_t __user *, ruidp, uid_t __user *, euidp, uid_t __user *, suidp)
 {
 	const struct cred *cred = current_cred();
@@ -803,6 +818,7 @@ SYSCALL_DEFINE3(getresuid, uid_t __user *, ruidp, uid_t __user *, euidp, uid_t _
 	}
 	return retval;
 }
+#endif
 
 /*
  * Same as above, but for rgid, egid, sgid.
@@ -869,11 +885,14 @@ error:
 	return retval;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(setresgid, gid_t, rgid, gid_t, egid, gid_t, sgid)
 {
 	return __sys_setresgid(rgid, egid, sgid);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(getresgid, gid_t __user *, rgidp, gid_t __user *, egidp, gid_t __user *, sgidp)
 {
 	const struct cred *cred = current_cred();
@@ -893,6 +912,7 @@ SYSCALL_DEFINE3(getresgid, gid_t __user *, rgidp, gid_t __user *, egidp, gid_t _
 
 	return retval;
 }
+#endif
 
 
 /*
@@ -937,10 +957,12 @@ change_okay:
 	return old_fsuid;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(setfsuid, uid_t, uid)
 {
 	return __sys_setfsuid(uid);
 }
+#endif
 
 /*
  * Samma på svenska..
@@ -981,10 +1003,12 @@ change_okay:
 	return old_fsgid;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(setfsgid, gid_t, gid)
 {
 	return __sys_setfsgid(gid);
 }
+#endif
 #endif /* CONFIG_MULTIUSER */
 
 /**
@@ -996,16 +1020,20 @@ SYSCALL_DEFINE1(setfsgid, gid_t, gid)
  *
  * This is SMP safe as current->tgid does not change.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(getpid)
 {
 	return task_tgid_vnr(current);
 }
+#endif
 
 /* Thread ID - the internal kernel "pid" */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(gettid)
 {
 	return task_pid_vnr(current);
 }
+#endif
 
 /*
  * Accessing ->real_parent is not SMP-safe, it could
@@ -1013,6 +1041,7 @@ SYSCALL_DEFINE0(gettid)
  * value of ->real_parent under rcu_read_lock(), see
  * release_task()->call_rcu(delayed_put_task_struct).
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(getppid)
 {
 	int pid;
@@ -1023,30 +1052,39 @@ SYSCALL_DEFINE0(getppid)
 
 	return pid;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(getuid)
 {
 	/* Only we change this so SMP safe */
 	return from_kuid_munged(current_user_ns(), current_uid());
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(geteuid)
 {
 	/* Only we change this so SMP safe */
 	return from_kuid_munged(current_user_ns(), current_euid());
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(getgid)
 {
 	/* Only we change this so SMP safe */
 	return from_kgid_munged(current_user_ns(), current_gid());
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(getegid)
 {
 	/* Only we change this so SMP safe */
 	return from_kgid_munged(current_user_ns(), current_egid());
 }
+#endif
 
 static void do_sys_times(struct tms *tms)
 {
@@ -1061,6 +1099,7 @@ static void do_sys_times(struct tms *tms)
 	tms->tms_cstime = nsec_to_clock_t(cstime);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(times, struct tms __user *, tbuf)
 {
 	if (tbuf) {
@@ -1073,6 +1112,7 @@ SYSCALL_DEFINE1(times, struct tms __user *, tbuf)
 	force_successful_syscall_return();
 	return (long) jiffies_64_to_clock_t(get_jiffies_64());
 }
+#endif
 
 #ifdef CONFIG_COMPAT
 static compat_clock_t clock_t_to_compat_clock_t(clock_t x)
@@ -1080,6 +1120,7 @@ static compat_clock_t clock_t_to_compat_clock_t(clock_t x)
 	return compat_jiffies_to_clock_t(clock_t_to_jiffies(x));
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE1(times, struct compat_tms __user *, tbuf)
 {
 	if (tbuf) {
@@ -1099,6 +1140,7 @@ COMPAT_SYSCALL_DEFINE1(times, struct compat_tms __user *, tbuf)
 	return compat_jiffies_to_clock_t(jiffies);
 }
 #endif
+#endif
 
 /*
  * This needs some heavy checking ...
@@ -1111,6 +1153,7 @@ COMPAT_SYSCALL_DEFINE1(times, struct compat_tms __user *, tbuf)
  *
  * !PF_FORKNOEXEC check to conform completely to POSIX.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(setpgid, pid_t, pid, pid_t, pgid)
 {
 	struct task_struct *p;
@@ -1183,6 +1226,7 @@ out:
 	free_pids(pids);
 	return err;
 }
+#endif
 
 static int do_getpgid(pid_t pid)
 {
@@ -1212,20 +1256,25 @@ out:
 	return retval;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(getpgid, pid_t, pid)
 {
 	return do_getpgid(pid);
 }
+#endif
 
 #ifdef __ARCH_WANT_SYS_GETPGRP
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(getpgrp)
 {
 	return do_getpgid(0);
 }
+#endif
 
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(getsid, pid_t, pid)
 {
 	struct task_struct *p;
@@ -1253,6 +1302,7 @@ out:
 	rcu_read_unlock();
 	return retval;
 }
+#endif
 
 static void set_special_pids(struct pid **pids, struct pid *pid)
 {
@@ -1300,10 +1350,12 @@ out:
 	return err;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(setsid)
 {
 	return ksys_setsid();
 }
+#endif
 
 DECLARE_RWSEM(uts_sem);
 
@@ -1348,6 +1400,7 @@ static int override_release(char __user *release, size_t len)
 	return ret;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 {
 	struct new_utsname tmp;
@@ -1364,11 +1417,13 @@ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 		return -EFAULT;
 	return 0;
 }
+#endif
 
 #ifdef __ARCH_WANT_SYS_OLD_UNAME
 /*
  * Old cruft
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(uname, struct old_utsname __user *, name)
 {
 	struct old_utsname tmp;
@@ -1388,7 +1443,9 @@ SYSCALL_DEFINE1(uname, struct old_utsname __user *, name)
 		return -EFAULT;
 	return 0;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(olduname, struct oldold_utsname __user *, name)
 {
 	struct oldold_utsname tmp;
@@ -1415,7 +1472,9 @@ SYSCALL_DEFINE1(olduname, struct oldold_utsname __user *, name)
 	return 0;
 }
 #endif
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(sethostname, char __user *, name, int, len)
 {
 	int errno;
@@ -1441,9 +1500,11 @@ SYSCALL_DEFINE2(sethostname, char __user *, name, int, len)
 	}
 	return errno;
 }
+#endif
 
 #ifdef __ARCH_WANT_SYS_GETHOSTNAME
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(gethostname, char __user *, name, int, len)
 {
 	int i;
@@ -1463,6 +1524,7 @@ SYSCALL_DEFINE2(gethostname, char __user *, name, int, len)
 		return -EFAULT;
 	return 0;
 }
+#endif
 
 #endif
 
@@ -1470,6 +1532,7 @@ SYSCALL_DEFINE2(gethostname, char __user *, name, int, len)
  * Only setdomainname; getdomainname can be implemented by calling
  * uname()
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(setdomainname, char __user *, name, int, len)
 {
 	int errno;
@@ -1495,6 +1558,7 @@ SYSCALL_DEFINE2(setdomainname, char __user *, name, int, len)
 	}
 	return errno;
 }
+#endif
 
 /* make sure you are allowed to change @tsk limits before calling this */
 static int do_prlimit(struct task_struct *tsk, unsigned int resource,
@@ -1560,6 +1624,7 @@ static int do_prlimit(struct task_struct *tsk, unsigned int resource,
 	return retval;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(getrlimit, unsigned int, resource, struct rlimit __user *, rlim)
 {
 	struct rlimit value;
@@ -1571,9 +1636,11 @@ SYSCALL_DEFINE2(getrlimit, unsigned int, resource, struct rlimit __user *, rlim)
 
 	return ret;
 }
+#endif
 
 #ifdef CONFIG_COMPAT
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(setrlimit, unsigned int, resource,
 		       struct compat_rlimit __user *, rlim)
 {
@@ -1593,7 +1660,9 @@ COMPAT_SYSCALL_DEFINE2(setrlimit, unsigned int, resource,
 		r.rlim_max = r32.rlim_max;
 	return do_prlimit(current, resource, &r, NULL);
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(getrlimit, unsigned int, resource,
 		       struct compat_rlimit __user *, rlim)
 {
@@ -1617,6 +1686,7 @@ COMPAT_SYSCALL_DEFINE2(getrlimit, unsigned int, resource,
 	}
 	return ret;
 }
+#endif
 
 #endif
 
@@ -1625,6 +1695,7 @@ COMPAT_SYSCALL_DEFINE2(getrlimit, unsigned int, resource,
 /*
  *	Back compatibility for getrlimit. Needed for some apps.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(old_getrlimit, unsigned int, resource,
 		struct rlimit __user *, rlim)
 {
@@ -1642,8 +1713,10 @@ SYSCALL_DEFINE2(old_getrlimit, unsigned int, resource,
 		x.rlim_max = 0x7FFFFFFF;
 	return copy_to_user(rlim, &x, sizeof(x)) ? -EFAULT : 0;
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(old_getrlimit, unsigned int, resource,
 		       struct compat_rlimit __user *, rlim)
 {
@@ -1666,6 +1739,7 @@ COMPAT_SYSCALL_DEFINE2(old_getrlimit, unsigned int, resource,
 		return -EFAULT;
 	return 0;
 }
+#endif
 #endif
 
 #endif
@@ -1726,6 +1800,7 @@ static int check_prlimit_permission(struct task_struct *task,
 	return security_task_prlimit(cred, tcred, flags);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(prlimit64, pid_t, pid, unsigned int, resource,
 		const struct rlimit64 __user *, new_rlim,
 		struct rlimit64 __user *, old_rlim)
@@ -1790,7 +1865,9 @@ SYSCALL_DEFINE4(prlimit64, pid_t, pid, unsigned int, resource,
 	put_task_struct(tsk);
 	return ret;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(setrlimit, unsigned int, resource, struct rlimit __user *, rlim)
 {
 	struct rlimit new_rlim;
@@ -1799,6 +1876,7 @@ SYSCALL_DEFINE2(setrlimit, unsigned int, resource, struct rlimit __user *, rlim)
 		return -EFAULT;
 	return do_prlimit(current, resource, &new_rlim, NULL);
 }
+#endif
 
 /*
  * It would make sense to put struct rusage in the task_struct,
@@ -1931,6 +2009,7 @@ out_children:
 	r->ru_stime = ns_to_kernel_old_timeval(stime);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(getrusage, int, who, struct rusage __user *, ru)
 {
 	struct rusage r;
@@ -1942,8 +2021,10 @@ SYSCALL_DEFINE2(getrusage, int, who, struct rusage __user *, ru)
 	getrusage(current, who, &r);
 	return copy_to_user(ru, &r, sizeof(r)) ? -EFAULT : 0;
 }
+#endif
 
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(getrusage, int, who, struct compat_rusage __user *, ru)
 {
 	struct rusage r;
@@ -1956,12 +2037,15 @@ COMPAT_SYSCALL_DEFINE2(getrusage, int, who, struct compat_rusage __user *, ru)
 	return put_compat_rusage(&r, ru);
 }
 #endif
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(umask, int, mask)
 {
 	mask = xchg(&current->fs->umask, mask & S_IRWXUGO);
 	return mask;
 }
+#endif
 
 static int prctl_set_mm_exe_file(struct mm_struct *mm, unsigned int fd)
 {
@@ -2515,6 +2599,7 @@ static int prctl_set_thp_disable(bool thp_disable, unsigned long flags,
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		unsigned long, arg4, unsigned long, arg5)
 {
@@ -2875,7 +2960,9 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 	}
 	return error;
 }
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(getcpu, unsigned __user *, cpup, unsigned __user *, nodep,
 		struct getcpu_cache __user *, unused)
 {
@@ -2888,6 +2975,7 @@ SYSCALL_DEFINE3(getcpu, unsigned __user *, cpup, unsigned __user *, nodep,
 		err |= put_user(cpu_to_node(cpu), nodep);
 	return err ? -EFAULT : 0;
 }
+#endif
 
 /**
  * do_sysinfo - fill in sysinfo struct
@@ -2956,6 +3044,7 @@ out:
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(sysinfo, struct sysinfo __user *, info)
 {
 	struct sysinfo val;
@@ -2967,6 +3056,7 @@ SYSCALL_DEFINE1(sysinfo, struct sysinfo __user *, info)
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_COMPAT
 struct compat_sysinfo {
@@ -2986,6 +3076,7 @@ struct compat_sysinfo {
 	char _f[20-2*sizeof(u32)-sizeof(int)];
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE1(sysinfo, struct compat_sysinfo __user *, info)
 {
 	struct sysinfo s;
@@ -3033,4 +3124,5 @@ COMPAT_SYSCALL_DEFINE1(sysinfo, struct compat_sysinfo __user *, info)
 		return -EFAULT;
 	return 0;
 }
+#endif
 #endif /* CONFIG_COMPAT */
