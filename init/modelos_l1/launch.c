@@ -45,7 +45,11 @@ static NV_STATUS prepare(struct executor *c)
   if(node->constant_bytes>sizeof(cb)||node->next>=(int)n||cursor+node->code_bytes>c->r->local.gpu+0x200000)return NV_ERR_INVALID_ARGUMENT;
   c->nodes[i].code=cursor;cursor=ALIGN(cursor+node->code_bytes,0x100);
   memcpy_toio((void __iomem *)c->r->local.cpu+c->nodes[i].code-c->r->local.gpu,node->code,node->code_bytes);
-  memcpy(cb,node->constant,node->constant_bytes);*(NvU64 *)((char *)cb+0x380)=c->r->host.gpu;
+  memcpy(cb,node->constant,node->constant_bytes);
+  /* CUDA launch ABI: blockDim/gridDim are supplied in cbuf0 as well as QMD. */
+  cb[0x360/4]=(node->qmd[34]&0xffff);cb[0x364/4]=node->qmd[34]>>16;cb[0x368/4]=node->qmd[35]&255;
+  cb[0x370/4]=node->qmd[39];cb[0x374/4]=node->qmd[40]&0xffff;cb[0x378/4]=node->qmd[41]&0xffff;
+  *(NvU64 *)((char *)cb+0x380)=c->r->host.gpu;
 #if L1_LAUNCH_IS_QWEN
   *(NvU64 *)((char *)cb+0x388)=c->r->weights.gpu;*(NvU64 *)((char *)cb+0x390)=c->r->state.gpu;*(NvU64 *)((char *)cb+0x398)=c->r->state.gpu+0x3c00000;
 #endif
@@ -94,6 +98,7 @@ static NV_STATUS smoke(struct executor *c,unsigned root,unsigned launches)
   for(unsigned i=0;i<32;i++)WRITE_ONCE(q[16+i],0xdeadbeef);
   NvU64 start=ktime_get_ns();NvU32 completion=submit(c,root,true);NV_STATUS s=wait_counter(release_ptr(c),completion);if(s!=NV_OK)return s;
   for(unsigned i=0;i<32;i++)if(READ_ONCE(q[16+i])!=6*i+36)return NV_ERR_INVALID_DATA;
+  if(!strcmp(graph_nodes[root].name,"launch_geometry"))pr_info("L1_GEOMETRY block_x=%u grid_x=%u block_y=%u grid_y=%u cta_arrivals=%u last_cta=%u\n",q[90],q[91],q[92],q[93],q[94],q[128+169]);
   pr_info("L1_GRAPH_LAUNCH_PASS launch=%u nodes=3 host_submissions=1 words=32 first=%u last=%u elapsed_ns=%llu fe_timestamp=%llu\n",launch,READ_ONCE(q[16]),READ_ONCE(q[47]),ktime_get_ns()-start,counter(q,1090));
  }
  return NV_OK;
@@ -109,7 +114,7 @@ static NV_STATUS optimizations(struct executor *c)
  for(unsigned pass=0;pass<2;pass++){
   static const unsigned pages[2][4]={{2,0,3,1},{1,3,0,2}};
   for(unsigned i=0;i<4;i++)WRITE_ONCE(q[64+i],pages[pass][i]);WRITE_ONCE(q[69],pass+1);WRITE_ONCE(q[70],7);
-  wmb();for(unsigned node=0;node<5;node++){s=wait_counter(release_ptr(c),submit(c,node,true));pr_info("L1_OPTIM_NODE node=%u status=0x%x\n",node,s);if(s!=NV_OK)return s;}
+  wmb();for(unsigned node=0;node<(graph_nodes[0].next<0?5:1);node++){s=wait_counter(release_ptr(c),submit(c,node,true));pr_info("L1_OPTIM_NODE node=%u status=0x%x\n",node,s);if(s!=NV_OK)return s;}
   for(unsigned i=0;i<256;i++){int sum=0;for(int k=0;k<16;k++)sum+=((int)((i/16+k)%3)-1)*((int)((k+i%16)%5)-2);if(READ_ONCE(q[256+i])!=integer_float(sum*(pass+1)))return NV_ERR_INVALID_DATA;}
   unsigned max_ulp=0;
   for(unsigned i=0;i<32;i++){
@@ -162,6 +167,61 @@ static NV_STATUS qwen_graph(struct executor *c)
  }
  pr_info("L1_GRAPH_QWEN_PASS cases=5 tokens=%u steps=%u cpl=0 mm=none no_libcuda=1\n",matched,serial);return NV_OK;
 }
+#if L1_LAUNCH_IS_PARALLEL
+#include "l1-perf-golden.h"
+static NV_STATUS parallel_shape(struct executor *c)
+{
+ struct shape_sample {NvU32 got;NvU64 cpu,gpu;};struct shape_sample *samples=kvcalloc(128,sizeof(*samples),GFP_KERNEL);if(!samples)return NV_ERR_NO_MEMORY;
+ NvU32 *q=queue(c);NV_STATUS status;
+ for(unsigned mode=0;mode<2;mode++){
+  NvU32 result=0,completion=0;NvU64 decode_ns=0,gpu_ns=0,begin,first=0,end;unsigned matched=0;
+  WRITE_ONCE(q[0],0);WRITE_ONCE(q[1],0);memset_io((void __iomem *)c->r->state.cpu+0x3b10000,0,82*4);wmb();
+  if(mode)completion=submit(c,1,false);begin=ktime_get_ns();
+  for(unsigned p=0;p<255;p++){
+   NvU64 start=ktime_get_ns();WRITE_ONCE(q[2],p<128?l1_perf_cases[0].input[p]:result);WRITE_ONCE(q[3],p);WRITE_ONCE(q[0],p+1);wmb();
+   if(!mode)completion=submit(c,0,true);status=wait_counter(mode?q+1:release_ptr(c),mode?p+1:completion);if(status!=NV_OK)return status;end=ktime_get_ns();result=READ_ONCE(q[4]);
+   if(p>=127){unsigned index=p-127;samples[index]=(struct shape_sample){result,end-start,counter(q,14)-counter(q,12)};
+    if(READ_ONCE(q[5])||result!=l1_perf_cases[0].output[index])return NV_ERR_INVALID_DATA;++matched;
+    if(!index)first=end;else{decode_ns+=end-start;gpu_ns+=counter(q,14)-counter(q,12);}
+   }
+  }
+  end=ktime_get_ns();if(mode){WRITE_ONCE(q[0],0xffffffffU);wmb();status=wait_counter(release_ptr(c),completion);if(status!=NV_OK)return status;}
+  for(unsigned i=0;i<128;i++)pr_info("L1_PARALLEL_SHAPE_TOKEN mode=%s index=%u got=%u expected=%u cpu_ns=%llu gpu_ns=%llu\n",mode?"persistent":"graph",i,samples[i].got,l1_perf_cases[0].output[i],samples[i].cpu,samples[i].gpu);
+  pr_info("L1_PARALLEL_SHAPE_PASS mode=%s input=128 output=%u steps=255 prefill_token_by_token=1 ttft_ns=%llu decode_steps=127 decode_cpu_ns=%llu decode_gpu_ns=%llu request_ns=%llu\n",mode?"persistent":"graph",matched,first-begin,decode_ns,gpu_ns,end-begin);
+ }
+ kvfree(samples);return NV_OK;
+}
+static NV_STATUS parallel_qwen(struct executor *c)
+{
+ struct decode_sample {unsigned id,index,position,result;NvU64 cpu,submit,gpu;};struct decode_sample *samples=kvcalloc(320,sizeof(*samples),GFP_KERNEL);if(!samples)return NV_ERR_NO_MEMORY;
+ NvU32 *q=queue(c);NV_STATUS s=NV_OK;
+ for(unsigned mode=0;mode<2;mode++){
+  unsigned matched=0,serial=0;NvU32 result=0,completion=0;NvU64 total_ns=0,gpu_ns=0;unsigned output_steps=0;
+  WRITE_ONCE(q[0],0);WRITE_ONCE(q[1],0);memset_io((void __iomem *)c->r->state.cpu+0x3b10000,0,82*4);wmb();
+  if(mode)completion=submit(c,1,false);
+  for(unsigned id=0;id<ARRAY_SIZE(l1_cases);id++){
+   for(unsigned p=0;p<l1_cases[id].inputs+l1_cases[id].outputs-1;p++){
+    NvU64 begin=ktime_get_ns(),submitted,done;
+    WRITE_ONCE(q[2],p<l1_cases[id].inputs?l1_cases[id].input[p]:result);WRITE_ONCE(q[3],p);WRITE_ONCE(q[0],++serial);wmb();
+    if(!mode)completion=submit(c,0,true);submitted=ktime_get_ns();
+    s=wait_counter(mode?q+1:release_ptr(c),mode?serial:completion);if(s!=NV_OK)return s;done=ktime_get_ns();result=READ_ONCE(q[4]);
+    if(READ_ONCE(q[5]))return NV_ERR_INVALID_DATA;
+    if(p+1>=l1_cases[id].inputs){unsigned index=p+1-l1_cases[id].inputs;
+     samples[matched]=(struct decode_sample){id,index,p,result,done-begin,submitted-begin,counter(q,14)-counter(q,12)};
+     if(result!=l1_cases[id].output[index])return NV_ERR_INVALID_DATA;++matched;
+     /* Exclude the final prefill step that supplies the first output token. */
+     if(index){total_ns+=done-begin;gpu_ns+=counter(q,14)-counter(q,12);++output_steps;}
+    }
+   }
+  }
+  if(mode){WRITE_ONCE(q[0],0xffffffffU);wmb();s=wait_counter(release_ptr(c),completion);if(s!=NV_OK)return s;}
+  for(unsigned i=0;i<matched;i++){struct decode_sample *t=samples+i;pr_info("L1_PARALLEL_TOKEN mode=%s case=%u index=%u position=%u got=%u expected=%u cpu_ns=%llu submit_ns=%llu gpu_ns=%llu\n",mode?"persistent":"graph",t->id,t->index,t->position,t->result,l1_cases[t->id].output[t->index],t->cpu,t->submit,t->gpu);}
+  pr_info("L1_PARALLEL_MODE_PASS mode=%s tokens=%u steps=%u decode_steps=%u decode_cpu_ns=%llu decode_gpu_ns=%llu\n",mode?"persistent":"graph",matched,serial,output_steps,total_ns,gpu_ns);
+ }
+ kvfree(samples);s=parallel_shape(c);if(s!=NV_OK)return s;
+ pr_info("L1_PARALLEL_PASS modes=2 cases=5 tokens_per_mode=320 cpl=0 mm=none\n");return s;
+}
+#endif
 static NV_STATUS benchmark(struct executor *c)
 {
  static const unsigned roots[4]={3,0,4,5};static const char *names[4]={"finite","graph","persistent","graph_persistent"};
@@ -198,7 +258,12 @@ NV_STATUS modelos_l1_launch(struct l1_launch_resources *r)
  struct executor *c=kvzalloc(struct_size(c,nodes,ARRAY_SIZE(graph_nodes)),GFP_KERNEL);NV_STATUS s;if(!c)return NV_ERR_NO_MEMORY;
  c->r=r;c->system=system_commands&&r->host.bytes>=0x100000;s=prepare(c);if(s!=NV_OK)goto out;
 #if L1_LAUNCH_IS_QWEN
- s=upload_model(c);if(s==NV_OK)s=benchmark_mode?benchmark(c):qwen_graph(c);
+ s=upload_model(c);
+#if L1_LAUNCH_IS_PARALLEL
+ if(s==NV_OK)s=parallel_qwen(c);
+#else
+ if(s==NV_OK)s=benchmark_mode?benchmark(c):qwen_graph(c);
+#endif
 #elif L1_LAUNCH_IS_OPTIM
  s=optimizations(c);
 #else
