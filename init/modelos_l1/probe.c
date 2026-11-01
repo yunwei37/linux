@@ -14,6 +14,7 @@ extern NV_STATUS modelos_rm_free(nvidia_stack_t *,NvHandle,NvHandle);
 
 extern NV_STATUS modelos_l1_resources(nvidia_stack_t *,NvHandle,NvHandle,NvHandle);
 
+extern void l2_counts_dump(void);
 static int __init modelos_l1_probe(void)
 {
     NvU32 ids[32],count=32;
@@ -62,6 +63,7 @@ done:
     if(client){NV_STATUS released=modelos_rm_free(stack,client,client);pr_info("L1_RM_FREE status=0x%08x\n",released);}
     if(held)nvidia_dev_put(ids[0],stack,NV_FALSE);
     nv_kmem_cache_free_stack(stack);
+    l2_counts_dump();
     return 0;
 }
 late_initcall(modelos_l1_probe);
