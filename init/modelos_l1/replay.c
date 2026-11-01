@@ -12,6 +12,22 @@
 #include <linux/modelos_gpu.h>
 #ifdef CONFIG_MODELOS_KEXEC_TEST
 #include "receiver-payload.h"
+#include <asm/msr.h>
+#include <asm/pgtable.h>
+#include <asm/memtype.h>
+/* Observe the actual mapping used by the unmodified transfer path. */
+static void kexec_cache_mapping(const char *name, void *address)
+{
+ unsigned int level=0,index;pte_t *pte=lookup_address((unsigned long)address,&level);
+ u64 pat=0,mtrr=0,entry=pte?pte_val(*pte):0;
+ int pat_ret=rdmsrq_safe(MSR_IA32_CR_PAT,&pat);
+ int mtrr_ret=rdmsrq_safe(MSR_MTRRdefType,&mtrr);
+ index=!!(entry&_PAGE_PWT)+2*!!(entry&_PAGE_PCD)+
+       4*!!(entry&(level==PG_LEVEL_4K?_PAGE_PAT:_PAGE_PAT_LARGE));
+ pr_info("KEXEC_CACHE_MAPPING name=%s pat=%016llx pat_ret=%d pat_enabled=%u mtrr=%016llx mtrr_ret=%d pte=%016llx level=%u index=%u type=%u wc_bits=%lx cpu=%u\n",
+         name,pat,pat_ret,pat_enabled(),mtrr,mtrr_ret,entry,level,index,
+         (unsigned)((pat>>(index*8))&0xff),cachemode2protval(_PAGE_CACHE_MODE_WC),raw_smp_processor_id());
+}
 int modelos_kexec_payload_verify(void);
 int modelos_kexec_payload_verify(void)
 {
@@ -326,6 +342,9 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
  NvU32 *queue=host->cpu,*released=(void *)((char *)host->cpu+0x1000),serial=0,result=0;
  unsigned i,j,matched=0;NV_STATUS status=NV_OK;
 #ifdef CONFIG_MODELOS_KEXEC_TEST
+ NvU64 copy_start;
+#endif
+#ifdef CONFIG_MODELOS_KEXEC_TEST
  if(kexec_payload(&physical,&qcode,&code_bytes)||code_bytes!=sizeof(l1_qwen_code))return NV_ERR_INVALID_DATA;
 #endif
  source=memremap(physical,bytes,MEMREMAP_WB);
@@ -334,11 +353,20 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
  pr_info("KEXEC_WEIGHT_SOURCE phys=%pa vmalloc_mapping=%u kho_boot=%u\n",&physical,is_vmalloc_addr(source),is_kho_boot());
 #endif
  if(memcmp(source,"MOSQ3B1",7)||*(NvU64 *)((char *)source+48)!=bytes){memunmap(source);return NV_ERR_INVALID_DATA;}
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ kexec_cache_mapping("source",source);
+ kexec_cache_mapping("weights",weights.cpu);
+ copy_start=ktime_get_ns();
+#endif
  for(NvU64 offset=0;offset<bytes;offset+=0x10000) {
   memcpy_toio((void __iomem *)weights.cpu+offset,(char *)source+offset,min_t(NvU64,0x10000,bytes-offset));
   cond_resched();
  }
- wmb();memunmap(source);
+ wmb();
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ pr_info("KEXEC_WEIGHT_COPY bytes=%llu elapsed_ns=%llu cpu=%u\n",bytes,ktime_get_ns()-copy_start,raw_smp_processor_id());
+#endif
+ memunmap(source);
  pr_info("L1_QWEN_WEIGHTS_READY bytes=%llu GPU=0x%llx\n",bytes,weights.gpu);
  memcpy(q,l1_qmd,sizeof(q));memcpy(constants,l1_qwen_constant0,sizeof(l1_qwen_constant0));
  *(NvU64 *)((char *)constants+0x380)=host->gpu;
