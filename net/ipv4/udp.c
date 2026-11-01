@@ -3152,6 +3152,7 @@ int udp_setsockopt(struct sock *sk, int level, int optname, sockptr_t optval,
 	return ip_setsockopt(sk, level, optname, optval, optlen);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int udp_lib_getsockopt(struct sock *sk, int level, int optname,
 		       char __user *optval, int __user *optlen)
 {
@@ -3211,8 +3212,10 @@ int udp_lib_getsockopt(struct sock *sk, int level, int optname,
 		return -EFAULT;
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_IPV6_MOD(udp_lib_getsockopt);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int udp_getsockopt(struct sock *sk, int level, int optname,
 		   char __user *optval, int __user *optlen)
 {
@@ -3220,6 +3223,7 @@ int udp_getsockopt(struct sock *sk, int level, int optname,
 		return udp_lib_getsockopt(sk, level, optname, optval, optlen);
 	return ip_getsockopt(sk, level, optname, optval, optlen);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * 	udp_poll - wait for a UDP event.
@@ -3234,6 +3238,7 @@ int udp_getsockopt(struct sock *sk, int level, int optname,
  *	but then block when reading it. Add special case code
  *	to work around these arguably broken applications.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 __poll_t udp_poll(struct file *file, struct socket *sock, poll_table *wait)
 {
 	__poll_t mask = datagram_poll(file, sock, wait);
@@ -3253,6 +3258,7 @@ __poll_t udp_poll(struct file *file, struct socket *sock, poll_table *wait)
 	return mask;
 
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_IPV6_MOD(udp_poll);
 
 int udp_abort(struct sock *sk, int err)
@@ -3286,14 +3292,20 @@ struct proto udp_prot = {
 	.pre_connect		= udp_pre_connect,
 	.connect		= udp_connect,
 	.disconnect		= udp_disconnect,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.ioctl			= udp_ioctl,
+#endif
 	.init			= udp_init_sock,
 	.destroy		= udp_destroy_sock,
 	.setsockopt		= udp_setsockopt,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt		= udp_getsockopt,
+#endif
 	.sendmsg		= udp_sendmsg,
 	.recvmsg		= udp_recvmsg,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.splice_eof		= udp_splice_eof,
+#endif
 	.release_cb		= ip4_datagram_release_cb,
 	.hash			= udp_lib_hash,
 	.unhash			= udp_lib_unhash,

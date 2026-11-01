@@ -1844,9 +1844,12 @@ static inline void net_zcopy_put(struct ubuf_info *uarg)
 static inline void net_zcopy_put_abort(struct ubuf_info *uarg, bool have_uref)
 {
 	if (uarg) {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		if (uarg->ops == &msg_zerocopy_ubuf_ops)
 			msg_zerocopy_put_abort(uarg, have_uref);
-		else if (have_uref)
+		else
+#endif
+		if (have_uref)
 			net_zcopy_put(uarg);
 	}
 }

@@ -1262,6 +1262,7 @@ static int arp_req_delete(struct net *net, struct arpreq *r)
  *	Handle an ARP layer I/O control request.
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int arp_ioctl(struct net *net, unsigned int cmd, void __user *arg)
 {
 	struct arpreq r;
@@ -1320,6 +1321,7 @@ int arp_ioctl(struct net *net, unsigned int cmd, void __user *arg)
 
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int arp_netdev_event(struct notifier_block *this, unsigned long event,
 			    void *ptr)

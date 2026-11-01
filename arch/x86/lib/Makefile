@@ -66,3 +66,7 @@ endif
 ifdef CONFIG_MODELOS_KERNEL_ONLY
 lib-y := $(filter-out usercopy_$(BITS).o usercopy.o getuser.o putuser.o copy_user_64.o copy_user_uncached_64.o csum-copy_64.o csum-wrappers_64.o,$(lib-y))
 endif
+
+ifdef CONFIG_MODELOS_KERNEL_ONLY
+lib-$(CONFIG_NET) += csum-copy_64.o csum-wrappers_64.o
+endif

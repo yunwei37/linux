@@ -46,6 +46,7 @@
  *	setu(g)id.
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static __inline__ int scm_check_creds(struct ucred *creds)
 {
 	const struct cred *cred = current_cred();
@@ -252,6 +253,8 @@ error:
 }
 EXPORT_SYMBOL(__scm_send);
 
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
+
 int put_cmsg(struct msghdr * msg, int level, int type, int len, void *data)
 {
 	int cmlen = CMSG_LEN(len);
@@ -268,6 +271,7 @@ int put_cmsg(struct msghdr * msg, int level, int type, int len, void *data)
 		cmlen = msg->msg_controllen;
 	}
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (msg->msg_control_is_user) {
 		struct cmsghdr __user *cm = msg->msg_control_user;
 
@@ -284,7 +288,9 @@ int put_cmsg(struct msghdr * msg, int level, int type, int len, void *data)
 		unsafe_copy_to_user(CMSG_USER_DATA(cm), data,
 				    cmlen - sizeof(*cm), efault_end);
 		user_write_access_end();
-	} else {
+	} else
+#endif
+	{
 		struct cmsghdr *cm = msg->msg_control;
 
 		cm->cmsg_level = level;
@@ -294,17 +300,21 @@ int put_cmsg(struct msghdr * msg, int level, int type, int len, void *data)
 	}
 
 	cmlen = min(CMSG_SPACE(len), msg->msg_controllen);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (msg->msg_control_is_user)
 		msg->msg_control_user += cmlen;
 	else
+#endif
 		msg->msg_control += cmlen;
 	msg->msg_controllen -= cmlen;
 	return 0;
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 efault_end:
 	user_write_access_end();
 efault:
 	return -EFAULT;
+#endif
 }
 EXPORT_SYMBOL(put_cmsg);
 
@@ -353,6 +363,7 @@ static int scm_max_fds(struct msghdr *msg)
 	return (msg->msg_controllen - sizeof(struct cmsghdr)) / sizeof(int);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void scm_detach_fds(struct msghdr *msg, struct scm_cookie *scm)
 {
 	struct cmsghdr __user *cm =
@@ -552,3 +563,5 @@ void scm_recv_unix(struct socket *sock, struct msghdr *msg,
 
 	scm_destroy_cred(scm);
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */

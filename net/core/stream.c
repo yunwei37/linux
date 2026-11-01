@@ -44,8 +44,10 @@ void sk_stream_write_space(struct sock *sk)
 		if (skwq_has_sleeper(wq))
 			wake_up_interruptible_poll(&wq->wait, EPOLLOUT |
 						EPOLLWRNORM | EPOLLWRBAND);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		if (wq && wq->fasync_list && !(sk->sk_shutdown & SEND_SHUTDOWN))
 			sock_wake_async(wq, SOCK_WAKE_SPACE, POLL_OUT);
+#endif
 		rcu_read_unlock();
 	}
 }
@@ -191,8 +193,10 @@ int sk_stream_error(struct sock *sk, int flags, int err)
 {
 	if (err == -EPIPE)
 		err = sock_error(sk) ? : -EPIPE;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (err == -EPIPE && !(flags & MSG_NOSIGNAL))
 		send_sig(SIGPIPE, current, 0);
+#endif
 	return err;
 }
 EXPORT_SYMBOL(sk_stream_error);

@@ -2553,17 +2553,21 @@ static inline void sk_clear_bit(int nr, struct sock *sk)
 
 static inline void sk_wake_async(const struct sock *sk, int how, int band)
 {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (sock_flag(sk, SOCK_FASYNC)) {
 		rcu_read_lock();
 		sock_wake_async(rcu_dereference(sk->sk_wq), how, band);
 		rcu_read_unlock();
 	}
+#endif
 }
 
 static inline void sk_wake_async_rcu(const struct sock *sk, int how, int band)
 {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (unlikely(sock_flag(sk, SOCK_FASYNC)))
 		sock_wake_async(rcu_dereference(sk->sk_wq), how, band);
+#endif
 }
 
 /* Since sk_{r,w}mem_alloc sums skb->truesize, even a small frame might

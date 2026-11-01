@@ -937,6 +937,7 @@ EXPORT_SYMBOL(skb_copy_and_csum_datagram_msg);
  *
  *	Return: poll bitmask indicating the socket's current state
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 __poll_t datagram_poll_queue(struct file *file, struct socket *sock,
 			     poll_table *wait, struct sk_buff_head *rcv_queue)
 {
@@ -982,6 +983,7 @@ __poll_t datagram_poll_queue(struct file *file, struct socket *sock,
 
 	return mask;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL(datagram_poll_queue);
 
 /**
@@ -1000,9 +1002,11 @@ EXPORT_SYMBOL(datagram_poll_queue);
  *
  *	Return: poll bitmask indicating the socket's current state
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 __poll_t datagram_poll(struct file *file, struct socket *sock, poll_table *wait)
 {
 	return datagram_poll_queue(file, sock, wait,
 				   &sock->sk->sk_receive_queue);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL(datagram_poll);

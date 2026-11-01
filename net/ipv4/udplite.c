@@ -47,11 +47,15 @@ struct proto 	udplite_prot = {
 	.close		   = udp_lib_close,
 	.connect	   = ip4_datagram_connect,
 	.disconnect	   = udp_disconnect,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.ioctl		   = udp_ioctl,
+#endif
 	.init		   = udplite_sk_init,
 	.destroy	   = udp_destroy_sock,
 	.setsockopt	   = udp_setsockopt,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt	   = udp_getsockopt,
+#endif
 	.sendmsg	   = udp_sendmsg,
 	.recvmsg	   = udp_recvmsg,
 	.hash		   = udp_lib_hash,

@@ -1080,7 +1080,9 @@ int devinet_ioctl(struct net *net, unsigned int cmd, struct ifreq *ifr)
 	if (colon)
 		*colon = 0;
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	dev_load(net, ifr->ifr_name);
+#endif
 
 	switch (cmd) {
 	case SIOCGIFADDR:	/* Get interface address */

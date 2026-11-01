@@ -94,6 +94,7 @@ static_assert(sizeof(struct bpf_fib_lookup) == 64, "struct bpf_fib_lookup size c
 static const struct bpf_func_proto *
 bpf_sk_base_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int copy_bpf_fprog_from_user(struct sock_fprog *dst, sockptr_t src, int len)
 {
 	if (in_compat_syscall()) {
@@ -115,6 +116,7 @@ int copy_bpf_fprog_from_user(struct sock_fprog *dst, sockptr_t src, int len)
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL_GPL(copy_bpf_fprog_from_user);
 
 /**
@@ -1504,6 +1506,7 @@ static int __sk_attach_prog(struct bpf_prog *prog, struct sock *sk)
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static
 struct bpf_prog *__get_filter(struct sock_fprog *fprog, struct sock *sk)
 {
@@ -1540,6 +1543,7 @@ struct bpf_prog *__get_filter(struct sock_fprog *fprog, struct sock *sk)
 	 */
 	return bpf_prepare_filter(prog, NULL);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  *	sk_attach_filter - attach a socket filter
@@ -1551,6 +1555,7 @@ struct bpf_prog *__get_filter(struct sock_fprog *fprog, struct sock *sk)
  * occurs or there is insufficient memory for the filter a negative
  * errno code is returned. On success the return is zero.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int sk_attach_filter(struct sock_fprog *fprog, struct sock *sk)
 {
 	struct bpf_prog *prog = __get_filter(fprog, sk);
@@ -1567,8 +1572,10 @@ int sk_attach_filter(struct sock_fprog *fprog, struct sock *sk)
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL_GPL(sk_attach_filter);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int sk_reuseport_attach_filter(struct sock_fprog *fprog, struct sock *sk)
 {
 	struct bpf_prog *prog = __get_filter(fprog, sk);
@@ -1588,6 +1595,7 @@ int sk_reuseport_attach_filter(struct sock_fprog *fprog, struct sock *sk)
 
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static struct bpf_prog *__get_bpf(u32 ufd, struct sock *sk)
 {
@@ -11325,6 +11333,7 @@ int sk_detach_filter(struct sock *sk)
 }
 EXPORT_SYMBOL_GPL(sk_detach_filter);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int sk_get_filter(struct sock *sk, sockptr_t optval, unsigned int len)
 {
 	struct sock_fprog_kern *fprog;
@@ -11367,6 +11376,7 @@ out:
 	sockopt_release_sock(sk);
 	return ret;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #ifdef CONFIG_INET
 static void bpf_init_reuseport_kern(struct sk_reuseport_kern *reuse_kern,
