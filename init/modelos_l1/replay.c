@@ -15,6 +15,7 @@
 #include <asm/msr.h>
 #include <asm/pgtable.h>
 #include <asm/memtype.h>
+#include "receiver-request.h"
 /* Observe the actual mapping used by the unmodified transfer path. */
 static void kexec_cache_mapping(const char *name, void *address)
 {
@@ -32,7 +33,8 @@ int modelos_kexec_payload_verify(void);
 int modelos_kexec_payload_verify(void)
 {
  phys_addr_t pa=0;const u8 *code=NULL;u64 bytes=0;
- return kexec_payload(&pa,&code,&bytes);
+ int ret=kexec_payload(&pa,&code,&bytes);
+ return ret?ret:kexec_request_validate();
 }
 #endif
 
@@ -336,6 +338,42 @@ static NV_STATUS l1_parallel(NvU32 *queue,struct l1_memory *state,unsigned *matc
  return NV_OK;
 }
 
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+static NV_STATUS kexec_request_prepare(struct l1_memory *state)
+{
+ const struct modelos_kho_request *r;u64 start;
+ if(!kexec_request_mode)return NV_OK;
+ if(kexec_request_validate())return NV_ERR_INVALID_DATA;
+ r=kexec_request_record;
+ if(r->position!=l1_cases[0].inputs+r->emitted-1||r->next_token!=r->emitted_ids[r->emitted-1]||r->arena_bytes>state->bytes||r->arena_bytes>0x3b00000)return NV_ERR_INVALID_DATA;
+ for(unsigned i=0;i<r->emitted;i++)if(r->emitted_ids[i]!=l1_cases[0].output[i])return NV_ERR_INVALID_DATA;
+ for(unsigned i=0;i<r->history_count;i++)if(r->history[i]!=(i<l1_cases[0].inputs?l1_cases[0].input[i]:r->emitted_ids[i-l1_cases[0].inputs]))return NV_ERR_INVALID_DATA;
+ start=ktime_get_ns();memset_io((void __iomem *)state->cpu,0,r->arena_bytes);
+ if(kexec_request_mode==1)for(u64 off=0;off<r->arena_bytes;off+=0x10000) {
+  memcpy_toio((void __iomem *)state->cpu+off,kexec_request_state+off,min_t(u64,0x10000,r->arena_bytes-off));cond_resched();
+ }
+ wmb();
+ pr_info("KEXEC_REQUEST_ARENA mode=%s old_gpu_va=0x%llx new_gpu_va=0x%llx bytes=%llu zeroed=1 copied=%u elapsed_ns=%llu\n",kexec_request_mode==1?"restore":"replay",r->old_gpu_va,state->gpu,r->arena_bytes,kexec_request_mode==1,ktime_get_ns()-start);
+ return NV_OK;
+}
+static NV_STATUS kexec_request_execute(NvU32 *queue,NvU32 *serial,unsigned *matched)
+{
+ const struct modelos_kho_request *r=kexec_request_record;NvU32 token=r->next_token,result=0;NV_STATUS status;
+ if(kexec_request_mode==2)for(unsigned i=0;i<r->history_count;i++) {
+  status=l1_step(queue,serial,r->history[i],i,&result);if(status!=NV_OK)return status;
+  if(i+1>=l1_cases[0].inputs&&result!=r->emitted_ids[i+1-l1_cases[0].inputs])return NV_ERR_INVALID_DATA;
+ }
+ for(unsigned i=0;i<MODELOS_REQUEST_CONTINUE;i++) {
+  status=l1_step(queue,serial,token,r->position+i,&result);if(status!=NV_OK)return status;
+  pr_info("KEXEC_REQUEST_TOKEN index=%u token=%u expected=%u position=%u\n",r->emitted+i,result,l1_cases[0].output[r->emitted+i],r->position+i);
+  if(result!=l1_cases[0].output[r->emitted+i])return NV_ERR_INVALID_DATA;
+  ++*matched;
+  if(!i)pr_info("KEXEC_FIRST_TOKEN token=%u expected=%u index=%u cpl=0 mm=none\n",result,l1_cases[0].output[r->emitted],r->emitted);
+  token=result;
+ }
+ return NV_OK;
+}
+#endif
 static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_memory *host)
 {
  struct l1_memory weights=c->resources[L1_WEIGHTS].memory,state=c->resources[L1_STATE].memory;
@@ -372,6 +410,9 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
 #endif
  memunmap(source);
  pr_info("L1_QWEN_WEIGHTS_READY bytes=%llu GPU=0x%llx\n",bytes,weights.gpu);
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ status=kexec_request_prepare(&state);if(status!=NV_OK)return status;
+#endif
  memcpy(q,l1_qmd,sizeof(q));memcpy(constants,l1_qwen_constant0,sizeof(l1_qwen_constant0));
  *(NvU64 *)((char *)constants+0x380)=host->gpu;
  *(NvU64 *)((char *)constants+0x388)=weights.gpu;
@@ -403,6 +444,9 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
  wmb();writel(1,(void __iomem *)local->cpu+0x208c);wmb();writel(c->token,(void __iomem *)c->doorbell+0x90);
  start=ktime_get_ns();
  pr_info("L1_QWEN_PERSISTENT_SUBMIT regs=%u smem=%u code_bytes=%zu\n",L1_QWEN_REGISTERS,L1_QWEN_SHARED_BYTES,sizeof(l1_qwen_code));
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ if(kexec_request_mode){status=kexec_request_execute(queue,&serial,&matched);goto stop;}
+#endif
 #ifdef CONFIG_MODELOS_L1_TCP
  l1_service.state=state;l1_service.queue=queue;l1_service.released=released;
  smp_store_release(&l1_service.ready,true);
@@ -430,7 +474,10 @@ stop:
  if(READ_ONCE(*released)!=1)return NV_ERR_TIMEOUT;
  if(status==NV_OK)
 #ifdef CONFIG_MODELOS_KEXEC_TEST
+ {
   pr_info("KEXEC_QWEN_PASS matched=%u cpl=0 mm=none\n",matched);
+  if(kexec_request_mode)pr_info("KEXEC_REQUEST_PASS mode=%s emitted=%u position=%u tokens=%u gpu_steps=%u generation=%llu\n",kexec_request_mode==1?"restore":"replay",kexec_request_record->emitted,kexec_request_record->position,matched,serial,kexec_request_record->request_generation);
+ }
 #else
   pr_info("L1_QWEN_PASS cases=5 tokens=320 cpl=0 mm=none\n");
 #endif
