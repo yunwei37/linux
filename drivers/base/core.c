@@ -2789,6 +2789,7 @@ static const struct kset_uevent_ops device_uevent_ops = {
 	.uevent =	dev_uevent,
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t uevent_show(struct device *dev, struct device_attribute *attr,
 			   char *buf)
 {
@@ -2847,6 +2848,7 @@ static ssize_t uevent_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 static DEVICE_ATTR_RW(uevent);
+#endif
 
 static ssize_t online_show(struct device *dev, struct device_attribute *attr,
 			   char *buf)
@@ -3701,9 +3703,11 @@ int device_add(struct device *dev)
 	/* notify platform of device entry */
 	device_platform_notify(dev);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	error = device_create_file(dev, &dev_attr_uevent);
 	if (error)
 		goto attrError;
+#endif
 
 	error = device_add_class_symlinks(dev);
 	if (error)
@@ -3813,8 +3817,10 @@ done:
  AttrsError:
 	device_remove_class_symlinks(dev);
  SymlinkError:
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	device_remove_file(dev, &dev_attr_uevent);
  attrError:
+#endif
 	device_platform_notify_remove(dev);
 	kobject_uevent(&dev->kobj, KOBJ_REMOVE);
 	glue_dir = get_glue_dir(dev);
@@ -3956,7 +3962,9 @@ void device_del(struct device *dev)
 		mutex_unlock(&sp->mutex);
 		subsys_put(sp);
 	}
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	device_remove_file(dev, &dev_attr_uevent);
+#endif
 	device_remove_attrs(dev);
 	bus_remove_device(dev);
 	device_pm_remove(dev);
@@ -4823,6 +4831,7 @@ int device_change_owner(struct device *dev, kuid_t kuid, kgid_t kgid)
 	if (error)
 		goto out;
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	/*
 	 * Change the uevent file for @dev to the new owner. The uevent file
 	 * was created in a separate step when @dev got added and we mirror
@@ -4832,6 +4841,7 @@ int device_change_owner(struct device *dev, kuid_t kuid, kgid_t kgid)
 					kgid);
 	if (error)
 		goto out;
+#endif
 
 	/*
 	 * Change the device groups, the device groups associated with the

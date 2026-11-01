@@ -58,6 +58,8 @@ static const char *kobject_actions[] = {
 	[KOBJ_UNBIND] =		"unbind",
 };
 
+/* No sysfs writers or userspace Netlink senders in a kernel-only image. */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int kobject_action_type(const char *buf, size_t count,
 			       enum kobject_action *type,
 			       const char **args)
@@ -230,6 +232,8 @@ out:
 	}
 	return r;
 }
+
+#endif
 
 #ifdef CONFIG_UEVENT_HELPER
 static int kobj_usermode_filter(struct kobject *kobj)
@@ -693,6 +697,7 @@ int add_uevent_var(struct kobj_uevent_env *env, const char *format, ...)
 EXPORT_SYMBOL_GPL(add_uevent_var);
 
 #if defined(CONFIG_NET)
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int uevent_net_broadcast(struct sock *usk, struct sk_buff *skb,
 				struct netlink_ext_ack *extack)
 {
@@ -766,13 +771,16 @@ static void uevent_net_rcv(struct sk_buff *skb)
 {
 	netlink_rcv_skb(skb, &uevent_net_rcv_skb);
 }
+#endif
 
 static int uevent_net_init(struct net *net)
 {
 	struct uevent_sock *ue_sk;
 	struct netlink_kernel_cfg cfg = {
 		.groups	= 1,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		.input = uevent_net_rcv,
+#endif
 		.flags	= NL_CFG_F_NONROOT_RECV
 	};
 

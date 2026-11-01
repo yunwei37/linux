@@ -799,6 +799,7 @@ static int netlink_release(struct socket *sock)
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_autobind(struct socket *sock)
 {
 	struct sock *sk = sock->sk;
@@ -835,6 +836,8 @@ retry:
 
 	return err;
 }
+
+#endif
 
 /**
  * __netlink_ns_capable - General netlink message capability test
@@ -906,11 +909,13 @@ bool netlink_net_capable(const struct sk_buff *skb, int cap)
 }
 EXPORT_SYMBOL(netlink_net_capable);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static inline int netlink_allowed(const struct socket *sock, unsigned int flag)
 {
 	return (nl_table[sock->sk->sk_protocol].flags & flag) ||
 		ns_capable(sock_net(sock->sk)->user_ns, CAP_NET_ADMIN);
 }
+#endif
 
 static void
 netlink_update_subscriptions(struct sock *sk, unsigned int subscriptions)
@@ -924,6 +929,7 @@ netlink_update_subscriptions(struct sock *sk, unsigned int subscriptions)
 	nlk->subscriptions = subscriptions;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_realloc_groups(struct sock *sk)
 {
 	struct netlink_sock *nlk = nlk_sk(sk);
@@ -1137,6 +1143,7 @@ static int netlink_ioctl(struct socket *sock, unsigned int cmd,
 	 */
 	return -ENOIOCTLCMD;
 }
+#endif
 
 static struct sock *netlink_getsockbyportid(struct sock *ssk, u32 portid)
 {
@@ -2821,18 +2828,16 @@ static const struct proto_ops netlink_ops = {
 	.family =	PF_NETLINK,
 	.owner =	THIS_MODULE,
 	.release =	netlink_release,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.bind =		netlink_bind,
 	.connect =	netlink_connect,
 	.socketpair =	sock_no_socketpair,
 	.accept =	sock_no_accept,
 	.getname =	netlink_getname,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.poll =		datagram_poll,
 	.ioctl =	netlink_ioctl,
-#endif
 	.listen =	sock_no_listen,
 	.shutdown =	sock_no_shutdown,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.setsockopt =	netlink_setsockopt,
 	.getsockopt =	netlink_getsockopt,
 	.sendmsg =	netlink_sendmsg,
