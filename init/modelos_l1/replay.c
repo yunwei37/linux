@@ -16,7 +16,19 @@ extern NV_STATUS modelos_rm_map_cpu(nvidia_stack_t *,NvHandle,NvHandle,NvHandle,
 extern NV_STATUS modelos_rm_map_dma(nvidia_stack_t *,NVOS46_PARAMETERS *);
 
 struct l1_memory { NvHandle handle; void *cpu; NvU64 gpu,bytes; };
-struct l1_context { nvidia_stack_t *stack; NvHandle client,device,sub,va,virt,group,ctx,channel,compute,usermode; void *doorbell; NvU32 token; };
+/* Trace VM: bounded symbols and SDK parameter relocations, no ioctl layer. */
+enum { L1_OP_ALLOC,L1_OP_MEMORY,L1_OP_MAP_CPU,L1_OP_CONTROL };
+struct l1_expression { int slot; unsigned field; NvU64 add; };
+struct l1_relocation { unsigned offset,width; struct l1_expression value; };
+struct l1_operation {
+ unsigned kind,out,cls,command,cache,flags,capture,qwen_only;
+ const char *name;const unsigned char *params;unsigned params_size;
+ struct l1_expression parent,object,size,gpu;
+ const struct l1_relocation *patches;unsigned patch_count;
+};
+#include "l1-plan.h"
+struct l1_resource { NvU64 value;struct l1_memory memory; };
+struct l1_context { struct l1_resource resources[L1_RESOURCE_COUNT]; nvidia_stack_t *stack; NvHandle client,device,sub,va,virt,group,ctx,channel,compute,usermode; void *doorbell; NvU32 token; };
 #define L1_TRY(label,expr) do { NV_STATUS status=(expr); pr_info("L1_REPLAY_CALL %s status=0x%08x\n",label,status);if(status!=NV_OK)return status; } while(0)
 static NV_STATUS l1_alloc(struct l1_context *c,NvHandle parent,NvHandle *h,NvU32 cls,void *p,NvU32 n)
 { return modelos_rm_alloc(c->stack,c->client,parent,h,cls,p,n); }
@@ -34,6 +46,68 @@ static NV_STATUS l1_memory(struct l1_context *c,struct l1_memory *m,const unsign
  L1_TRY("memory-cpu-map",modelos_rm_map_cpu(c->stack,c->client,c->sub,m->handle,0,size,&m->cpu,cache<<23));
  pr_info("L1_REPLAY_MEMORY class=0x%x bytes=%llu gpu=0x%llx cpu=%px\n",cls,size,m->gpu,m->cpu);
  if(size<=0x200000)memset_io((void __iomem *)m->cpu,0,size);
+ return NV_OK;
+}
+static u64 l1_boot_weights_phys,l1_boot_gpu_bias;
+static int __init l1_physical_arg(char *s){return !kstrtou64(s,0,&l1_boot_weights_phys);}
+static int __init l1_bias_arg(char *s){return !kstrtou64(s,0,&l1_boot_gpu_bias);}
+__setup("l1_weights_phys=",l1_physical_arg);
+__setup("l1_gpu_bias=",l1_bias_arg);
+static NvU64 l1_value(struct l1_context *c,struct l1_expression e)
+{
+ NvU64 value=0;
+ if(e.slot>=0) {
+  struct l1_resource *r=&c->resources[e.slot];
+  switch(e.field){case 0:value=r->value;break;case 1:value=r->memory.gpu;break;
+   case 2:value=(NvU64)(unsigned long)r->memory.cpu;break;case 3:value=r->memory.bytes;break;}
+ }
+ return value+e.add;
+}
+static NV_STATUS l1_replay(struct l1_context *c)
+{
+ unsigned i,j;unsigned char params[512] __aligned(8);
+ static_assert(sizeof(NVA06C_CTRL_GPFIFO_SCHEDULE_PARAMS)==sizeof(l1_plan_schedule));
+ static_assert(sizeof(NV_CHANNELGPFIFO_ALLOCATION_PARAMETERS)==sizeof(l1_plan_fifo));
+ for(i=0;i<L1_RESOURCE_COUNT;i++)c->resources[i].value=l1_defaults[i];
+ c->resources[L1_CLIENT].value=c->client;c->resources[L1_DEVICE].value=c->device;c->resources[L1_SUB].value=c->sub;
+ if(l1_boot_weights_phys)c->resources[L1_WEIGHTS_PHYS].value=l1_boot_weights_phys;
+ c->resources[L1_GPU_BIAS].value+=l1_boot_gpu_bias;
+ for(i=0;i<ARRAY_SIZE(l1_operations);i++) {
+  const struct l1_operation *op=&l1_operations[i];
+  struct l1_resource *r=&c->resources[op->out];NV_STATUS status=NV_ERR_INVALID_ARGUMENT;
+  NvHandle handle=0;
+  if(op->qwen_only&&!IS_ENABLED(CONFIG_MODELOS_L1_QWEN))continue;
+  if(op->out>=L1_RESOURCE_COUNT||op->params_size>sizeof(params))return NV_ERR_INVALID_ARGUMENT;
+  memset(params,0,sizeof(params));if(op->params_size)memcpy(params,op->params,op->params_size);
+  for(j=0;j<op->patch_count;j++) {
+   const struct l1_relocation *p=&op->patches[j];NvU64 value=l1_value(c,p->value);
+   if((p->width!=4&&p->width!=8)||p->offset+p->width>op->params_size)return NV_ERR_INVALID_ARGUMENT;
+   if(p->width==4&&value>U32_MAX)return NV_ERR_INVALID_ARGUMENT;
+   memcpy(params+p->offset,&value,p->width);
+  }
+  switch(op->kind) {
+  case L1_OP_ALLOC:
+   status=l1_alloc(c,l1_value(c,op->parent),&handle,op->cls,op->params_size?params:NULL,op->params_size);
+   if(status==NV_OK)r->value=handle;
+   break;
+  case L1_OP_MEMORY:
+   status=l1_memory(c,&r->memory,params,op->cls,l1_value(c,op->size),l1_value(c,op->gpu),op->cache);
+   if(status==NV_OK)r->value=r->memory.handle;
+   break;
+  case L1_OP_MAP_CPU:
+   status=modelos_rm_map_cpu(c->stack,c->client,c->sub,l1_value(c,op->object),0,l1_value(c,op->size),&r->memory.cpu,op->flags);
+   break;
+  case L1_OP_CONTROL:
+   status=modelos_rm_control(c->stack,c->client,l1_value(c,op->object),op->command,params,op->params_size);
+   if(status==NV_OK&&op->capture){NvU32 v;memcpy(&v,params,sizeof(v));r->value=v;}
+   break;
+  }
+  pr_info("L1_TRACE_OP index=%u resource=%s status=0x%x value=0x%llx gpu=0x%llx bytes=%llu\n",i,op->name,status,r->value,r->memory.gpu,r->memory.bytes);
+  if(status!=NV_OK)return status;
+  if(op->out==L1_VIRT)c->virt=r->value;
+ }
+ c->doorbell=c->resources[L1_DOORBELL].memory.cpu;c->token=c->resources[L1_TOKEN].value;
+ pr_info("L1_TRACE_PASS format=modelos-l1-rm version=1 operations=%zu symbols=%u gpu_bias=0x%llx weights_phys=0x%llx\n",ARRAY_SIZE(l1_operations),L1_RESOURCE_COUNT,c->resources[L1_GPU_BIAS].value,c->resources[L1_WEIGHTS_PHYS].value);
  return NV_OK;
 }
 static void l1_bits(NvU32 *q,unsigned hi,unsigned lo,NvU64 value)
@@ -106,8 +180,8 @@ static NV_STATUS l1_step(NvU32 *queue,NvU32 *serial,NvU32 token,NvU32 position,N
 }
 static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_memory *host)
 {
- struct l1_memory weights={0},state={0};
- const NvU64 bytes=1192235008,physical=0x100000000ULL;
+ struct l1_memory weights=c->resources[L1_WEIGHTS].memory,state=c->resources[L1_STATE].memory;
+ const NvU64 bytes=c->resources[L1_MODEL_BYTES].value,physical=c->resources[L1_WEIGHTS_PHYS].value;
  void *source;NvU32 q[96],push[12],constants[232]={0};
  NvU64 code=local->gpu+0x40000,qmd=local->gpu+0x30000,cb=local->gpu+0x31000,entry,deadline,start;
  NvU32 *queue=host->cpu,*released=(void *)((char *)host->cpu+0x1000),serial=0,result=0;
@@ -115,8 +189,6 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
  source=memremap(physical,bytes,MEMREMAP_WB);
  if(!source)return NV_ERR_NO_MEMORY;
  if(memcmp(source,"MOSQ3B1",7)||*(NvU64 *)((char *)source+48)!=bytes){memunmap(source);return NV_ERR_INVALID_DATA;}
- L1_TRY("qwen-weights",l1_memory(c,&weights,l1_local_memory,0x40,ALIGN(bytes,0x2000),0x10000000ULL,2));
- L1_TRY("qwen-state",l1_memory(c,&state,l1_local_memory,0x40,0x4000000,0x60000000ULL,2));
  for(NvU64 offset=0;offset<bytes;offset+=0x10000) {
   memcpy_toio((void __iomem *)weights.cpu+offset,(char *)source+offset,min_t(NvU64,0x10000,bytes-offset));
   cond_resched();
@@ -174,40 +246,11 @@ stop:
 NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle device,NvHandle sub)
 {
  struct l1_context c={.stack=stack,.client=client,.device=device,.sub=sub};
- NV_VASPACE_ALLOCATION_PARAMETERS va;
- NV_MEMORY_VIRTUAL_ALLOCATION_PARAMS virt={0};
- NV_CHANNEL_GROUP_ALLOCATION_PARAMETERS grp;
- NV_CTXSHARE_ALLOCATION_PARAMETERS ctx;
- NV_CHANNELGPFIFO_ALLOCATION_PARAMETERS fifo;
- NVA06C_CTRL_GPFIFO_SCHEDULE_PARAMS schedule={.bEnable=NV_TRUE};
- NVC36F_CTRL_CMD_GPFIFO_GET_WORK_SUBMIT_TOKEN_PARAMS token={0};
- struct l1_memory local={0},host={0},error={0};
- NvU16 doorbell_flags=1;
- memcpy(&va,l1_vaspace,sizeof(va));va.vaSize=(1ULL<<47)-0x1000;va.flags=0; /* RM-owned tables; no UVM/external page directory. */
- L1_TRY("vaspace",l1_alloc(&c,device,&c.va,0x90f1,&va,sizeof(va)));
- virt.hVASpace=c.va;virt.offset=0x1000;virt.limit=(1ULL<<47)-1;
- L1_TRY("virtual",l1_alloc(&c,device,&c.virt,0x70,&virt,sizeof(virt)));
- pr_info("L1_REPLAY_VIRTUAL base=0x%llx limit=0x%llx va_size=0x%llx\n",virt.offset,virt.limit,va.vaSize);
- memcpy(&grp,l1_group,sizeof(grp));
- L1_TRY("group",l1_alloc(&c,device,&c.group,0xa06c,&grp,sizeof(grp)));
- memcpy(&ctx,l1_ctxshare,sizeof(ctx));ctx.hVASpace=c.va;
- L1_TRY("ctxshare",l1_alloc(&c,c.group,&c.ctx,0x9067,&ctx,sizeof(ctx)));
- L1_TRY("local",l1_memory(&c,&local,l1_local_memory,0x40,0x200000,0x02000000,2));
- L1_TRY("host",l1_memory(&c,&host,l1_system_memory,0x3e,0x10000,0x01000000,0));
- L1_TRY("error",l1_memory(&c,&error,l1_error_memory,0x3e,0x1000,0x01100000,1));
- L1_TRY("usermode",l1_alloc(&c,sub,&c.usermode,0xc661,&doorbell_flags,sizeof(doorbell_flags)));
- L1_TRY("doorbell-map",modelos_rm_map_cpu(stack,client,sub,c.usermode,0,0x10000,&c.doorbell,2));
- memcpy(&fifo,l1_fifo,sizeof(fifo));fifo.hObjectError=error.handle;fifo.hObjectBuffer=local.handle;
- fifo.gpFifoOffset=local.gpu;fifo.hContextShare=c.ctx;fifo.hUserdMemory[0]=local.handle;fifo.userdOffset[0]=0x2000;
- L1_TRY("fifo",l1_alloc(&c,c.group,&c.channel,0xc96f,&fifo,sizeof(fifo)));
- L1_TRY("compute",l1_alloc(&c,c.channel,&c.compute,0xcec0,NULL,0));
- L1_TRY("schedule",modelos_rm_control(stack,client,c.group,NVA06C_CTRL_CMD_GPFIFO_SCHEDULE,&schedule,sizeof(schedule)));
- L1_TRY("work-token",modelos_rm_control(stack,client,c.channel,NVC36F_CTRL_CMD_GPFIFO_GET_WORK_SUBMIT_TOKEN,&token,sizeof(token)));
- c.token=token.workSubmitToken;
+ L1_TRY("resource-trace",l1_replay(&c));
  pr_info("L1_REPLAY_RESOURCES_PASS token=0x%x no_submission=1\n",c.token);
 #ifdef CONFIG_MODELOS_L1_QWEN
- return l1_qwen(&c,&local,&host);
+ return l1_qwen(&c,&c.resources[L1_LOCAL].memory,&c.resources[L1_HOST].memory);
 #else
- return l1_execute(&c,&local,&host);
+ return l1_execute(&c,&c.resources[L1_LOCAL].memory,&c.resources[L1_HOST].memory);
 #endif
 }
