@@ -2239,3 +2239,9 @@ config MODELOS_NVIDIA
    No character devices, procfs, ioctl, user mmap or dynamic module loader.
    This compiles the RM core and its kernel-only OS layer. GPU functionality
    requires matching built-in GSP firmware and a dedicated hardware test.
+
+config MODELOS_L1
+	bool "ModelOS L1 RM replay consumer"
+	depends on MODELOS_KERNEL_ONLY && MODELOS_NVIDIA
+	help
+	  Run kernel-owned RM recording/replay validation after driver init.
