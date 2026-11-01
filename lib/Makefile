@@ -198,7 +198,10 @@ obj-$(CONFIG_MEM_ALLOC_PROFILING) += alloc_tag.o
 
 lib-$(CONFIG_GENERIC_BUG) += bug.o
 
+# No task syscall-frame inspection consumer exists without a user ABI.
+ifndef CONFIG_MODELOS_KERNEL_ONLY
 obj-$(CONFIG_HAVE_ARCH_TRACEHOOK) += syscall.o
+endif
 obj-$(CONFIG_ARCH_NEED_CMPXCHG_1_EMU) += cmpxchg-emu.o
 
 obj-$(CONFIG_DYNAMIC_DEBUG_CORE) += dynamic_debug.o

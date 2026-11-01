@@ -530,6 +530,7 @@ void dup_mm_exe_file(struct mm_struct *mm, struct mm_struct *oldmm)
 }
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 #ifdef CONFIG_MMU
 static inline int mm_alloc_pgd(struct mm_struct *mm)
 {
@@ -668,6 +669,8 @@ static void cleanup_lazy_tlbs(struct mm_struct *mm)
 	if (IS_ENABLED(CONFIG_DEBUG_VM_SHOOT_LAZIES))
 		on_each_cpu(do_check_lazy_tlb, (void *)mm, 1);
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /*
  * Called when the last reference to the mm
@@ -1002,6 +1005,7 @@ __setup("coredump_filter=", coredump_filter_setup);
 
 #include <linux/init_task.h>
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void mm_init_aio(struct mm_struct *mm)
 {
 #ifdef CONFIG_AIO
@@ -1121,6 +1125,8 @@ fail_mm_init:
 	free_mm(mm);
 	return NULL;
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /*
  * Allocate and initialize an mm_struct.
@@ -1373,6 +1379,7 @@ struct mm_struct *get_task_mm(struct task_struct *task)
 #endif
 EXPORT_SYMBOL_GPL(get_task_mm);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static bool may_access_mm(struct mm_struct *mm, struct task_struct *task, unsigned int mode)
 {
 	if (mm == current->mm)
@@ -1383,6 +1390,7 @@ static bool may_access_mm(struct mm_struct *mm, struct task_struct *task, unsign
 		return true;
 	return false;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 struct mm_struct *mm_access(struct task_struct *task, unsigned int mode)
@@ -1407,6 +1415,7 @@ struct mm_struct *mm_access(struct task_struct *task, unsigned int mode)
 }
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void complete_vfork_done(struct task_struct *tsk)
 {
 	struct completion *vfork;
@@ -1419,7 +1428,9 @@ static void complete_vfork_done(struct task_struct *tsk)
 	}
 	task_unlock(tsk);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int wait_for_vfork_done(struct task_struct *child,
 				struct completion *vfork)
 {
@@ -1439,6 +1450,7 @@ static int wait_for_vfork_done(struct task_struct *child,
 	put_task_struct(child);
 	return killed;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* Please note the differences between mmput and mm_release.
  * mmput is called whenever we stop holding onto a mm_struct,
@@ -1514,6 +1526,7 @@ void exec_mm_release(struct task_struct *tsk, struct mm_struct *mm)
  *
  * Return: the duplicated mm or NULL on failure.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct mm_struct *dup_mm(struct task_struct *tsk,
 				struct mm_struct *oldmm)
 {
@@ -1554,6 +1567,7 @@ free_pt:
 fail_nomem:
 	return NULL;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int copy_mm(u64 clone_flags, struct task_struct *tsk)
 {
@@ -1946,6 +1960,7 @@ static __always_inline void delayed_free_task(struct task_struct *tsk)
 		free_task(tsk);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void copy_oom_score_adj(u64 clone_flags, struct task_struct *tsk)
 {
 	/* Skip if kernel thread */
@@ -1964,6 +1979,7 @@ static void copy_oom_score_adj(u64 clone_flags, struct task_struct *tsk)
 	tsk->signal->oom_score_adj_min = current->signal->oom_score_adj_min;
 	mutex_unlock(&oom_adj_mutex);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #ifdef CONFIG_RV
 static void rv_task_fork(struct task_struct *p)
@@ -1997,10 +2013,15 @@ __latent_entropy struct task_struct *copy_process(
 					int node,
 					struct kernel_clone_args *args)
 {
-	int pidfd = -1, retval;
+	int retval;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
+	int pidfd = -1;
+#endif
 	struct task_struct *p;
 	struct multiprocess_signals delayed;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	struct file *pidfile = NULL;
+#endif
 	const u64 clone_flags = args->flags;
 	struct nsproxy *nsp = current->nsproxy;
 
@@ -2677,7 +2698,9 @@ struct task_struct *create_io_thread(int (*fn)(void *), void *arg, int node)
 pid_t kernel_clone(struct kernel_clone_args *args)
 {
 	u64 clone_flags = args->flags;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	struct completion vfork;
+#endif
 	struct pid *pid;
 	struct task_struct *p;
 	int trace = 0;
@@ -2877,6 +2900,7 @@ SYSCALL_DEFINE5(clone, unsigned long, clone_flags, unsigned long, newsp,
 #endif
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static noinline int copy_clone_args_from_user(struct kernel_clone_args *kargs,
 					      struct clone_args __user *uargs,
 					      size_t usize)
@@ -2945,6 +2969,7 @@ static noinline int copy_clone_args_from_user(struct kernel_clone_args *kargs,
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * clone3_stack_valid - check and prepare stack
@@ -2974,6 +2999,7 @@ static inline bool clone3_stack_valid(struct kernel_clone_args *kargs)
 	return true;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static bool clone3_args_valid(struct kernel_clone_args *kargs)
 {
 	/* Verify that no unknown flags are passed along. */
@@ -3001,6 +3027,7 @@ static bool clone3_args_valid(struct kernel_clone_args *kargs)
 
 	return true;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * sys_clone3 - create a new process with specific properties
@@ -3131,6 +3158,7 @@ void __init proc_caches_init(void)
 /*
  * Check constraints on flags passed to the unshare system call.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int check_unshare_flags(unsigned long unshare_flags)
 {
 	if (unshare_flags & ~(CLONE_THREAD|CLONE_FS|CLONE_NEWNS|CLONE_SIGHAND|
@@ -3160,10 +3188,12 @@ static int check_unshare_flags(unsigned long unshare_flags)
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /*
  * Unshare the filesystem structure if it is being shared
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int unshare_fs(unsigned long unshare_flags, struct fs_struct **new_fsp)
 {
 	struct fs_struct *fs = current->fs;
@@ -3181,6 +3211,7 @@ static int unshare_fs(unsigned long unshare_flags, struct fs_struct **new_fsp)
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /*
  * Unshare file descriptor table if it is being shared

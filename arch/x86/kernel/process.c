@@ -187,13 +187,17 @@ __visible void ret_from_fork(struct task_struct *prev, struct pt_regs *regs,
 int copy_thread(struct task_struct *p, const struct kernel_clone_args *args)
 {
 	u64 clone_flags = args->flags;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	unsigned long sp = args->stack;
 	unsigned long tls = args->tls;
+#endif
 	struct inactive_task_frame *frame;
 	struct fork_frame *fork_frame;
 	struct pt_regs *childregs;
 	unsigned long new_ssp;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	int ret = 0;
+#endif
 
 	childregs = task_pt_regs(p);
 	fork_frame = container_of(childregs, struct fork_frame, regs);
@@ -296,6 +300,7 @@ int copy_thread(struct task_struct *p, const struct kernel_clone_args *args)
 #endif
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void pkru_flush_thread(void)
 {
 	/*
@@ -316,6 +321,9 @@ void flush_thread(void)
 	pkru_flush_thread();
 }
 
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
+
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void disable_TSC(void)
 {
 	preempt_disable();
@@ -364,8 +372,11 @@ int set_tsc_mode(unsigned int val)
 	return 0;
 }
 
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
+
 DEFINE_PER_CPU(u64, msr_misc_features_shadow);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void set_cpuid_faulting(bool on)
 {
 
@@ -452,6 +463,8 @@ void arch_setup_new_exec(void)
 
 	mm_reset_untag_mask(current->mm);
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #ifdef CONFIG_X86_IOPL_IOPERM
 static inline void switch_to_bitmap(unsigned long tifp)
@@ -760,11 +773,13 @@ void __switch_to_xtra(struct task_struct *prev_p, struct task_struct *next_p)
 		wrmsrq(MSR_IA32_DEBUGCTLMSR, debugctl);
 	}
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if ((tifp ^ tifn) & _TIF_NOTSC)
 		cr4_toggle_bits_irqsoff(X86_CR4_TSD);
 
 	if ((tifp ^ tifn) & _TIF_NOCPUID)
 		set_cpuid_faulting(!!(tifn & _TIF_NOCPUID));
+#endif
 
 	if (likely(!((tifp | tifn) & _TIF_SPEC_FORCE_UPDATE))) {
 		__speculation_ctrl_update(tifp, tifn);
