@@ -433,11 +433,23 @@ stop:
  return status;
 }
 #endif
+#ifdef CONFIG_MODELOS_L1_LAUNCH
+#include "launch.h"
+#endif
 NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle device,NvHandle sub)
 {
  struct l1_context c={.stack=stack,.client=client,.device=device,.sub=sub};
  L1_TRY("resource-trace",l1_replay(&c));
  pr_info("L1_REPLAY_RESOURCES_PASS token=0x%x no_submission=1\n",c.token);
+#ifdef CONFIG_MODELOS_L1_LAUNCH
+ {
+  struct l1_launch_resources resources={.doorbell=c.doorbell,.token=c.token,.weights_phys=c.resources[L1_WEIGHTS_PHYS].value,.model_bytes=c.resources[L1_MODEL_BYTES].value};
+#define COPY_MEMORY(dst,role) resources.dst=(struct l1_launch_memory){c.resources[role].memory.cpu,c.resources[role].memory.gpu,c.resources[role].memory.bytes}
+  COPY_MEMORY(local,L1_LOCAL);COPY_MEMORY(host,L1_HOST);COPY_MEMORY(weights,L1_WEIGHTS);COPY_MEMORY(state,L1_STATE);
+#undef COPY_MEMORY
+  return modelos_l1_launch(&resources);
+ }
+#endif
 #ifdef CONFIG_MODELOS_L1_QWEN
  return l1_qwen(&c,&c.resources[L1_LOCAL].memory,&c.resources[L1_HOST].memory);
 #else

@@ -2269,3 +2269,7 @@ config MODELOS_L1_TCP
 	help
 	  Keep four GPU CTAs resident after L1 RM replay. Bound CPU workers
 	  dispatch TCP request domains into eight private GPU state arenas.
+
+config MODELOS_L1_LAUNCH
+ bool "Validate recorded L1 launch mechanisms"
+ depends on MODELOS_L1
