@@ -29,7 +29,10 @@ kernel-open directory at drivers/modelos-nvidia::
 The symlink is local integration state and is not committed. The driver is
 built in; no module loader, /dev/nvidia*, ioctl transport, procfs, libcuda or
 CUDA user runtime is used. Matching GSP firmware must be built in for hardware.
-At this publication checkpoint the direct RM submission component is a
-compile-checked sketch; GPU operation is not validated by a no-GPU VM boot.
-See the companion driver's ModelOS instructions and the kernel-trim report in
-https://github.com/yunwei37/modelos for the current acceptance boundary.
+The companion driver provides an opt-in built-in SM120 store test. With its
+matching firmware built in, boot with ``modelos.nv_test=1 modelos.nv_gpu=0``.
+It checks 1,025 GPU writes/completions, one GPFIFO ring wrap, and RM teardown.
+See ``kernel-open/nvidia/README.modelos.md`` in the driver fork for toolchain,
+firmware inputs, exact expected result and the dedicated serve-lane procedure.
+No-GPU boots validate fixture parsing and the explicit SKIP path only; GPU
+execution and Linux-first/kexec state handoff remain separate hardware tests.
