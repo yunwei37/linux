@@ -88,6 +88,7 @@ struct kho_mem_phys_bits {
 
 static_assert(sizeof(struct kho_mem_phys_bits) == PAGE_SIZE);
 
+#ifndef CONFIG_KEXEC_HANDOVER_RECEIVER
 struct kho_mem_phys {
 	/*
 	 * Points to kho_mem_phys_bits, a sparse bitmap array. Each bit is sized
@@ -223,6 +224,8 @@ static int __kho_preserve_order(struct kho_mem_track *track, unsigned long pfn,
 	return 0;
 }
 
+#endif /* !CONFIG_KEXEC_HANDOVER_RECEIVER */
+
 static struct page *kho_restore_page(phys_addr_t phys)
 {
 	struct page *page = pfn_to_online_page(PHYS_PFN(phys));
@@ -339,6 +342,7 @@ struct khoser_mem_chunk {
 
 static_assert(sizeof(struct khoser_mem_chunk) == PAGE_SIZE);
 
+#ifndef CONFIG_KEXEC_HANDOVER_RECEIVER
 static struct khoser_mem_chunk *new_chunk(struct khoser_mem_chunk *cur_chunk,
 					  unsigned long order)
 {
@@ -418,6 +422,8 @@ err_free:
 	return err;
 }
 
+#endif /* !CONFIG_KEXEC_HANDOVER_RECEIVER */
+
 static void __init deserialize_bitmap(unsigned int order,
 				      struct khoser_mem_bitmap_ptr *elm)
 {
@@ -487,6 +493,7 @@ unsigned int kho_scratch_cnt;
  *
  * The explicit size definition takes precedence over scale definition.
  */
+#ifndef CONFIG_KEXEC_HANDOVER_RECEIVER
 static unsigned int scratch_scale __initdata = 200;
 static phys_addr_t scratch_size_global __initdata;
 static phys_addr_t scratch_size_pernode __initdata;
@@ -793,6 +800,8 @@ int kho_preserve_pages(struct page *page, unsigned int nr_pages)
 }
 EXPORT_SYMBOL_GPL(kho_preserve_pages);
 
+#endif /* !CONFIG_KEXEC_HANDOVER_RECEIVER */
+
 struct kho_vmalloc_hdr {
 	DECLARE_KHOSER_PTR(next, struct kho_vmalloc_chunk *);
 };
@@ -815,6 +824,7 @@ static_assert(sizeof(struct kho_vmalloc_chunk) == PAGE_SIZE);
 #define KHO_VMALLOC_ALLOC	0x0001
 #define KHO_VMALLOC_HUGE_VMAP	0x0002
 
+#ifndef CONFIG_KEXEC_HANDOVER_RECEIVER
 static unsigned short vmalloc_flags_to_kho(unsigned int vm_flags)
 {
 	unsigned short kho_flags = 0;
@@ -826,6 +836,8 @@ static unsigned short vmalloc_flags_to_kho(unsigned int vm_flags)
 
 	return kho_flags;
 }
+
+#endif /* !CONFIG_KEXEC_HANDOVER_RECEIVER */
 
 static unsigned int kho_flags_to_vmalloc(unsigned short kho_flags)
 {
@@ -839,6 +851,7 @@ static unsigned int kho_flags_to_vmalloc(unsigned short kho_flags)
 	return vm_flags;
 }
 
+#ifndef CONFIG_KEXEC_HANDOVER_RECEIVER
 static struct kho_vmalloc_chunk *new_vmalloc_chunk(struct kho_vmalloc_chunk *cur)
 {
 	struct kho_vmalloc_chunk *chunk;
@@ -954,6 +967,8 @@ err_free:
 }
 EXPORT_SYMBOL_GPL(kho_preserve_vmalloc);
 
+#endif /* !CONFIG_KEXEC_HANDOVER_RECEIVER */
+
 /**
  * kho_restore_vmalloc - recreates and populates an area in vmalloc address
  * space from the preserved memory.
@@ -1043,6 +1058,7 @@ err_free_pages_array:
 }
 EXPORT_SYMBOL_GPL(kho_restore_vmalloc);
 
+#ifndef CONFIG_KEXEC_HANDOVER_RECEIVER
 static int __kho_abort(void)
 {
 	int err;
@@ -1173,6 +1189,8 @@ bool kho_finalized(void)
 	return kho_out.finalized;
 }
 
+#endif /* !CONFIG_KEXEC_HANDOVER_RECEIVER */
+
 struct kho_in {
 	phys_addr_t fdt_phys;
 	phys_addr_t scratch_phys;
@@ -1243,6 +1261,7 @@ int kho_retrieve_subtree(const char *name, phys_addr_t *phys)
 }
 EXPORT_SYMBOL_GPL(kho_retrieve_subtree);
 
+#ifndef CONFIG_KEXEC_HANDOVER_RECEIVER
 static __init int kho_init(void)
 {
 	int err = 0;
@@ -1297,6 +1316,8 @@ err_free_scratch:
 }
 late_initcall(kho_init);
 
+#endif /* !CONFIG_KEXEC_HANDOVER_RECEIVER */
+
 static void __init kho_release_scratch(void)
 {
 	phys_addr_t start, end;
@@ -1305,9 +1326,9 @@ static void __init kho_release_scratch(void)
 	memmap_init_kho_scratch_pages();
 
 	/*
-	 * Mark scratch mem as CMA before we return it. That way we
-	 * ensure that no kernel allocations happen on it. That means
-	 * we can reuse it as scratch memory again later.
+	 * A full KHO kernel keeps scratch movable for another handover.
+	 * A receiver has no outgoing handover and returns it as ordinary
+	 * unmovable kernel memory, without CMA or migration.
 	 */
 	__for_each_mem_range(i, &memblock.memory, NULL, NUMA_NO_NODE,
 			     MEMBLOCK_KHO_SCRATCH, &start, &end, NULL) {
@@ -1315,9 +1336,15 @@ static void __init kho_release_scratch(void)
 		ulong end_pfn = pageblock_align(PFN_UP(end));
 		ulong pfn;
 
-		for (pfn = start_pfn; pfn < end_pfn; pfn += pageblock_nr_pages)
+		for (pfn = start_pfn; pfn < end_pfn; pfn += pageblock_nr_pages) {
+#ifdef CONFIG_KEXEC_HANDOVER_RECEIVER
+			init_pageblock_migratetype(pfn_to_page(pfn),
+						   MIGRATE_UNMOVABLE, false);
+#else
 			init_pageblock_migratetype(pfn_to_page(pfn),
 						   MIGRATE_CMA, false);
+#endif
+		}
 	}
 }
 
@@ -1333,9 +1360,11 @@ void __init kho_memory_init(void)
 		folio = kho_restore_folio(kho_in.fdt_phys);
 		if (!folio)
 			pr_warn("failed to restore folio for KHO fdt\n");
-	} else {
-		kho_reserve_scratch();
+		return;
 	}
+#ifndef CONFIG_KEXEC_HANDOVER_RECEIVER
+	kho_reserve_scratch();
+#endif
 }
 
 void __init kho_populate(phys_addr_t fdt_phys, u64 fdt_len,
@@ -1420,6 +1449,7 @@ out:
 		pr_warn("disabling KHO revival: %d\n", err);
 }
 
+#ifndef CONFIG_KEXEC_HANDOVER_RECEIVER
 /* Helper functions for kexec_file_load */
 
 int kho_fill_kimage(struct kimage *image)
@@ -1485,3 +1515,5 @@ int kho_locate_mem_hole(struct kexec_buf *kbuf,
 
 	return ret == 1 ? 0 : -EADDRNOTAVAIL;
 }
+
+#endif /* !CONFIG_KEXEC_HANDOVER_RECEIVER */

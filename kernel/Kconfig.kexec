@@ -99,18 +99,30 @@ config KEXEC_HANDOVER
 	depends on ARCH_SUPPORTS_KEXEC_HANDOVER && ARCH_SUPPORTS_KEXEC_FILE
 	depends on !DEFERRED_STRUCT_PAGE_INIT
 	select MEMBLOCK_KHO_SCRATCH
-	select KEXEC_FILE
+	select KEXEC_FILE if !KEXEC_HANDOVER_RECEIVER
 	select LIBFDT
-	select CMA
+	select CMA if !KEXEC_HANDOVER_RECEIVER
 	help
 	  Allow kexec to hand over state across kernels by generating and
 	  passing additional metadata to the target kernel. This is useful
 	  to keep data or state alive across the kexec. For this to work,
 	  both source and target kernels need to have this option enabled.
 
+config KEXEC_HANDOVER_RECEIVER
+	bool "Receive KHO state without outgoing kexec support"
+	depends on KEXEC_HANDOVER && MODELOS_KERNEL_ONLY
+	select RELOCATABLE
+	help
+	  Recover the incoming kho-v1 FDT, preserved physical pages and
+	  named reserve_mem regions in a kernel-only successor. Do not
+	  select the kexec file loader, CMA or migration for a future handover.
+	  Scratch pages become ordinary unmovable kernel memory after early
+	  boot. No outgoing serialization, finalization or debugfs is built.
+	  Leave KEXEC, KEXEC_FILE and KEXEC_HANDOVER_DEBUG disabled.
+
 config KEXEC_HANDOVER_DEBUG
 	bool "Enable Kexec Handover debug checks"
-	depends on KEXEC_HANDOVER
+	depends on KEXEC_HANDOVER && !KEXEC_HANDOVER_RECEIVER
 	help
 	  This option enables extra sanity checks for the Kexec Handover
 	  subsystem. Since, KHO performance is crucial in live update
@@ -120,7 +132,7 @@ config KEXEC_HANDOVER_DEBUG
 config KEXEC_HANDOVER_DEBUGFS
 	bool "kexec handover debugfs interface"
 	default KEXEC_HANDOVER
-	depends on KEXEC_HANDOVER
+	depends on KEXEC_HANDOVER && !KEXEC_HANDOVER_RECEIVER
 	select DEBUG_FS
 	help
 	  Allow to control kexec handover device tree via debugfs

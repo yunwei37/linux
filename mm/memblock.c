@@ -2445,6 +2445,7 @@ int reserve_mem_release_by_name(const char *name)
 #define MEMBLOCK_KHO_FDT "memblock"
 #define MEMBLOCK_KHO_NODE_COMPATIBLE "memblock-v1"
 #define RESERVE_MEM_KHO_NODE_COMPATIBLE "reserve-mem-v1"
+#ifndef CONFIG_KEXEC_HANDOVER_RECEIVER
 static struct page *kho_fdt;
 
 static int reserve_mem_kho_finalize(struct kho_serialization *ser)
@@ -2540,6 +2541,8 @@ static int __init reserve_mem_init(void)
 	return err;
 }
 late_initcall(reserve_mem_init);
+
+#endif /* !CONFIG_KEXEC_HANDOVER_RECEIVER */
 
 static void *__init reserve_mem_kho_retrieve_fdt(void)
 {
