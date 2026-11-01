@@ -2245,3 +2245,7 @@ config MODELOS_L1
 	depends on MODELOS_KERNEL_ONLY && MODELOS_NVIDIA
 	help
 	  Run kernel-owned RM recording/replay validation after driver init.
+
+config MODELOS_L1_QWEN
+	bool "Run the L1 persistent Qwen GPU validation"
+	depends on MODELOS_L1
