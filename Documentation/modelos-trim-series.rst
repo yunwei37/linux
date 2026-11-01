@@ -66,3 +66,8 @@ Serving ELF consumer/exclusion map
 
 No GPU execution is implied by applying this series. The dedicated
 modelos.nv_test=1 path requires independent hardware acceptance by its owner.
+
+The final source cuts also exclude VFS pointer formatting (%pd/%pD) and user
+VMA flag formatting (%pGv), its descriptor table and user VMA debug dump.
+Those object domains do not exist in the kernel-only image. Physical page and
+GFP flag diagnostics remain, as do the ordinary Linux formatting branches.
