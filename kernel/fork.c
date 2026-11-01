@@ -2837,9 +2837,9 @@ SYSCALL_DEFINE0(vfork)
 #endif
 #endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 #ifdef __ARCH_WANT_SYS_CLONE
 #ifdef CONFIG_CLONE_BACKWARDS
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(clone, unsigned long, clone_flags, unsigned long, newsp,
 		 int __user *, parent_tidptr,
 		 unsigned long, tls,
