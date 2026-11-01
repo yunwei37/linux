@@ -103,6 +103,7 @@ static NV_STATUS l1_replay(struct l1_context *c)
  if(l1_boot_weights_phys)c->resources[L1_WEIGHTS_PHYS].value=l1_boot_weights_phys;
  c->resources[L1_GPU_BIAS].value+=l1_boot_gpu_bias;
  if(IS_ENABLED(CONFIG_MODELOS_L1_TCP))l1_streams=4;
+ if(IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))c->resources[L1_HOST_BYTES].value=0x100000;
  c->resources[L1_STATE_BYTES].value=0x4000000ULL*(IS_ENABLED(CONFIG_MODELOS_L1_TCP)?MODELOS_GPU_ARENAS:l1_streams);
  for(i=0;i<ARRAY_SIZE(l1_operations);i++) {
   const struct l1_operation *op=&l1_operations[i];
