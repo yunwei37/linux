@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 /* L1 workload consumer. Calls only the trim lane's five direct RM bridges. */
 #include "nv-linux.h"
+#include <linux/pci.h>
 #include "nvos.h"
 #include "class/cl0070.h"
 #include "class/cl90f1.h"
@@ -40,6 +41,27 @@ static void l1_bits(NvU32 *q,unsigned hi,unsigned lo,NvU64 value)
 {
  unsigned bit;
  for(bit=lo;bit<=hi;bit++)q[bit/32]=(q[bit/32]&~(1U<<(bit%32)))|(((value>>(bit-lo))&1)<<(bit%32));
+}
+/* Fixed GB202 PF profile, from the recorded window and driver dev_vm.h:
+ * virtualRegPhysOffset 0xb80000 + NV_VIRTUAL_FUNCTION base 0x30000.
+ * PCI BAR addresses are discovered on this boot; no recorded GPA is reused.
+ * This replaces the C661 CPU resource and RM CPU-map operation only. */
+static NV_STATUS l2_map_doorbell(struct l1_context *c)
+{
+ struct pci_dev *dev=NULL;
+ resource_size_t base;
+ while((dev=pci_get_device(0x10de,PCI_ANY_ID,dev))) {
+  if((dev->class>>16)!=PCI_BASE_CLASS_DISPLAY)continue;
+  if(dev->device!=0x2b85 || !(pci_resource_flags(dev,0)&IORESOURCE_MEM) || pci_resource_len(dev,0)<0xbc0000) {
+   pci_dev_put(dev);return NV_ERR_NOT_SUPPORTED;
+  }
+  base=pci_resource_start(dev,0);
+  c->doorbell=ioremap(base+0xbb0000,0x10000);
+  pr_info("L2_DIRECT_BAR0 pci=%s bar=%pa offset=0xbb0000 bytes=65536 mapped=%u\n",pci_name(dev),&base,!!c->doorbell);
+  pci_dev_put(dev);
+  return c->doorbell?NV_OK:NV_ERR_NO_MEMORY;
+ }
+ return NV_ERR_INVALID_DEVICE;
 }
 static NV_STATUS l1_execute(struct l1_context *c,struct l1_memory *local,struct l1_memory *host)
 {
@@ -182,7 +204,7 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
  NVA06C_CTRL_GPFIFO_SCHEDULE_PARAMS schedule={.bEnable=NV_TRUE};
  NVC36F_CTRL_CMD_GPFIFO_GET_WORK_SUBMIT_TOKEN_PARAMS token={0};
  struct l1_memory local={0},host={0},error={0};
- NvU16 doorbell_flags=1;
+ NV_STATUS result;
  memcpy(&va,l1_vaspace,sizeof(va));va.vaSize=(1ULL<<47)-0x1000;va.flags=0; /* RM-owned tables; no UVM/external page directory. */
  L1_TRY("vaspace",l1_alloc(&c,device,&c.va,0x90f1,&va,sizeof(va)));
  virt.hVASpace=c.va;virt.offset=0x1000;virt.limit=(1ULL<<47)-1;
@@ -195,8 +217,7 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
  L1_TRY("local",l1_memory(&c,&local,l1_local_memory,0x40,0x200000,0x02000000,2));
  L1_TRY("host",l1_memory(&c,&host,l1_system_memory,0x3e,0x10000,0x01000000,0));
  L1_TRY("error",l1_memory(&c,&error,l1_error_memory,0x3e,0x1000,0x01100000,1));
- L1_TRY("usermode",l1_alloc(&c,sub,&c.usermode,0xc661,&doorbell_flags,sizeof(doorbell_flags)));
- L1_TRY("doorbell-map",modelos_rm_map_cpu(stack,client,sub,c.usermode,0,0x10000,&c.doorbell,2));
+ L1_TRY("direct-bar0-doorbell",l2_map_doorbell(&c));
  memcpy(&fifo,l1_fifo,sizeof(fifo));fifo.hObjectError=error.handle;fifo.hObjectBuffer=local.handle;
  fifo.gpFifoOffset=local.gpu;fifo.hContextShare=c.ctx;fifo.hUserdMemory[0]=local.handle;fifo.userdOffset[0]=0x2000;
  L1_TRY("fifo",l1_alloc(&c,c.group,&c.channel,0xc96f,&fifo,sizeof(fifo)));
@@ -206,8 +227,10 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
  c.token=token.workSubmitToken;
  pr_info("L1_REPLAY_RESOURCES_PASS token=0x%x no_submission=1\n",c.token);
 #ifdef CONFIG_MODELOS_L1_QWEN
- return l1_qwen(&c,&local,&host);
+ result=l1_qwen(&c,&local,&host);
 #else
- return l1_execute(&c,&local,&host);
+ result=l1_execute(&c,&local,&host);
 #endif
+ if(result==NV_OK){iounmap((void __iomem *)c.doorbell);pr_info("L2_DIRECT_BAR0_UNMAP status=0x0\n");}
+ return result;
 }
