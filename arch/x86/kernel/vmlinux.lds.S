@@ -298,6 +298,7 @@ SECTIONS
 	.altinstructions : AT(ADDR(.altinstructions) - LOAD_OFFSET) {
 		__alt_instructions = .;
 		KEEP(*(.altinstructions))
+		*(.altinstructions.*)
 		__alt_instructions_end = .;
 	}
 
@@ -307,7 +308,7 @@ SECTIONS
 	 * get the address and the length of them to patch the kernel safely.
 	 */
 	.altinstr_replacement : AT(ADDR(.altinstr_replacement) - LOAD_OFFSET) {
-		*(.altinstr_replacement)
+		*(.altinstr_replacement .altinstr_replacement.*)
 	}
 
 	. = ALIGN(8);
@@ -351,6 +352,7 @@ SECTIONS
 	.smp_locks : AT(ADDR(.smp_locks) - LOAD_OFFSET) {
 		__smp_locks = .;
 		KEEP(*(.smp_locks))
+		*(.smp_locks.*)
 		. = ALIGN(PAGE_SIZE);
 		__smp_locks_end = .;
 	}

@@ -1100,7 +1100,7 @@ int tcp_sendmsg_locked(struct sock *sk, struct msghdr *msg, size_t size)
 		 */
 	}
 
-	if ((flags & MSG_ZEROCOPY) && size) {
+	if (((!IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY) && (flags & MSG_ZEROCOPY))) && size) {
 		if (msg->msg_ubuf) {
 			uarg = msg->msg_ubuf;
 			if (sk->sk_route_caps & NETIF_F_SG)
@@ -1127,7 +1127,7 @@ int tcp_sendmsg_locked(struct sock *sk, struct msghdr *msg, size_t size)
 				}
 			}
 		}
-	} else if (unlikely(msg->msg_flags & MSG_SPLICE_PAGES) && size) {
+	} else if (unlikely((!IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY) && (msg->msg_flags & MSG_SPLICE_PAGES))) && size) {
 		if (sk->sk_route_caps & NETIF_F_SG)
 			zc = MSG_SPLICE_PAGES;
 	}

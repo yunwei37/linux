@@ -21,7 +21,11 @@ typedef struct {
 
 static inline bool sockptr_is_kernel(sockptr_t sockptr)
 {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+ return true; /* All surviving callers own kernel buffers. */
+#else
 	return sockptr.is_kernel;
+#endif
 }
 
 static inline sockptr_t KERNEL_SOCKPTR(void *p)

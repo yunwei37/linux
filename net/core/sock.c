@@ -172,7 +172,7 @@ static void sock_def_write_space(struct sock *sk);
 bool sk_ns_capable(const struct sock *sk,
 		   struct user_namespace *user_ns, int cap)
 {
-	return file_ns_capable(sk->sk_socket->file, user_ns, cap) &&
+	return (IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY) ? sk->sk_kern_sock : file_ns_capable(sk->sk_socket->file, user_ns, cap)) &&
 		ns_capable(user_ns, cap);
 }
 EXPORT_SYMBOL(sk_ns_capable);
@@ -3613,6 +3613,7 @@ static void sock_def_destruct(struct sock *sk)
 {
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void sk_send_sigurg(struct sock *sk)
 {
 	if (sk->sk_socket && sk->sk_socket->file)
@@ -3620,6 +3621,8 @@ void sk_send_sigurg(struct sock *sk)
 			sk_wake_async(sk, SOCK_WAKE_URG, POLL_PRI);
 }
 EXPORT_SYMBOL(sk_send_sigurg);
+#endif
+
 
 void sk_reset_timer(struct sock *sk, struct timer_list* timer,
 		    unsigned long expires)

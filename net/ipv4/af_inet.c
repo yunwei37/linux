@@ -1056,26 +1056,42 @@ const struct proto_ops inet_stream_ops = {
 	.accept		   = inet_accept,
 	.getname	   = inet_getname,
 	.poll		   = tcp_poll,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.ioctl		   = inet_ioctl,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.gettstamp	   = sock_gettstamp,
+#endif
 	.listen		   = inet_listen,
 	.shutdown	   = inet_shutdown,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.setsockopt	   = sock_common_setsockopt,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt	   = sock_common_getsockopt,
+#endif
 	.sendmsg	   = inet_sendmsg,
 	.recvmsg	   = inet_recvmsg,
 #ifdef CONFIG_MMU
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.mmap		   = tcp_mmap,
 #endif
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.splice_eof	   = inet_splice_eof,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.splice_read	   = tcp_splice_read,
+#endif
 	.set_peek_off      = sk_set_peek_off,
 	.read_sock	   = tcp_read_sock,
 	.read_skb	   = tcp_read_skb,
 	.sendmsg_locked    = tcp_sendmsg_locked,
 	.peek_len	   = tcp_peek_len,
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.compat_ioctl	   = inet_compat_ioctl,
+#endif
 #endif
 	.set_rcvlowat	   = tcp_set_rcvlowat,
 };
@@ -1091,20 +1107,34 @@ const struct proto_ops inet_dgram_ops = {
 	.accept		   = sock_no_accept,
 	.getname	   = inet_getname,
 	.poll		   = udp_poll,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.ioctl		   = inet_ioctl,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.gettstamp	   = sock_gettstamp,
+#endif
 	.listen		   = sock_no_listen,
 	.shutdown	   = inet_shutdown,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.setsockopt	   = sock_common_setsockopt,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt	   = sock_common_getsockopt,
+#endif
 	.sendmsg	   = inet_sendmsg,
 	.read_skb	   = udp_read_skb,
 	.recvmsg	   = inet_recvmsg,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.mmap		   = sock_no_mmap,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.splice_eof	   = inet_splice_eof,
+#endif
 	.set_peek_off	   = udp_set_peek_off,
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.compat_ioctl	   = inet_compat_ioctl,
+#endif
 #endif
 };
 EXPORT_SYMBOL(inet_dgram_ops);
@@ -1123,18 +1153,32 @@ static const struct proto_ops inet_sockraw_ops = {
 	.accept		   = sock_no_accept,
 	.getname	   = inet_getname,
 	.poll		   = datagram_poll,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.ioctl		   = inet_ioctl,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.gettstamp	   = sock_gettstamp,
+#endif
 	.listen		   = sock_no_listen,
 	.shutdown	   = inet_shutdown,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.setsockopt	   = sock_common_setsockopt,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt	   = sock_common_getsockopt,
+#endif
 	.sendmsg	   = inet_sendmsg,
 	.recvmsg	   = inet_recvmsg,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.mmap		   = sock_no_mmap,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.splice_eof	   = inet_splice_eof,
+#endif
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.compat_ioctl	   = inet_compat_ioctl,
+#endif
 #endif
 };
 

@@ -3286,13 +3286,23 @@ struct proto udp_prot = {
 	.pre_connect		= udp_pre_connect,
 	.connect		= udp_connect,
 	.disconnect		= udp_disconnect,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.ioctl			= udp_ioctl,
+#endif
 	.init			= udp_init_sock,
 	.destroy		= udp_destroy_sock,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.setsockopt		= udp_setsockopt,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt		= udp_getsockopt,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sendmsg		= udp_sendmsg,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.recvmsg		= udp_recvmsg,
+#endif
 	.splice_eof		= udp_splice_eof,
 	.release_cb		= ip4_datagram_release_cb,
 	.hash			= udp_lib_hash,

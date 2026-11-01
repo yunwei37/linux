@@ -944,12 +944,22 @@ struct proto raw_prot = {
 	.destroy	   = raw_destroy,
 	.connect	   = ip4_datagram_connect,
 	.disconnect	   = __udp_disconnect,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.ioctl		   = raw_ioctl,
+#endif
 	.init		   = raw_sk_init,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.setsockopt	   = raw_setsockopt,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt	   = raw_getsockopt,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sendmsg	   = raw_sendmsg,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.recvmsg	   = raw_recvmsg,
+#endif
 	.bind		   = raw_bind,
 	.backlog_rcv	   = raw_rcv_skb,
 	.release_cb	   = ip4_datagram_release_cb,
@@ -960,7 +970,9 @@ struct proto raw_prot = {
 	.usersize	   = sizeof_field(struct raw_sock, filter),
 	.h.raw_hash	   = &raw_v4_hashinfo,
 #ifdef CONFIG_COMPAT
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.compat_ioctl	   = compat_raw_ioctl,
+#endif
 #endif
 	.diag_destroy	   = raw_abort,
 };

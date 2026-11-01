@@ -1461,11 +1461,14 @@ static int __init wait_for_devices(void)
 		rtnl_unlock();
 		if (found)
 			return 0;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		if (try_init_devs &&
 		    (ROOT_DEV == Root_NFS || ROOT_DEV == Root_CIFS)) {
 			try_init_devs = false;
 			wait_for_init_devices_probe();
 		}
+
+#endif
 		ssleep(1);
 	}
 	return -ENODEV;

@@ -995,10 +995,18 @@ struct proto ping_prot = {
 	.pre_connect =	ping_pre_connect,
 	.connect =	ip4_datagram_connect,
 	.disconnect =	__udp_disconnect,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.setsockopt =	ip_setsockopt,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt =	ip_getsockopt,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sendmsg =	ping_v4_sendmsg,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.recvmsg =	ping_recvmsg,
+#endif
 	.bind =		ping_bind,
 	.backlog_rcv =	ping_queue_rcv_skb,
 	.release_cb =	ip4_datagram_release_cb,

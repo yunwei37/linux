@@ -1012,7 +1012,7 @@ static int __ip_append_data(struct sock *sk,
 	    (!exthdrlen || (rt->dst.dev->features & NETIF_F_HW_ESP_TX_CSUM)))
 		csummode = CHECKSUM_PARTIAL;
 
-	if ((flags & MSG_ZEROCOPY) && length) {
+	if ((!IS_ENABLED(CONFIG_MODELOS) && flags & MSG_ZEROCOPY) && length) {
 		struct msghdr *msg = from;
 
 		if (getfrag == ip_generic_getfrag && msg->msg_ubuf) {
@@ -1043,7 +1043,7 @@ static int __ip_append_data(struct sock *sk,
 				skb_zcopy_set(skb, uarg, &extra_uref);
 			}
 		}
-	} else if ((flags & MSG_SPLICE_PAGES) && length) {
+	} else if ((!IS_ENABLED(CONFIG_MODELOS) && flags & MSG_SPLICE_PAGES) && length) {
 		if (inet_test_bit(HDRINCL, sk))
 			return -EPERM;
 		if (rt->dst.dev->features & NETIF_F_SG &&
@@ -1180,7 +1180,7 @@ alloc_new_skb:
 				err = -EFAULT;
 				kfree_skb(skb);
 				goto error;
-			} else if (flags & MSG_SPLICE_PAGES) {
+			} else if (!IS_ENABLED(CONFIG_MODELOS) && flags & MSG_SPLICE_PAGES) {
 				copy = 0;
 			}
 
@@ -1227,7 +1227,7 @@ alloc_new_skb:
 				err = -EFAULT;
 				goto error;
 			}
-		} else if (flags & MSG_SPLICE_PAGES) {
+		} else if (!IS_ENABLED(CONFIG_MODELOS) && flags & MSG_SPLICE_PAGES) {
 			struct msghdr *msg = from;
 
 			err = -EIO;

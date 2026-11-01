@@ -42,6 +42,13 @@
  */
 
 #ifdef CONFIG_SMP
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+/* Associate patch metadata with its instruction section for real section GC. */
+#define LOCK_PREFIX_HERE \
+ ".ifndef .Llock_link_%=\n.Llock_link_%=:\n.endif\n" \
+ " .pushsection .smp_locks.%=,\"ao\",@progbits,.Llock_link_%=\n" \
+ " .balign 4\n .long 671f - .\n .popsection\n671:"
+#else
 #define LOCK_PREFIX_HERE \
 		".pushsection .smp_locks,\"a\"\n"	\
 		".balign 4\n"				\
@@ -49,6 +56,7 @@
 		".popsection\n"				\
 		"671:"
 
+#endif
 #define LOCK_PREFIX LOCK_PREFIX_HERE "\n\tlock "
 
 #else /* ! CONFIG_SMP */
@@ -189,6 +197,7 @@ static inline int alternatives_text_reserved(void *start, void *end)
 #define alt_rlen		"775f-774f"
 
 #define OLDINSTR(oldinstr)						\
+ ".ifndef .Lalt_link_%=\n.Lalt_link_%=:\n.endif\n" \
 	"# ALT: oldinstr\n"						\
 	"771:\n\t" oldinstr "\n772:\n"					\
 	"# ALT: padding\n"						\
@@ -196,8 +205,16 @@ static inline int alternatives_text_reserved(void *start, void *end)
 		"((" alt_rlen ")-(" alt_slen ")),0x90\n"		\
 	"773:\n"
 
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+#define __ALT_SECTION ".pushsection .altinstructions.%=,\"ao\",@progbits,.Lalt_link_%=\n"
+#define __ALT_REPLACEMENT_SECTION ".pushsection .altinstr_replacement.%=,\"axo\",@progbits,.Lalt_link_%=\n"
+#else
+#define __ALT_SECTION ".pushsection .altinstructions,\"a\"\n"
+#define __ALT_REPLACEMENT_SECTION ".pushsection .altinstr_replacement, \"ax\"\n"
+#endif
+
 #define ALTINSTR_ENTRY(ft_flags)					      \
-	".pushsection .altinstructions,\"a\"\n"				      \
+	__ALT_SECTION				      \
 	" .long 771b - .\n"				/* label           */ \
 	" .long 774f - .\n"				/* new instruction */ \
 	" .4byte " __stringify(ft_flags) "\n"		/* feature + flags */ \
@@ -206,7 +223,7 @@ static inline int alternatives_text_reserved(void *start, void *end)
 	".popsection\n"
 
 #define ALTINSTR_REPLACEMENT(newinstr)		/* replacement */	\
-	".pushsection .altinstr_replacement, \"ax\"\n"			\
+	__ALT_REPLACEMENT_SECTION			\
 	"# ALT: replacement\n"						\
 	"774:\n\t" newinstr "\n775:\n"					\
 	".popsection\n"

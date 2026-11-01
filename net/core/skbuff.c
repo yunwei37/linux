@@ -5552,6 +5552,9 @@ static void __skb_complete_tx_timestamp(struct sk_buff *skb,
 
 static bool skb_may_tx_timestamp(struct sock *sk, bool tsonly)
 {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+ return sk->sk_kern_sock;
+#else
 	struct socket *sock;
 	struct file *file;
 	bool ret = false;
@@ -5575,6 +5578,7 @@ static bool skb_may_tx_timestamp(struct sock *sk, bool tsonly)
 out:
 	rcu_read_unlock();
 	return ret;
+#endif
 }
 
 void skb_complete_tx_timestamp(struct sk_buff *skb,

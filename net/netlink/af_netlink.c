@@ -850,7 +850,7 @@ bool __netlink_ns_capable(const struct netlink_skb_parms *nsp,
 			struct user_namespace *user_ns, int cap)
 {
 	return ((nsp->flags & NETLINK_SKB_DST) ||
-		file_ns_capable(nsp->sk->sk_socket->file, user_ns, cap)) &&
+		(IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY) ? nsp->sk->sk_kern_sock : file_ns_capable(nsp->sk->sk_socket->file, user_ns, cap))) &&
 		ns_capable(user_ns, cap);
 }
 EXPORT_SYMBOL(__netlink_ns_capable);
@@ -2816,14 +2816,26 @@ static const struct proto_ops netlink_ops = {
 	.accept =	sock_no_accept,
 	.getname =	netlink_getname,
 	.poll =		datagram_poll,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.ioctl =	netlink_ioctl,
+#endif
 	.listen =	sock_no_listen,
 	.shutdown =	sock_no_shutdown,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.setsockopt =	netlink_setsockopt,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt =	netlink_getsockopt,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sendmsg =	netlink_sendmsg,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.recvmsg =	netlink_recvmsg,
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.mmap =		sock_no_mmap,
+#endif
 };
 
 static const struct net_proto_family netlink_family_ops = {

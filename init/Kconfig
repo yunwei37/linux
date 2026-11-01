@@ -2257,3 +2257,8 @@ config MODELOS_KEXEC_TEST
    Validate named RAM and, with the L1 Qwen consumer, check one token
    for cold/kexec timing and try recorded old RM handles.
    Default L1 replay and decoding remain unchanged when disabled.
+config MODELOS_SERVE
+	bool "Minimal kernel token service"
+	depends on MODELOS && NET && INET && VIRTIO_NET
+	help
+	  Serve model token IDs from bound kernel workers over kernel TCP sockets.

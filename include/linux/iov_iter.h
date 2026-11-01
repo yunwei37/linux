@@ -298,10 +298,12 @@ size_t iterate_and_advance2(struct iov_iter *iter, size_t len, void *priv,
 	if (unlikely(!len))
 		return 0;
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (likely(iter_is_ubuf(iter)))
 		return iterate_ubuf(iter, len, priv, priv2, ustep);
 	if (likely(iter_is_iovec(iter)))
 		return iterate_iovec(iter, len, priv, priv2, ustep);
+#endif
 	if (iov_iter_is_bvec(iter))
 		return iterate_bvec(iter, len, priv, priv2, step);
 	if (iov_iter_is_kvec(iter))
