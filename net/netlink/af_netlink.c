@@ -849,9 +849,12 @@ retry:
 bool __netlink_ns_capable(const struct netlink_skb_parms *nsp,
 			struct user_namespace *user_ns, int cap)
 {
-	return ((nsp->flags & NETLINK_SKB_DST) ||
-		(IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY) ? nsp->sk->sk_kern_sock : file_ns_capable(nsp->sk->sk_socket->file, user_ns, cap))) &&
-		ns_capable(user_ns, cap);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
+	if (!(nsp->flags & NETLINK_SKB_DST) &&
+	    !file_ns_capable(nsp->sk->sk_socket->file, user_ns, cap))
+		return false;
+#endif
+	return ns_capable(user_ns, cap);
 }
 EXPORT_SYMBOL(__netlink_ns_capable);
 
@@ -1646,6 +1649,7 @@ static void netlink_update_socket_mc(struct netlink_sock *nlk,
 	netlink_update_listeners(&nlk->sk);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_setsockopt(struct socket *sock, int level, int optname,
 			      sockptr_t optval, unsigned int optlen)
 {
@@ -1721,7 +1725,9 @@ static int netlink_setsockopt(struct socket *sock, int level, int optname,
 		assign_bit(nr, &nlk->flags, val);
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_getsockopt(struct socket *sock, int level, int optname,
 			      char __user *optval, int __user *optlen)
 {
@@ -1797,6 +1803,7 @@ static int netlink_getsockopt(struct socket *sock, int level, int optname,
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void netlink_cmsg_recv_pktinfo(struct msghdr *msg, struct sk_buff *skb)
 {
@@ -1816,6 +1823,7 @@ static void netlink_cmsg_listen_all_nsid(struct sock *sk, struct msghdr *msg,
 		 &NETLINK_CB(skb).nsid);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 {
 	struct sock *sk = sock->sk;
@@ -1904,7 +1912,9 @@ out:
 	scm_destroy(&scm);
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,
 			   int flags)
 {
@@ -1992,6 +2002,7 @@ out:
 	netlink_rcv_wake(sk);
 	return err ? : copied;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void netlink_data_ready(struct sock *sk)
 {
@@ -2815,25 +2826,17 @@ static const struct proto_ops netlink_ops = {
 	.socketpair =	sock_no_socketpair,
 	.accept =	sock_no_accept,
 	.getname =	netlink_getname,
-	.poll =		datagram_poll,
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
+	.poll =		datagram_poll,
 	.ioctl =	netlink_ioctl,
 #endif
 	.listen =	sock_no_listen,
 	.shutdown =	sock_no_shutdown,
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.setsockopt =	netlink_setsockopt,
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt =	netlink_getsockopt,
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sendmsg =	netlink_sendmsg,
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.recvmsg =	netlink_recvmsg,
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.mmap =		sock_no_mmap,
 #endif
 };

@@ -2497,9 +2497,7 @@ const struct inet_connection_sock_af_ops ipv4_specific = {
 	.conn_request	   = tcp_v4_conn_request,
 	.syn_recv_sock	   = tcp_v4_syn_recv_sock,
 	.net_header_len	   = sizeof(struct iphdr),
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.setsockopt	   = ip_setsockopt,
-#endif
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt	   = ip_getsockopt,
 #endif
@@ -3517,9 +3515,7 @@ struct proto tcp_prot = {
 	.init			= tcp_v4_init_sock,
 	.destroy		= tcp_v4_destroy_sock,
 	.shutdown		= tcp_shutdown,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.setsockopt		= tcp_setsockopt,
-#endif
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt		= tcp_getsockopt,
 #endif
@@ -3527,7 +3523,9 @@ struct proto tcp_prot = {
 	.keepalive		= tcp_set_keepalive,
 	.recvmsg		= tcp_recvmsg,
 	.sendmsg		= tcp_sendmsg,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.splice_eof		= tcp_splice_eof,
+#endif
 	.backlog_rcv		= tcp_v4_do_rcv,
 	.release_cb		= tcp_release_cb,
 	.hash			= inet_hash,

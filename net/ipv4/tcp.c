@@ -534,6 +534,7 @@ static bool tcp_stream_is_readable(struct sock *sk, int target)
  *	take care of normal races (between the test and the event) and we don't
  *	go look at any of the socket buffers directly.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 __poll_t tcp_poll(struct file *file, struct socket *sock, poll_table *wait)
 {
 	__poll_t mask;
@@ -639,8 +640,10 @@ __poll_t tcp_poll(struct file *file, struct socket *sock, poll_table *wait)
 
 	return mask;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL(tcp_poll);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int tcp_ioctl(struct sock *sk, int cmd, int *karg)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
@@ -686,6 +689,7 @@ int tcp_ioctl(struct sock *sk, int cmd, int *karg)
 	*karg = answ;
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_IPV6_MOD(tcp_ioctl);
 
 void tcp_mark_push(struct tcp_sock *tp, struct sk_buff *skb)
@@ -778,6 +782,7 @@ void tcp_push(struct sock *sk, int flags, int mss_now,
 	__tcp_push_pending_frames(sk, mss_now, nonagle);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int tcp_splice_data_recv(read_descriptor_t *rd_desc, struct sk_buff *skb,
 				unsigned int offset, size_t len)
 {
@@ -790,7 +795,9 @@ static int tcp_splice_data_recv(read_descriptor_t *rd_desc, struct sk_buff *skb,
 		rd_desc->count -= ret;
 	return ret;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int __tcp_splice_read(struct sock *sk, struct tcp_splice_state *tss)
 {
 	/* Store TCP splice context information in read_descriptor_t. */
@@ -801,6 +808,7 @@ static int __tcp_splice_read(struct sock *sk, struct tcp_splice_state *tss)
 
 	return tcp_read_sock(sk, &rd_desc, tcp_splice_data_recv);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  *  tcp_splice_read - splice data from TCP socket to a pipe
@@ -814,6 +822,7 @@ static int __tcp_splice_read(struct sock *sk, struct tcp_splice_state *tss)
  *    Will read pages from given socket and fill them into a pipe.
  *
  **/
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 ssize_t tcp_splice_read(struct socket *sock, loff_t *ppos,
 			struct pipe_inode_info *pipe, size_t len,
 			unsigned int flags)
@@ -903,6 +912,7 @@ ssize_t tcp_splice_read(struct socket *sock, loff_t *ppos,
 
 	return ret;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_IPV6_MOD(tcp_splice_read);
 
 struct sk_buff *tcp_stream_alloc_skb(struct sock *sk, gfp_t gfp,
@@ -1100,12 +1110,14 @@ int tcp_sendmsg_locked(struct sock *sk, struct msghdr *msg, size_t size)
 		 */
 	}
 
-	if (((!IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY) && (flags & MSG_ZEROCOPY))) && size) {
+	if ((flags & MSG_ZEROCOPY) && size) {
 		if (msg->msg_ubuf) {
 			uarg = msg->msg_ubuf;
 			if (sk->sk_route_caps & NETIF_F_SG)
 				zc = MSG_ZEROCOPY;
-		} else if (sock_flag(sk, SOCK_ZEROCOPY)) {
+		}
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
+		else if (sock_flag(sk, SOCK_ZEROCOPY)) {
 			skb = tcp_write_queue_tail(sk);
 			uarg = msg_zerocopy_realloc(sk, size, skb_zcopy(skb),
 						    !sockc_err && sockc.dmabuf_id);
@@ -1127,7 +1139,9 @@ int tcp_sendmsg_locked(struct sock *sk, struct msghdr *msg, size_t size)
 				}
 			}
 		}
-	} else if (unlikely((!IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY) && (msg->msg_flags & MSG_SPLICE_PAGES))) && size) {
+#endif
+
+	} else if (unlikely(msg->msg_flags & MSG_SPLICE_PAGES) && size) {
 		if (sk->sk_route_caps & NETIF_F_SG)
 			zc = MSG_SPLICE_PAGES;
 	}
@@ -1833,7 +1847,7 @@ void tcp_update_recv_tstamps(struct sk_buff *skb,
 		tss->ts[2] = (struct timespec64) {0};
 }
 
-#ifdef CONFIG_MMU
+#if defined(CONFIG_MMU) && !defined(CONFIG_MODELOS_KERNEL_ONLY)
 static const struct vm_operations_struct tcp_vm_ops = {
 };
 
@@ -4457,6 +4471,7 @@ struct sk_buff *tcp_get_timestamping_opt_stats(const struct sock *sk,
 	return stats;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int do_tcp_getsockopt(struct sock *sk, int level,
 		      int optname, sockptr_t optval, sockptr_t optlen)
 {
@@ -4717,7 +4732,7 @@ int do_tcp_getsockopt(struct sock *sk, int level,
 		}
 		return 0;
 	}
-#ifdef CONFIG_MMU
+#if defined(CONFIG_MMU) && !defined(CONFIG_MODELOS_KERNEL_ONLY)
 	case TCP_ZEROCOPY_RECEIVE: {
 		struct scm_timestamping_internal tss;
 		struct tcp_zerocopy_receive zc = {};
@@ -4821,6 +4836,7 @@ zerocopy_rcv_out:
 		return -EFAULT;
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 bool tcp_bpf_bypass_getsockopt(int level, int optname)
 {
@@ -4834,6 +4850,7 @@ bool tcp_bpf_bypass_getsockopt(int level, int optname)
 }
 EXPORT_IPV6_MOD(tcp_bpf_bypass_getsockopt);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int tcp_getsockopt(struct sock *sk, int level, int optname, char __user *optval,
 		   int __user *optlen)
 {
@@ -4846,6 +4863,7 @@ int tcp_getsockopt(struct sock *sk, int level, int optname, char __user *optval,
 	return do_tcp_getsockopt(sk, level, optname, USER_SOCKPTR(optval),
 				 USER_SOCKPTR(optlen));
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_IPV6_MOD(tcp_getsockopt);
 
 #ifdef CONFIG_TCP_MD5SIG

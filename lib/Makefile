@@ -353,5 +353,5 @@ lib-y := $(filter-out usercopy.o strncpy_from_user.o strnlen_user.o,$(lib-y))
 endif
 
 ifdef CONFIG_MODELOS_KERNEL_ONLY
-obj-$(CONFIG_NET) += modelos-iov.o
+obj-$(CONFIG_NET) += iov_iter.o modelos-net.o
 endif

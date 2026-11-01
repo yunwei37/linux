@@ -2812,7 +2812,6 @@ int skb_get_tx_timestamp(struct sk_buff *skb, struct sock *sk,
 static inline void
 sock_recv_timestamp(struct msghdr *msg, struct sock *sk, struct sk_buff *skb)
 {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	struct skb_shared_hwtstamps *hwtstamps = skb_hwtstamps(skb);
 	u32 tsflags = READ_ONCE(sk->sk_tsflags);
 	ktime_t kt = skb->tstamp;
@@ -2833,9 +2832,6 @@ sock_recv_timestamp(struct msghdr *msg, struct sock *sk, struct sk_buff *skb)
 
 	if (sock_flag(sk, SOCK_WIFI_STATUS) && skb_wifi_acked_valid(skb))
 		__sock_recv_wifi_status(msg, sk, skb);
-#else
- sock_write_timestamp(sk,skb->tstamp);
-#endif
 }
 
 void __sock_recv_cmsgs(struct msghdr *msg, struct sock *sk,
@@ -2853,16 +2849,12 @@ static inline void sock_recv_cmsgs(struct msghdr *msg, struct sock *sk,
 #define TSFLAGS_ANY	  (SOF_TIMESTAMPING_SOFTWARE			| \
 			   SOF_TIMESTAMPING_RAW_HARDWARE)
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (READ_ONCE(sk->sk_flags) & FLAGS_RECV_CMSGS)
 		__sock_recv_cmsgs(msg, sk, skb);
 	else if (unlikely(sock_flag(sk, SOCK_TIMESTAMP)))
 		sock_write_timestamp(sk, skb->tstamp);
 	else if (unlikely(sock_read_timestamp(sk) == SK_DEFAULT_STAMP))
 		sock_write_timestamp(sk, 0);
-#else
- sock_write_timestamp(sk,skb->tstamp);
-#endif
 }
 
 void __sock_tx_timestamp(__u32 tsflags, __u8 *tx_flags);

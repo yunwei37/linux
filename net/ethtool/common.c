@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include <linux/ethtool_netlink.h>
+#include <linux/net.h>
 #include <linux/net_tstamp.h>
 #include <linux/phy.h>
 #include <linux/rtnetlink.h>
@@ -1156,3 +1157,101 @@ void ethtool_rxfh_context_lost(struct net_device *dev, u32 context_id)
 	ethtool_rss_notify(dev, ETHTOOL_MSG_RSS_DELETE_NTF, context_id);
 }
 EXPORT_SYMBOL(ethtool_rxfh_context_lost);
+
+/* Kernel driver callback, independent of the userspace ioctl frontend. */
+int ethtool_op_get_ts_info(struct net_device *dev,
+			   struct kernel_ethtool_ts_info *info)
+{
+	info->so_timestamping =
+		SOF_TIMESTAMPING_TX_SOFTWARE |
+		SOF_TIMESTAMPING_RX_SOFTWARE |
+		SOF_TIMESTAMPING_SOFTWARE;
+	info->phc_index = -1;
+	return 0;
+}
+EXPORT_SYMBOL(ethtool_op_get_ts_info);
+
+u32 ethtool_op_get_link(struct net_device *dev)
+{
+	/* Synchronize carrier state with link watch, see also rtnl_getlink() */
+	__linkwatch_sync_dev(dev);
+
+	return netif_carrier_ok(dev) ? 1 : 0;
+}
+EXPORT_SYMBOL(ethtool_op_get_link);
+
+int __ethtool_get_link_ksettings(struct net_device *dev,
+				 struct ethtool_link_ksettings *link_ksettings)
+{
+	ASSERT_RTNL();
+
+	if (!dev->ethtool_ops->get_link_ksettings)
+		return -EOPNOTSUPP;
+
+	if (!netif_device_present(dev))
+		return -ENODEV;
+
+	memset(link_ksettings, 0, sizeof(*link_ksettings));
+	return dev->ethtool_ops->get_link_ksettings(dev, link_ksettings);
+}
+EXPORT_SYMBOL(__ethtool_get_link_ksettings);
+
+bool ethtool_virtdev_validate_cmd(const struct ethtool_link_ksettings *cmd)
+{
+	struct ethtool_link_settings base2 = {};
+
+	base2.speed = cmd->base.speed;
+	base2.port = PORT_OTHER;
+	base2.duplex = cmd->base.duplex;
+	base2.cmd = cmd->base.cmd;
+	base2.link_mode_masks_nwords = cmd->base.link_mode_masks_nwords;
+
+	return !memcmp(&base2, &cmd->base, sizeof(base2)) &&
+		bitmap_empty(cmd->link_modes.supported,
+			     __ETHTOOL_LINK_MODE_MASK_NBITS) &&
+		bitmap_empty(cmd->link_modes.lp_advertising,
+			     __ETHTOOL_LINK_MODE_MASK_NBITS);
+}
+
+int ethtool_virtdev_set_link_ksettings(struct net_device *dev,
+				       const struct ethtool_link_ksettings *cmd,
+				       u32 *dev_speed, u8 *dev_duplex)
+{
+	u32 speed;
+	u8 duplex;
+
+	speed = cmd->base.speed;
+	duplex = cmd->base.duplex;
+	/* don't allow custom speed and duplex */
+	if (!ethtool_validate_speed(speed) ||
+	    !ethtool_validate_duplex(duplex) ||
+	    !ethtool_virtdev_validate_cmd(cmd))
+		return -EINVAL;
+	*dev_speed = speed;
+	*dev_duplex = duplex;
+
+	return 0;
+}
+EXPORT_SYMBOL(ethtool_virtdev_set_link_ksettings);
+
+u8 netdev_rss_key[NETDEV_RSS_KEY_LEN] __read_mostly;
+
+void netdev_rss_key_fill(void *buffer, size_t len)
+{
+	BUG_ON(len > sizeof(netdev_rss_key));
+	net_get_random_once(netdev_rss_key, sizeof(netdev_rss_key));
+	memcpy(buffer, netdev_rss_key, len);
+}
+EXPORT_SYMBOL(netdev_rss_key_fill);
+
+__printf(2, 3) void ethtool_sprintf(u8 **data, const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	vsnprintf(*data, ETH_GSTRING_LEN, fmt, args);
+	va_end(args);
+
+	*data += ETH_GSTRING_LEN;
+}
+EXPORT_SYMBOL(ethtool_sprintf);

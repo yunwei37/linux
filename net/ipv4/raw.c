@@ -869,6 +869,7 @@ static int do_raw_getsockopt(struct sock *sk, int optname,
 	return -ENOPROTOOPT;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int raw_getsockopt(struct sock *sk, int level, int optname,
 			  char __user *optval, int __user *optlen)
 {
@@ -876,6 +877,7 @@ static int raw_getsockopt(struct sock *sk, int level, int optname,
 		return ip_getsockopt(sk, level, optname, optval, optlen);
 	return do_raw_getsockopt(sk, optname, optval, optlen);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int raw_ioctl(struct sock *sk, int cmd, int *karg)
 {
@@ -948,18 +950,12 @@ struct proto raw_prot = {
 	.ioctl		   = raw_ioctl,
 #endif
 	.init		   = raw_sk_init,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.setsockopt	   = raw_setsockopt,
-#endif
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt	   = raw_getsockopt,
 #endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sendmsg	   = raw_sendmsg,
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.recvmsg	   = raw_recvmsg,
-#endif
 	.bind		   = raw_bind,
 	.backlog_rcv	   = raw_rcv_skb,
 	.release_cb	   = ip4_datagram_release_cb,

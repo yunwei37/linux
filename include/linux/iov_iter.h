@@ -20,6 +20,7 @@ typedef size_t (*iov_ustep_f)(void __user *iter_base, size_t progress, size_t le
 /*
  * Handle ITER_UBUF.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static __always_inline
 size_t iterate_ubuf(struct iov_iter *iter, size_t len, void *priv, void *priv2,
 		    iov_ustep_f step)
@@ -67,6 +68,8 @@ size_t iterate_iovec(struct iov_iter *iter, size_t len, void *priv, void *priv2,
 	iter->count -= progress;
 	return progress;
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /*
  * Handle ITER_KVEC.
@@ -289,6 +292,7 @@ size_t iterate_discard(struct iov_iter *iter, size_t len, void *priv, void *priv
  * This function returns the amount of data processed (ie. 0 means nothing was
  * processed and the value of @len means processes to completion).
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static __always_inline
 size_t iterate_and_advance2(struct iov_iter *iter, size_t len, void *priv,
 			    void *priv2, iov_ustep_f ustep, iov_step_f step)
@@ -298,12 +302,10 @@ size_t iterate_and_advance2(struct iov_iter *iter, size_t len, void *priv,
 	if (unlikely(!len))
 		return 0;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (likely(iter_is_ubuf(iter)))
 		return iterate_ubuf(iter, len, priv, priv2, ustep);
 	if (likely(iter_is_iovec(iter)))
 		return iterate_iovec(iter, len, priv, priv2, ustep);
-#endif
 	if (iov_iter_is_bvec(iter))
 		return iterate_bvec(iter, len, priv, priv2, step);
 	if (iov_iter_is_kvec(iter))
@@ -331,6 +333,8 @@ size_t iterate_and_advance(struct iov_iter *iter, size_t len, void *priv,
 {
 	return iterate_and_advance2(iter, len, priv, NULL, ustep, step);
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * iterate_and_advance_kernel - Iterate over a kernel-internal iterator
@@ -378,5 +382,13 @@ size_t iterate_and_advance_kernel(struct iov_iter *iter, size_t len, void *priv,
 		return iterate_xarray(iter, len, priv, priv2, step);
 	return iterate_discard(iter, len, priv, priv2, step);
 }
+
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+/* No user callback is even parsed in a kernel-only iterator call site. */
+#define iterate_and_advance2(i, n, p, p2, user_step, kernel_step) \
+	iterate_and_advance_kernel(i, n, p, p2, kernel_step)
+#define iterate_and_advance(i, n, p, user_step, kernel_step) \
+	iterate_and_advance_kernel(i, n, p, NULL, kernel_step)
+#endif
 
 #endif /* _LINUX_IOV_ITER_H */

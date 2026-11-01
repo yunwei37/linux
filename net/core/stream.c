@@ -193,12 +193,10 @@ int sk_stream_error(struct sock *sk, int flags, int err)
 {
 	if (err == -EPIPE)
 		err = sock_error(sk) ? : -EPIPE;
-	if (err == -EPIPE && !(flags & MSG_NOSIGNAL))
-		{
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
- send_sig(SIGPIPE, current, 0);
+	if (err == -EPIPE && !(flags & MSG_NOSIGNAL))
+		send_sig(SIGPIPE, current, 0);
 #endif
- }
 	return err;
 }
 EXPORT_SYMBOL(sk_stream_error);

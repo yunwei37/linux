@@ -9,6 +9,7 @@
 #include <linux/uaccess.h>
 #include <asm/smap.h>
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 /**
  * csum_and_copy_from_user - Copy and checksum from user space.
  * @src: source address (user space)
@@ -52,6 +53,8 @@ csum_and_copy_to_user(const void *src, void __user *dst, int len)
 	user_access_end();
 	return sum;
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * csum_partial_copy_nocheck - Copy and checksum.

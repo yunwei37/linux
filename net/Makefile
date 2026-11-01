@@ -80,8 +80,3 @@ obj-$(CONFIG_MPTCP)		+= mptcp/
 obj-$(CONFIG_MCTP)		+= mctp/
 obj-$(CONFIG_NET_HANDSHAKE)	+= handshake/
 obj-$(CONFIG_NET_SHAPER)	+= shaper/
-
-ifdef CONFIG_MODELOS_KERNEL_ONLY
-obj-y := $(filter-out socket.o,$(obj-y))
-obj-y += modelos-socket.o
-endif
