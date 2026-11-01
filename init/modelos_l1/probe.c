@@ -15,6 +15,7 @@ extern NV_STATUS modelos_rm_free(nvidia_stack_t *,NvHandle,NvHandle);
 extern NV_STATUS modelos_l1_resources(nvidia_stack_t *,NvHandle,NvHandle,NvHandle);
 
 extern void l2_counts_dump(void);
+extern int l2_watchdog_wait(void);
 static int __init modelos_l1_probe(void)
 {
     NvU32 ids[32],count=32;
@@ -55,6 +56,7 @@ static int __init modelos_l1_probe(void)
     if(!classes.numClasses){status=NV_ERR_INVALID_STATE;goto done;}
     pr_info("L1_RM_PROBE_PASS gpu=0x%08x classes=%u no_userspace=1\n",ids[0],classes.numClasses);
     CALL("replay-resources",modelos_l1_resources(stack,client,device,subdevice));
+    if(l2_watchdog_wait()){status=NV_ERR_TIMEOUT;goto done;}
     status=NV_OK;
 #undef CALL
 done:
