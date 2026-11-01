@@ -98,6 +98,42 @@ static NV_STATUS smoke(struct executor *c,unsigned root,unsigned launches)
  }
  return NV_OK;
 }
+#if L1_LAUNCH_IS_OPTIM
+#include "l1-optim-oracle.h"
+/* Ordered float-bit distance avoids using host floating point in the kernel. */
+static unsigned ordered(NvU32 x){return x&0x80000000U?~x:x^0x80000000U;}
+static NvU32 integer_float(int value){NvU32 sign=value<0?0x80000000U:0,m=value<0?-value:value;if(!m)return 0;unsigned bit=fls(m)-1;return sign|((127+bit)<<23)|((m<<(23-bit))&0x7fffff);}
+static NV_STATUS optimizations(struct executor *c)
+{
+ NvU32 *q=queue(c);NV_STATUS s;
+ for(unsigned pass=0;pass<2;pass++){
+  static const unsigned pages[2][4]={{2,0,3,1},{1,3,0,2}};
+  for(unsigned i=0;i<4;i++)WRITE_ONCE(q[64+i],pages[pass][i]);WRITE_ONCE(q[69],pass+1);WRITE_ONCE(q[70],7);
+  wmb();for(unsigned node=0;node<5;node++){s=wait_counter(release_ptr(c),submit(c,node,true));pr_info("L1_OPTIM_NODE node=%u status=0x%x\n",node,s);if(s!=NV_OK)return s;}
+  for(unsigned i=0;i<256;i++){int sum=0;for(int k=0;k<16;k++)sum+=((int)((i/16+k)%3)-1)*((int)((k+i%16)%5)-2);if(READ_ONCE(q[256+i])!=integer_float(sum*(pass+1)))return NV_ERR_INVALID_DATA;}
+  unsigned max_ulp=0;
+  for(unsigned i=0;i<32;i++){
+   unsigned got=ordered(READ_ONCE(q[700+i])),want=ordered(optim_expected[i]),delta=got>want?got-want:want-got;
+   if(delta>128||READ_ONCE(q[700+i])!=READ_ONCE(q[800+i]))return NV_ERR_INVALID_DATA;max_ulp=max(max_ulp,delta);
+  }
+  pr_info("L1_OPTIM_CHECK_PASS pass=%u tensor_words=256 flash_words=32 paged_words=32 max_ulp=%u kernel_block_table=%u,%u,%u,%u\n",pass,max_ulp,q[64],q[65],q[66],q[67]);
+ }
+ if(!c->r->peer)return NV_ERR_INVALID_ARGUMENT;
+ struct executor *peer=kvzalloc(struct_size(peer,nodes,ARRAY_SIZE(graph_nodes)),GFP_KERNEL);if(!peer)return NV_ERR_NO_MEMORY;
+ peer->r=c->r->peer;peer->system=true;s=prepare(peer);if(s!=NV_OK)goto done;
+ for(unsigned repeat=0;repeat<3;repeat++){
+  NvU32 a,b;WRITE_ONCE(queue(c)[70],11);WRITE_ONCE(queue(peer)[70],29);wmb();
+  a=submit(c,4,false);b=submit(peer,4,false);s=wait_counter(release_ptr(c),a);if(s!=NV_OK)goto done;s=wait_counter(release_ptr(peer),b);if(s!=NV_OK)goto done;
+  for(unsigned i=0;i<32;i++)if(queue(c)[128+i]!=11000+i||queue(peer)[128+i]!=29000+i){pr_err("L1_OPTIM_STREAM_BAD index=%u a=%u b=%u\n",i,queue(c)[128+i],queue(peer)[128+i]);s=NV_ERR_INVALID_DATA;goto done;}
+  NvU64 a0=counter(queue(c),12),a1=counter(queue(c),14),b0=counter(queue(peer),12),b1=counter(queue(peer),14);
+  pr_info("L1_OPTIM_STREAM_TIMES a0=%llu a1=%llu b0=%llu b1=%llu\n",a0,a1,b0,b1);
+  if(min(a1,b1)<=max(a0,b0)){s=NV_ERR_INVALID_DATA;goto done;}
+  pr_info("L1_OPTIM_STREAM_PASS repeat=%u channels=2 same_tsg=1 same_vas=1 start0=%llu end0=%llu start1=%llu end1=%llu overlap_ns=%llu isolated_words=64\n",repeat,a0,a1,b0,b1,min(a1,b1)-max(a0,b0));
+ }
+ pr_info("L1_OPTIM_PASS tensor=1 flash=1 paged=1 multistream=1 cpl=0 mm=none\n");
+done:kvfree(peer);return s;
+}
+#endif
 #if L1_LAUNCH_IS_QWEN
 static NV_STATUS upload_model(struct executor *c)
 {
@@ -163,6 +199,8 @@ NV_STATUS modelos_l1_launch(struct l1_launch_resources *r)
  c->r=r;c->system=system_commands&&r->host.bytes>=0x100000;s=prepare(c);if(s!=NV_OK)goto out;
 #if L1_LAUNCH_IS_QWEN
  s=upload_model(c);if(s==NV_OK)s=benchmark_mode?benchmark(c):qwen_graph(c);
+#elif L1_LAUNCH_IS_OPTIM
+ s=optimizations(c);
 #else
  s=smoke(c,0,3);if(s==NV_OK)pr_info("L1_GRAPH_PASS launches=3 nodes=3 words=96 cpl=0 mm=none no_libcuda=1\n");
 #endif

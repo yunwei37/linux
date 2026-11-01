@@ -93,7 +93,7 @@ static NvU64 l1_value(struct l1_context *c,struct l1_expression e)
  }
  return value+e.add;
 }
-static NV_STATUS l1_replay(struct l1_context *c)
+static NV_STATUS l1_replay(struct l1_context *c,struct l1_context *shared)
 {
  unsigned i,j;unsigned char params[512] __aligned(8);
  static_assert(sizeof(NVA06C_CTRL_GPFIFO_SCHEDULE_PARAMS)==sizeof(l1_plan_schedule));
@@ -105,10 +105,13 @@ static NV_STATUS l1_replay(struct l1_context *c)
  if(IS_ENABLED(CONFIG_MODELOS_L1_TCP))l1_streams=4;
  if(IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))c->resources[L1_HOST_BYTES].value=0x100000;
  c->resources[L1_STATE_BYTES].value=0x4000000ULL*(IS_ENABLED(CONFIG_MODELOS_L1_TCP)?MODELOS_GPU_ARENAS:l1_streams);
+ if(shared){memcpy(c->resources,shared->resources,sizeof(c->resources));c->virt=shared->virt;c->resources[L1_GPU_BIAS].value+=0x400000;
+  static const unsigned fresh[]={L1_CTX,L1_LOCAL,L1_HOST,L1_ERROR,L1_CHANNEL,L1_COMPUTE,L1_TOKEN};for(unsigned f=0;f<ARRAY_SIZE(fresh);f++)memset(&c->resources[fresh[f]],0,sizeof(c->resources[0]));}
  for(i=0;i<ARRAY_SIZE(l1_operations);i++) {
   const struct l1_operation *op=&l1_operations[i];
   struct l1_resource *r=&c->resources[op->out];NV_STATUS status=NV_ERR_INVALID_ARGUMENT;
   NvHandle handle=0;
+  if(shared&&op->out!=L1_CTX&&op->out!=L1_LOCAL&&op->out!=L1_HOST&&op->out!=L1_ERROR&&op->out!=L1_CHANNEL&&op->out!=L1_COMPUTE&&op->out!=L1_TOKEN&&op->kind!=L1_OP_CONTROL)continue;
   if(op->qwen_only&&!IS_ENABLED(CONFIG_MODELOS_L1_QWEN))continue;
   if(op->out>=L1_RESOURCE_COUNT||op->params_size>sizeof(params))return NV_ERR_INVALID_ARGUMENT;
   memset(params,0,sizeof(params));if(op->params_size)memcpy(params,op->params,op->params_size);
@@ -440,7 +443,7 @@ stop:
 NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle device,NvHandle sub)
 {
  struct l1_context c={.stack=stack,.client=client,.device=device,.sub=sub};
- L1_TRY("resource-trace",l1_replay(&c));
+ L1_TRY("resource-trace",l1_replay(&c,NULL));
  pr_info("L1_REPLAY_RESOURCES_PASS token=0x%x no_submission=1\n",c.token);
 #ifdef CONFIG_MODELOS_L1_LAUNCH
  {
@@ -448,6 +451,15 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
 #define COPY_MEMORY(dst,role) resources.dst=(struct l1_launch_memory){c.resources[role].memory.cpu,c.resources[role].memory.gpu,c.resources[role].memory.bytes}
   COPY_MEMORY(local,L1_LOCAL);COPY_MEMORY(host,L1_HOST);COPY_MEMORY(weights,L1_WEIGHTS);COPY_MEMORY(state,L1_STATE);
 #undef COPY_MEMORY
+  if(l1_streams==2){
+   struct l1_context peer={.stack=stack,.client=client,.device=device,.sub=sub};struct l1_launch_resources second={0};
+   L1_TRY("shared-channel-trace",l1_replay(&peer,&c));
+   second.doorbell=peer.doorbell;second.token=peer.token;
+   second.local=(struct l1_launch_memory){peer.resources[L1_LOCAL].memory.cpu,peer.resources[L1_LOCAL].memory.gpu,peer.resources[L1_LOCAL].memory.bytes};
+   second.host=(struct l1_launch_memory){peer.resources[L1_HOST].memory.cpu,peer.resources[L1_HOST].memory.gpu,peer.resources[L1_HOST].memory.bytes};
+   resources.peer=&second;pr_info("L1_SHARED_STREAMS channels=2 same_vas=1 same_tsg=1 token0=%u token1=%u\n",resources.token,second.token);
+   return modelos_l1_launch(&resources);
+  }
   return modelos_l1_launch(&resources);
  }
 #endif
