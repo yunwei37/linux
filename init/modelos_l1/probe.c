@@ -12,6 +12,8 @@ extern NV_STATUS modelos_rm_alloc(nvidia_stack_t *,NvHandle,NvHandle,NvHandle *,
 extern NV_STATUS modelos_rm_control(nvidia_stack_t *,NvHandle,NvHandle,NvU32,void *,NvU32);
 extern NV_STATUS modelos_rm_free(nvidia_stack_t *,NvHandle,NvHandle);
 
+extern NV_STATUS modelos_l1_resources(nvidia_stack_t *,NvHandle,NvHandle,NvHandle);
+
 static int __init modelos_l1_probe(void)
 {
     NvU32 ids[32],count=32;
@@ -51,10 +53,12 @@ static int __init modelos_l1_probe(void)
     CALL("classes",modelos_rm_control(stack,client,device,NV0080_CTRL_CMD_GPU_GET_CLASSLIST,&classes,sizeof(classes)));
     if(!classes.numClasses){status=NV_ERR_INVALID_STATE;goto done;}
     pr_info("L1_RM_PROBE_PASS gpu=0x%08x classes=%u no_userspace=1\n",ids[0],classes.numClasses);
+    CALL("replay-resources",modelos_l1_resources(stack,client,device,subdevice));
     status=NV_OK;
 #undef CALL
 done:
     if(status!=NV_OK)pr_err("L1_RM_PROBE_FAIL status=0x%08x held=%u\n",status,held);
+    if(status==NV_ERR_TIMEOUT) { pr_err("L1_REPLAY_RETAIN active channel: retain RM resources until VM teardown\n");return 0; }
     if(client){NV_STATUS released=modelos_rm_free(stack,client,client);pr_info("L1_RM_FREE status=0x%08x\n",released);}
     if(held)nvidia_dev_put(ids[0],stack,NV_FALSE);
     nv_kmem_cache_free_stack(stack);
