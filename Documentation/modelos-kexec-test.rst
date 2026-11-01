@@ -20,3 +20,9 @@ against a deterministic pattern. A warm KHO boot is mandatory for that test.
 Use ``earlyprintk=serial,ttyS0,115200 keep_bootcon`` for the kernel-only serial
 console. GPU experiments and observations are documented at
 https://github.com/yunwei37/modelos/blob/main/docs/gpu-serve/kexec.md .
+
+A fresh cold guest can preload the same image/manifest into a named RAM
+reservation (mode zero). This uses the same payload validation and RAM
+mapping path as a warm handover; ``kho_boot`` still distinguishes the cases.
+The source-mapping diagnostic helps avoid attributing different cold
+``memmap=$`` and named-RAM cache mappings to kexec itself.

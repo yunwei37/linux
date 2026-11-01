@@ -201,6 +201,9 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
 #endif
  source=memremap(physical,bytes,MEMREMAP_WB);
  if(!source)return NV_ERR_NO_MEMORY;
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ pr_info("KEXEC_WEIGHT_SOURCE phys=%pa vmalloc_mapping=%u kho_boot=%u\n",&physical,is_vmalloc_addr(source),is_kho_boot());
+#endif
  if(memcmp(source,"MOSQ3B1",7)||*(NvU64 *)((char *)source+48)!=bytes){memunmap(source);return NV_ERR_INVALID_DATA;}
  for(NvU64 offset=0;offset<bytes;offset+=0x10000) {
   memcpy_toio((void __iomem *)weights.cpu+offset,(char *)source+offset,min_t(NvU64,0x10000,bytes-offset));
