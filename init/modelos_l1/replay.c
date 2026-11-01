@@ -58,6 +58,10 @@ static NV_STATUS l1_memory(struct l1_context *c,struct l1_memory *m,const unsign
  return NV_OK;
 }
 static u64 l1_boot_weights_phys,l1_boot_gpu_bias;
+static unsigned l1_streams=1;
+static int __init l1_streams_arg(char *s)
+{unsigned n;if(kstrtouint(s,0,&n)||n<1||n>4)return 0;l1_streams=n;return 1;}
+__setup("l1_streams=",l1_streams_arg);
 static int __init l1_physical_arg(char *s){return !kstrtou64(s,0,&l1_boot_weights_phys);}
 static int __init l1_bias_arg(char *s){return !kstrtou64(s,0,&l1_boot_gpu_bias);}
 __setup("l1_weights_phys=",l1_physical_arg);
@@ -81,6 +85,7 @@ static NV_STATUS l1_replay(struct l1_context *c)
  c->resources[L1_CLIENT].value=c->client;c->resources[L1_DEVICE].value=c->device;c->resources[L1_SUB].value=c->sub;
  if(l1_boot_weights_phys)c->resources[L1_WEIGHTS_PHYS].value=l1_boot_weights_phys;
  c->resources[L1_GPU_BIAS].value+=l1_boot_gpu_bias;
+ c->resources[L1_STATE_BYTES].value=0x4000000ULL*l1_streams;
  for(i=0;i<ARRAY_SIZE(l1_operations);i++) {
   const struct l1_operation *op=&l1_operations[i];
   struct l1_resource *r=&c->resources[op->out];NV_STATUS status=NV_ERR_INVALID_ARGUMENT;
@@ -187,6 +192,72 @@ static NV_STATUS l1_step(NvU32 *queue,NvU32 *serial,NvU32 token,NvU32 position,N
  dma_rmb();if(READ_ONCE(queue[5]))return NV_ERR_INVALID_DATA;
  *result=READ_ONCE(queue[4]);return NV_OK;
 }
+
+#define L1_ARENA_BYTES 0x4000000ULL
+static void l1_canaries(struct l1_memory *state,unsigned arenas)
+{
+ unsigned a,j;for(a=0;a<arenas;a++)for(j=0;j<16;j++) {
+  writel(0x51a70000U+a*256+j,(void __iomem *)state->cpu+a*L1_ARENA_BYTES+0x3b00000+j*4);
+  writel(0x93c80000U+a*256+j,(void __iomem *)state->cpu+a*L1_ARENA_BYTES+0x3fff000+j*4);
+ }wmb();
+}
+static bool l1_canary_ok(struct l1_memory *state,unsigned a)
+{
+ unsigned j;for(j=0;j<16;j++) {
+  if(readl((void __iomem *)state->cpu+a*L1_ARENA_BYTES+0x3b00000+j*4)!=0x51a70000U+a*256+j)return false;
+  if(readl((void __iomem *)state->cpu+a*L1_ARENA_BYTES+0x3fff000+j*4)!=0x93c80000U+a*256+j)return false;
+ }return true;
+}
+static NV_STATUS l1_parallel(NvU32 *queue,struct l1_memory *state,unsigned *matched,NvU32 *steps)
+{
+ struct run {unsigned id,pos,generated,serial;bool active;u64 deadline;} runs[4]={0};
+ u64 first_start[4]={0},first_end[4]={0},latest=0,earliest=U64_MAX;
+ unsigned slot,next=l1_streams,completed=0,peak=l1_streams;NvU32 smids[4]={0};
+ for(slot=0;slot<l1_streams;slot++){runs[slot].id=slot;runs[slot].active=true;}
+ while(completed<ARRAY_SIZE(l1_cases)) {
+  for(slot=0;slot<l1_streams;slot++) {
+   struct run *r=&runs[slot];NvU32 *q=queue+slot*64,result;
+   if(!r->active)continue;
+   if(r->serial&&READ_ONCE(q[1])!=r->serial) {
+    if(ktime_get_ns()>r->deadline)return NV_ERR_TIMEOUT;
+    continue;
+   }
+   if(r->serial) {
+    dma_rmb();if(READ_ONCE(q[5])||READ_ONCE(q[9])!=r->id+1)return NV_ERR_INVALID_DATA;
+    result=READ_ONCE(q[4]);
+    if(!r->pos&&r->id<4) {
+     first_start[slot]=READ_ONCE(*(NvU64 *)(q+12));first_end[slot]=READ_ONCE(*(NvU64 *)(q+14));smids[slot]=READ_ONCE(q[6]);
+    }
+    ++r->pos;
+    if(r->pos>=l1_cases[r->id].inputs) {
+     unsigned index=r->generated++;
+     pr_info("L1_QWEN_TOKEN case=%u index=%u got=%u expected=%u\n",r->id,index,result,l1_cases[r->id].output[index]);
+     if(result!=l1_cases[r->id].output[index])return NV_ERR_INVALID_DATA;
+     ++*matched;
+    }
+    if(r->generated==l1_cases[r->id].outputs) {
+     if(!l1_canary_ok(state,slot))return NV_ERR_INVALID_DATA;
+     pr_info("L1_QWEN_CASE_PASS case=%u tokens=%u slot=%u arena=0x%llx request_echo=%u canaries=32\n",r->id,r->generated,slot,state->gpu+slot*L1_ARENA_BYTES,READ_ONCE(q[9]));
+     ++completed;
+     if(next<ARRAY_SIZE(l1_cases)){r->id=next++;r->pos=r->generated=0;}
+     else{r->active=false;continue;}
+    }
+   } else result=0;
+   WRITE_ONCE(q[2],r->pos<l1_cases[r->id].inputs?l1_cases[r->id].input[r->pos]:result);
+   WRITE_ONCE(q[3],r->pos);WRITE_ONCE(q[8],r->id+1);WRITE_ONCE(q[10],slot);WRITE_ONCE(q[11],l1_streams);
+   ++r->serial;++*steps;wmb();WRITE_ONCE(q[0],r->serial);wmb();r->deadline=ktime_get_ns()+20ULL*NSEC_PER_SEC;
+  }
+  usleep_range(50,100);
+ }
+ for(slot=0;slot<l1_streams;slot++) {
+  pr_info("L1_QWEN_GPU_INTERVAL slot=%u sm=%u start=%llu end=%llu\n",slot,smids[slot],first_start[slot],first_end[slot]);
+  latest=max(latest,first_start[slot]);earliest=min(earliest,first_end[slot]);
+ }
+ if(latest>=earliest)return NV_ERR_INVALID_DATA;
+ pr_info("L1_QWEN_CONCURRENT_PASS streams=%u peak=%u gpu_overlap_ns=%llu arenas=%u canaries=32_per_arena request_echo=1\n",l1_streams,peak,earliest-latest,l1_streams);
+ return NV_OK;
+}
+
 static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_memory *host)
 {
  struct l1_memory weights=c->resources[L1_WEIGHTS].memory,state=c->resources[L1_STATE].memory;
@@ -226,7 +297,9 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
  l1_bits(q,511,480,(NvU32)(host->gpu+0x1000));l1_bits(q,536,512,(host->gpu+0x1000)>>32);
  l1_bits(q,575,544,1);l1_bits(q,607,576,0);l1_bits(q,304,304,0);
  l1_bits(q,351,336,0);l1_bits(q,447,384,0);l1_bits(q,623,608,0);
- memset(queue,0,4096);WRITE_ONCE(*released,0);
+ l1_bits(q,1279,1248,l1_streams);
+ memset(queue,0,4096);WRITE_ONCE(queue[8],1);WRITE_ONCE(queue[11],l1_streams);WRITE_ONCE(*released,0);
+ l1_canaries(&state,l1_streams);
  memcpy_toio((void __iomem *)local->cpu+0x40000,qcode,code_bytes);
  memcpy_toio((void __iomem *)local->cpu+0x30000,q,sizeof(q));
  memcpy_toio((void __iomem *)local->cpu+0x31000,constants,sizeof(constants));
@@ -240,6 +313,7 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
  wmb();writel(1,(void __iomem *)local->cpu+0x208c);wmb();writel(c->token,(void __iomem *)c->doorbell+0x90);
  start=ktime_get_ns();
  pr_info("L1_QWEN_PERSISTENT_SUBMIT regs=%u smem=%u code_bytes=%zu\n",L1_QWEN_REGISTERS,L1_QWEN_SHARED_BYTES,sizeof(l1_qwen_code));
+ if(l1_streams>1){status=l1_parallel(queue,&state,&matched,&serial);goto stop;}
  for(i=0;i<ARRAY_SIZE(l1_cases);i++) {
   for(j=0;j<l1_cases[i].inputs;j++){status=l1_step(queue,&serial,l1_cases[i].input[j],j,&result);if(status!=NV_OK)goto stop;}
   for(j=0;j<l1_cases[i].outputs;j++) {
@@ -254,7 +328,7 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
   pr_info("L1_QWEN_CASE_PASS case=%u tokens=%u\n",i,l1_cases[i].outputs);
  }
 stop:
- WRITE_ONCE(queue[0],0xffffffffU);wmb();deadline=ktime_get_ns()+20ULL*NSEC_PER_SEC;
+ for(i=0;i<l1_streams;i++)WRITE_ONCE(queue[i*64],0xffffffffU);wmb();deadline=ktime_get_ns()+20ULL*NSEC_PER_SEC;
  while(READ_ONCE(*released)!=1 && ktime_get_ns()<deadline)usleep_range(50,100);
  pr_info("L1_QWEN_FINISH status=0x%x release=%u matched=%u steps=%u elapsed_ns=%llu\n",status,READ_ONCE(*released),matched,serial,ktime_get_ns()-start);
  if(READ_ONCE(*released)!=1)return NV_ERR_TIMEOUT;
