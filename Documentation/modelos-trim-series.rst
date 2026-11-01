@@ -6,7 +6,8 @@ ordered on Linux v6.18.57 (2ff600d29ee478d0a8d46ef8a58afb5e038fe692).
 It includes the C/Rust privileged entry, syscall/return removal, exec/user-MM/
 VFS removal, optional-driver integration, user-copy/frame removal, user identity
 and signal-queue removal, the normal-Linux clone-guard correction, and residual
-FPU/prctl/fork-helper exclusion. Kernel workers, page tables and kernel allocation
+FPU/prctl/fork-helper exclusion, kernel-only TCP socket/iterator specialization,
+and exclusion of the unused syscall/UID-overflow kernel/sys.o unit. Kernel workers, page tables and kernel allocation
 remain. This is an x86-64 kernel-only specialization, not a general Linux ABI.
 
 Export and apply in a clean application-owned checkout::
@@ -32,7 +33,13 @@ fork pin. Enabling the flag alone on an arbitrary defconfig is not sufficient:
 IA32/X32/FRED/Xen, userspace loaders, modules and user filesystems must be off.
 Rebuild and audit the actual final ELF, then run the real payload acceptance.
 Do not satisfy a new consumer's link failure by silently restoring user MM.
-Kernel networking or other added consumers need an explicit kernel API port.
+The TCP specialization retains kernel socket ownership, kernel iterators,
+checksum copy, static IP configuration and actual driver ethtool/RSS callbacks.
+It excludes socket files/fds/sockfs, user poll/ioctl/splice, user netlink endpoints,
+SCM transport, user zerocopy pinning and user buffer constructors. Other added
+consumers still need an explicit kernel API port. The networking commit is an
+independent parent retained by a normal merge with the concurrent GPU serving
+port; the export contains source specialization only, not the serving payload.
 
 The historical CPU-serving builder's first three trim patches produce exactly
 the tree at 915f1376a (tree 7b458e25969df2d3b8f108a5f1762fb83a147165).
