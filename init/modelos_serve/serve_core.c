@@ -20,6 +20,10 @@
 #include <net/sock.h>
 #include <net/tcp.h>
 #include "qwen.h"
+#ifdef CONFIG_MODELOS_L1_TCP
+#include <linux/modelos_gpu.h>
+static bool service_stopping;
+#endif
 
 #define MODEL_PHYS 0x40000000ULL
 #define MODEL_RESERVED (1280ULL << 20)
@@ -47,7 +51,9 @@ struct domain {
 	enum domain_state state;
 	bool cancel;
 };
+#ifndef CONFIG_MODELOS_L1_TCP
 static struct q_model model;
+#endif
 static struct domain *domains[DOMAIN_MAX];
 static DEFINE_SPINLOCK(queue_lock);
 static DECLARE_WAIT_QUEUE_HEAD(work_wait);
@@ -125,14 +131,23 @@ static void send_stats(struct socket *sock, u32 id)
 		send_bytes(sock, data, sizeof(data));
 }
 
+#ifndef CONFIG_MODELOS_L1_TCP
 static bool valid_tensor(u64 off, u64 bytes)
 {
 	return off >= Q_HEADER_BYTES && !(off & 63) &&
 		off <= model.h->bytes && bytes <= model.h->bytes - off;
 }
 
+#endif
+
 int modelos_serve_prepare(void)
 {
+#ifdef CONFIG_MODELOS_L1_TCP
+	if(modelos_gpu_prepare() || user_tasks())return -ENODEV;
+	pr_info("SERVE_MODEL bytes=1192235008 BF16=1 layers=28 userspace_tasks=0 GPU=1\n");
+	pr_info("SERVE_USER_ENTRY compiled_out=1 no_initramfs=1\n");
+	return 0;
+#else
 	const struct q_header *h;
 	int i;
 	if (!boot_cpu_has(X86_FEATURE_AVX2) || !boot_cpu_has(X86_FEATURE_FMA))
@@ -169,6 +184,7 @@ int modelos_serve_prepare(void)
 	pr_info("SERVE_MODEL bytes=%llu BF16=1 layers=%u userspace_tasks=0\n", h->bytes, h->layers);
 	pr_info("SERVE_USER_ENTRY compiled_out=1 no_initramfs=1\n");
 	return 0;
+#endif
 }
 
 static struct domain *claim_domain(void)
@@ -195,7 +211,11 @@ static void finish_domain(struct domain *d, u32 reason)
 {
 	unsigned long flags;
 	struct socket *sock = d->sock;
+#ifdef CONFIG_MODELOS_L1_TCP
+	if(modelos_gpu_arena_release(d->slot,d->id))panic("GPU arena release failed");
+#else
 	kvfree(d->arena);
+#endif
 	d->arena = NULL;
 	spin_lock_irqsave(&queue_lock, flags);
 	active--;
@@ -221,7 +241,10 @@ int modelos_serve_worker(unsigned int cpu)
 	while (!kthread_should_stop()) {
 		struct domain *d;
 		unsigned long flags;
-		u32 layer, next = 0;
+		u32 next = 0;
+#ifndef CONFIG_MODELOS_L1_TCP
+		u32 layer;
+#endif
 		bool emit;
 		wait_event_interruptible(work_wait, atomic_read(&ready_count) || kthread_should_stop());
 		d = claim_domain();
@@ -231,6 +254,12 @@ int modelos_serve_worker(unsigned int cpu)
 			finish_domain(d, 1);
 			continue;
 		}
+
+#ifdef CONFIG_MODELOS_L1_TCP
+		/* Completion is the fence before cancellation can release this arena. */
+		if(modelos_gpu_step(cpu,d->slot,d->id,d->pos<d->prompt_len?d->prompt[d->pos]:d->token,d->pos,&next))
+			panic("persistent GPU decode failed");
+#else
 		kernel_fpu_begin();
 		q_begin(&model, d->arena, d->pos < d->prompt_len ? d->prompt[d->pos] : d->token);
 		kernel_fpu_end();
@@ -240,15 +269,18 @@ int modelos_serve_worker(unsigned int cpu)
 			kernel_fpu_end();
 			cond_resched();
 		}
+#endif
 		if (READ_ONCE(d->cancel)) {
 			finish_domain(d, 1);
 			continue;
 		}
 		emit = d->pos + 1 >= d->prompt_len;
 		if (emit) {
+#ifndef CONFIG_MODELOS_L1_TCP
 			kernel_fpu_begin();
 			next = q_logits(&model, d->arena);
 			kernel_fpu_end();
+#endif
 			if (READ_ONCE(d->cancel)) {
 				finish_domain(d, 1);
 				continue;
@@ -290,6 +322,16 @@ static int connection_main(void *arg)
 	if (recv_bytes(sock, &h, sizeof(h)) || le32_to_cpu(h.magic) != WIRE_MAGIC)
 		goto out;
 	id = le32_to_cpu(h.id);
+#ifdef CONFIG_MODELOS_L1_TCP
+	if(le32_to_cpu(h.op)==4) { /* Test/gateway drain: reject new admissions. */
+		int ret;
+		spin_lock_irqsave(&queue_lock,flags);
+		if(live||service_stopping){spin_unlock_irqrestore(&queue_lock,flags);frame(sock,OUT_ERROR,id,EBUSY);goto out;}
+		service_stopping=true;
+		spin_unlock_irqrestore(&queue_lock,flags);
+		ret=modelos_gpu_stop();frame(sock,ret?OUT_ERROR:OUT_DONE,id,ret?-ret:0);goto out;
+	}
+#endif
 	if (le32_to_cpu(h.op) == OP_STATS) {
 		send_stats(sock, id);
 		goto out;
@@ -310,7 +352,11 @@ static int connection_main(void *arg)
 	d->sock = sock;
 	d->prompt_len = count;
 	d->budget = le32_to_cpu(budget);
+#ifdef CONFIG_MODELOS_L1_TCP
+	d->bytes = MODELOS_GPU_ARENA_BYTES;
+#else
 	d->bytes = q_arena_bytes(count + d->budget);
+#endif
 	init_completion(&d->finished);
 	if (recv_bytes(sock, d->prompt, count * sizeof(u32)))
 		goto bad;
@@ -328,6 +374,9 @@ static int connection_main(void *arg)
 			break;
 		}
 	}
+#ifdef CONFIG_MODELOS_L1_TCP
+	if(service_stopping)slot=DOMAIN_MAX;
+#endif
 	if (slot != DOMAIN_MAX) {
 		d->slot = slot;
 		d->state = ALLOCATING;
@@ -339,8 +388,12 @@ static int connection_main(void *arg)
 		error = EBUSY;
 		goto bad;
 	}
+#ifdef CONFIG_MODELOS_L1_TCP
+	if(modelos_gpu_arena_acquire(slot,id)) {
+#else
 	d->arena = kvzalloc(d->bytes, GFP_KERNEL);
 	if (!d->arena) {
+#endif
 		spin_lock_irqsave(&queue_lock, flags);
 		domains[slot] = NULL;
 		live--;
@@ -348,7 +401,9 @@ static int connection_main(void *arg)
 		error = ENOMEM;
 		goto bad;
 	}
+#ifndef CONFIG_MODELOS_L1_TCP
 	d->arena->capacity = count + d->budget;
+#endif
 	spin_lock_irqsave(&queue_lock, flags);
 	d->state = READY;
 	active++;

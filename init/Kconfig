@@ -2262,3 +2262,10 @@ config MODELOS_SERVE
 	depends on MODELOS && NET && INET && VIRTIO_NET
 	help
 	  Serve model token IDs from bound kernel workers over kernel TCP sockets.
+
+config MODELOS_L1_TCP
+	bool "Serve Qwen token requests through the replayed GPU engine"
+	depends on MODELOS_L1_QWEN && MODELOS_SERVE
+	help
+	  Keep four GPU CTAs resident after L1 RM replay. Bound CPU workers
+	  dispatch TCP request domains into eight private GPU state arenas.

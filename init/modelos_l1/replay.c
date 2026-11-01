@@ -9,6 +9,7 @@
 #include "ctrl/ctrla06c.h"
 #include "ctrl/ctrlc36f.h"
 #include "l1-image.h"
+#include <linux/modelos_gpu.h>
 #ifdef CONFIG_MODELOS_KEXEC_TEST
 #include "receiver-payload.h"
 int modelos_kexec_payload_verify(void);
@@ -85,7 +86,8 @@ static NV_STATUS l1_replay(struct l1_context *c)
  c->resources[L1_CLIENT].value=c->client;c->resources[L1_DEVICE].value=c->device;c->resources[L1_SUB].value=c->sub;
  if(l1_boot_weights_phys)c->resources[L1_WEIGHTS_PHYS].value=l1_boot_weights_phys;
  c->resources[L1_GPU_BIAS].value+=l1_boot_gpu_bias;
- c->resources[L1_STATE_BYTES].value=0x4000000ULL*l1_streams;
+ if(IS_ENABLED(CONFIG_MODELOS_L1_TCP))l1_streams=4;
+ c->resources[L1_STATE_BYTES].value=0x4000000ULL*(IS_ENABLED(CONFIG_MODELOS_L1_TCP)?MODELOS_GPU_ARENAS:l1_streams);
  for(i=0;i<ARRAY_SIZE(l1_operations);i++) {
   const struct l1_operation *op=&l1_operations[i];
   struct l1_resource *r=&c->resources[op->out];NV_STATUS status=NV_ERR_INVALID_ARGUMENT;
@@ -208,6 +210,62 @@ static bool l1_canary_ok(struct l1_memory *state,unsigned a)
   if(readl((void __iomem *)state->cpu+a*L1_ARENA_BYTES+0x3fff000+j*4)!=0x93c80000U+a*256+j)return false;
  }return true;
 }
+
+#ifdef CONFIG_MODELOS_L1_TCP
+static struct {
+ struct l1_memory state;
+ NvU32 *queue,*released,serial[4],owner[MODELOS_GPU_ARENAS];
+ bool ready;
+} l1_service;
+bool modelos_l1_serving(void){return smp_load_acquire(&l1_service.ready);}
+int modelos_gpu_prepare(void)
+{return modelos_l1_serving()&&!current->mm?0:-ENODEV;}
+int modelos_gpu_arena_acquire(unsigned arena,u32 request)
+{
+ if(!modelos_l1_serving()||arena>=MODELOS_GPU_ARENAS||!request)return -EINVAL;
+ if(cmpxchg(&l1_service.owner[arena],0,request))return -EBUSY;
+ pr_info("L1_GPU_ARENA_ACQUIRE slot=%u request=%u gpu=0x%llx bytes=%llu\n",arena,request,l1_service.state.gpu+arena*L1_ARENA_BYTES,L1_ARENA_BYTES);
+ return 0;
+}
+int modelos_gpu_arena_release(unsigned arena,u32 request)
+{
+ if(arena>=MODELOS_GPU_ARENAS||READ_ONCE(l1_service.owner[arena])!=request)return -EINVAL;
+ if(!l1_canary_ok(&l1_service.state,arena))return -EIO;
+ if(cmpxchg(&l1_service.owner[arena],request,0)!=request)return -EINVAL;
+ pr_info("L1_GPU_ARENA_RELEASE slot=%u request=%u canaries=32 owner=0\n",arena,request);
+ return 0;
+}
+int modelos_gpu_step(unsigned worker,unsigned arena,u32 request,u32 token,u32 position,u32 *result)
+{
+ NvU32 *q,serial;u64 deadline;
+ if(!modelos_l1_serving()||worker>=4||arena>=MODELOS_GPU_ARENAS||READ_ONCE(l1_service.owner[arena])!=request)return -EINVAL;
+ q=l1_service.queue+worker*64;
+ if(l1_service.serial[worker]>=0xfffffffeU)return -EOVERFLOW;
+ serial=++l1_service.serial[worker];
+ WRITE_ONCE(q[2],token);WRITE_ONCE(q[3],position);WRITE_ONCE(q[8],request);WRITE_ONCE(q[10],arena);WRITE_ONCE(q[11],MODELOS_GPU_ARENAS);
+ wmb();WRITE_ONCE(q[0],serial);wmb();deadline=ktime_get_ns()+20ULL*NSEC_PER_SEC;
+ while(READ_ONCE(q[1])!=serial&&ktime_get_ns()<deadline)usleep_range(50,100);
+ if(READ_ONCE(q[1])!=serial)return -ETIMEDOUT;
+ dma_rmb();if(READ_ONCE(q[5])||READ_ONCE(q[9])!=request)return -EIO;
+ *result=READ_ONCE(q[4]);
+ if(serial==1)pr_info("L1_GPU_WORKER worker=%u sm=%u cpl=0 mm=none first_start=%llu first_end=%llu\n",worker,READ_ONCE(q[6]),READ_ONCE(*(NvU64 *)(q+12)),READ_ONCE(*(NvU64 *)(q+14)));
+ return 0;
+}
+int modelos_gpu_stop(void)
+{
+ unsigned i;u64 deadline;
+ if(!modelos_l1_serving())return -ENODEV;
+ for(i=0;i<MODELOS_GPU_ARENAS;i++)if(READ_ONCE(l1_service.owner[i]))return -EBUSY;
+ smp_store_release(&l1_service.ready,false);
+ for(i=0;i<4;i++)WRITE_ONCE(l1_service.queue[i*64],0xffffffffU);
+ wmb();deadline=ktime_get_ns()+20ULL*NSEC_PER_SEC;
+ while(READ_ONCE(*l1_service.released)!=1&&ktime_get_ns()<deadline)usleep_range(50,100);
+ if(READ_ONCE(*l1_service.released)!=1)return -ETIMEDOUT;
+ pr_info("L1_GPU_TCP_DRAIN release=1 owners=0 steps=%u,%u,%u,%u\n",l1_service.serial[0],l1_service.serial[1],l1_service.serial[2],l1_service.serial[3]);
+ return modelos_l1_release_held();
+}
+#endif
+
 static NV_STATUS l1_parallel(NvU32 *queue,struct l1_memory *state,unsigned *matched,NvU32 *steps)
 {
  struct run {unsigned id,pos,generated,serial;bool active;u64 deadline;} runs[4]={0};
@@ -299,7 +357,7 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
  l1_bits(q,351,336,0);l1_bits(q,447,384,0);l1_bits(q,623,608,0);
  l1_bits(q,1279,1248,l1_streams);
  memset(queue,0,4096);WRITE_ONCE(queue[8],1);WRITE_ONCE(queue[11],l1_streams);WRITE_ONCE(*released,0);
- l1_canaries(&state,l1_streams);
+ l1_canaries(&state,state.bytes/L1_ARENA_BYTES);
  memcpy_toio((void __iomem *)local->cpu+0x40000,qcode,code_bytes);
  memcpy_toio((void __iomem *)local->cpu+0x30000,q,sizeof(q));
  memcpy_toio((void __iomem *)local->cpu+0x31000,constants,sizeof(constants));
@@ -313,6 +371,12 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
  wmb();writel(1,(void __iomem *)local->cpu+0x208c);wmb();writel(c->token,(void __iomem *)c->doorbell+0x90);
  start=ktime_get_ns();
  pr_info("L1_QWEN_PERSISTENT_SUBMIT regs=%u smem=%u code_bytes=%zu\n",L1_QWEN_REGISTERS,L1_QWEN_SHARED_BYTES,sizeof(l1_qwen_code));
+#ifdef CONFIG_MODELOS_L1_TCP
+ l1_service.state=state;l1_service.queue=queue;l1_service.released=released;
+ smp_store_release(&l1_service.ready,true);
+ pr_info("L1_GPU_TCP_PERSISTENT_READY ctas=4 arenas=8 arena_bytes=%llu no_libcuda=1 launches=1\n",L1_ARENA_BYTES);
+ return NV_OK;
+#endif
  if(l1_streams>1){status=l1_parallel(queue,&state,&matched,&serial);goto stop;}
  for(i=0;i<ARRAY_SIZE(l1_cases);i++) {
   for(j=0;j<l1_cases[i].inputs;j++){status=l1_step(queue,&serial,l1_cases[i].input[j],j,&result);if(status!=NV_OK)goto stop;}

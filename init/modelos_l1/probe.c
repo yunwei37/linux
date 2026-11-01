@@ -2,6 +2,7 @@
 /* L1 consumer: call the trim lane's direct RM bridge, never an ioctl. */
 #include "nv-linux.h"
 #include "nvos.h"
+#include <linux/modelos_gpu.h>
 #ifdef CONFIG_MODELOS_KEXEC_TEST
 #include <linux/kexec_handover.h>
 #include <linux/memblock.h>
@@ -22,6 +23,22 @@ extern int modelos_kexec_payload_verify(void);
 #endif
 
 extern NV_STATUS modelos_l1_resources(nvidia_stack_t *,NvHandle,NvHandle,NvHandle);
+
+
+#ifdef CONFIG_MODELOS_L1_TCP
+static struct {nvidia_stack_t *stack;NvHandle client;NvU32 gpuid;bool held;} tcp_hold;
+int modelos_l1_release_held(void)
+{
+ NV_STATUS s;
+ if(!tcp_hold.held)return -ENODEV;
+ s=modelos_rm_free(tcp_hold.stack,tcp_hold.client,tcp_hold.client);
+ pr_info("L1_RM_FREE status=0x%08x tcp_drain=1\n",s);
+ if(s!=NV_OK)return -EIO;
+ nvidia_dev_put(tcp_hold.gpuid,tcp_hold.stack,NV_FALSE);
+ nv_kmem_cache_free_stack(tcp_hold.stack);tcp_hold.held=false;
+ return 0;
+}
+#endif
 
 static int __init modelos_l1_probe(void)
 {
@@ -80,6 +97,12 @@ static int __init modelos_l1_probe(void)
     pr_info("L1_RM_PROBE_PASS gpu=0x%08x classes=%u no_userspace=1\n",ids[0],classes.numClasses);
     CALL("replay-resources",modelos_l1_resources(stack,client,device,subdevice));
     status=NV_OK;
+#ifdef CONFIG_MODELOS_L1_TCP
+    if(modelos_l1_serving()) {
+        tcp_hold.stack=stack;tcp_hold.client=client;tcp_hold.gpuid=ids[0];tcp_hold.held=true;
+        pr_info("L1_RM_TCP_HANDOFF retained=1 no_userspace=1\n");return 0;
+    }
+#endif
 #undef CALL
 done:
     if(status!=NV_OK)pr_err("L1_RM_PROBE_FAIL status=0x%08x held=%u\n",status,held);
