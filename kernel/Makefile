@@ -213,7 +213,8 @@ $(obj)/kheaders.md5: $(obj)/kheaders-srclist FORCE
 clean-files := kheaders.md5 kheaders-srclist kheaders-objlist
 
 ifdef CONFIG_MODELOS_KERNEL_ONLY
-obj-y := $(filter-out ptrace.o capability.o,$(obj-y))
+# No syscall bodies or UID-overflow sysctl are consumed by kernel workers.
+obj-y := $(filter-out ptrace.o capability.o sys.o,$(obj-y))
 endif
 
 ifdef CONFIG_MODELOS_KERNEL_ONLY
