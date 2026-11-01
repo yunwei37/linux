@@ -2134,10 +2134,12 @@ char *flags_string(char *buf, char *end, void *flags_ptr,
 	switch (fmt[1]) {
 	case 'p':
 		return format_page_flags(buf, end, *(unsigned long *)flags_ptr);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	case 'v':
 		flags = *(unsigned long *)flags_ptr;
 		names = vmaflag_names;
 		break;
+#endif
 	case 'g':
 		flags = (__force unsigned long)(*(gfp_t *)flags_ptr);
 		names = gfpflag_names;

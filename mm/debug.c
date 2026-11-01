@@ -41,10 +41,12 @@ const struct trace_print_flags gfpflag_names[] = {
 	{0, NULL}
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 const struct trace_print_flags vmaflag_names[] = {
 	__def_vmaflag_names,
 	{0, NULL}
 };
+#endif
 
 #define DEF_PAGETYPE_NAME(_name) [PGTY_##_name - 0xf0] =  __stringify(_name)
 
@@ -154,6 +156,7 @@ EXPORT_SYMBOL(dump_page);
 
 #ifdef CONFIG_DEBUG_VM
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void dump_vma(const struct vm_area_struct *vma)
 {
 	pr_emerg("vma %px start %px end %px mm %px\n"
@@ -173,6 +176,7 @@ void dump_vma(const struct vm_area_struct *vma)
 		vma->vm_flags, &vma->vm_flags);
 }
 EXPORT_SYMBOL(dump_vma);
+#endif
 
 void dump_mm(const struct mm_struct *mm)
 {
