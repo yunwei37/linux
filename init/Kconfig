@@ -2249,3 +2249,11 @@ config MODELOS_L1
 config MODELOS_L1_QWEN
 	bool "Run the L1 persistent Qwen GPU validation"
 	depends on MODELOS_L1
+
+config MODELOS_KEXEC_TEST
+ bool "KHO model handover acceptance workload"
+ depends on MODELOS_KERNEL_ONLY && KEXEC_HANDOVER_RECEIVER
+ help
+   Validate named RAM and, with the L1 Qwen consumer, check one token
+   for cold/kexec timing and try recorded old RM handles.
+   Default L1 replay and decoding remain unchanged when disabled.

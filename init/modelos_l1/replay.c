@@ -9,6 +9,15 @@
 #include "ctrl/ctrla06c.h"
 #include "ctrl/ctrlc36f.h"
 #include "l1-image.h"
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+#include "receiver-payload.h"
+int modelos_kexec_payload_verify(void);
+int modelos_kexec_payload_verify(void)
+{
+ phys_addr_t pa=0;const u8 *code=NULL;u64 bytes=0;
+ return kexec_payload(&pa,&code,&bytes);
+}
+#endif
 
 extern NV_STATUS modelos_rm_alloc(nvidia_stack_t *,NvHandle,NvHandle,NvHandle *,NvU32,void *,NvU32);
 extern NV_STATUS modelos_rm_control(nvidia_stack_t *,NvHandle,NvHandle,NvU32,void *,NvU32);
@@ -181,11 +190,15 @@ static NV_STATUS l1_step(NvU32 *queue,NvU32 *serial,NvU32 token,NvU32 position,N
 static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_memory *host)
 {
  struct l1_memory weights=c->resources[L1_WEIGHTS].memory,state=c->resources[L1_STATE].memory;
- const NvU64 bytes=c->resources[L1_MODEL_BYTES].value,physical=c->resources[L1_WEIGHTS_PHYS].value;
+ const NvU64 bytes=c->resources[L1_MODEL_BYTES].value;phys_addr_t physical=c->resources[L1_WEIGHTS_PHYS].value;
+ const u8 *qcode=l1_qwen_code;u64 code_bytes=sizeof(l1_qwen_code);
  void *source;NvU32 q[96],push[12],constants[232]={0};
  NvU64 code=local->gpu+0x40000,qmd=local->gpu+0x30000,cb=local->gpu+0x31000,entry,deadline,start;
  NvU32 *queue=host->cpu,*released=(void *)((char *)host->cpu+0x1000),serial=0,result=0;
  unsigned i,j,matched=0;NV_STATUS status=NV_OK;
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ if(kexec_payload(&physical,&qcode,&code_bytes)||code_bytes!=sizeof(l1_qwen_code))return NV_ERR_INVALID_DATA;
+#endif
  source=memremap(physical,bytes,MEMREMAP_WB);
  if(!source)return NV_ERR_NO_MEMORY;
  if(memcmp(source,"MOSQ3B1",7)||*(NvU64 *)((char *)source+48)!=bytes){memunmap(source);return NV_ERR_INVALID_DATA;}
@@ -211,7 +224,7 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
  l1_bits(q,575,544,1);l1_bits(q,607,576,0);l1_bits(q,304,304,0);
  l1_bits(q,351,336,0);l1_bits(q,447,384,0);l1_bits(q,623,608,0);
  memset(queue,0,4096);WRITE_ONCE(*released,0);
- memcpy_toio((void __iomem *)local->cpu+0x40000,l1_qwen_code,sizeof(l1_qwen_code));
+ memcpy_toio((void __iomem *)local->cpu+0x40000,qcode,code_bytes);
  memcpy_toio((void __iomem *)local->cpu+0x30000,q,sizeof(q));
  memcpy_toio((void __iomem *)local->cpu+0x31000,constants,sizeof(constants));
  push[0]=0x20012000;push[1]=0xcec0;
@@ -230,6 +243,9 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
    pr_info("L1_QWEN_TOKEN case=%u index=%u got=%u expected=%u\n",i,j,result,l1_cases[i].output[j]);
    if(result!=l1_cases[i].output[j]){status=NV_ERR_INVALID_DATA;goto stop;}
    ++matched;
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+   if(i==0 && j==0){pr_info("KEXEC_FIRST_TOKEN token=%u expected=%u cpl=0 mm=none\n",result,l1_cases[i].output[j]);goto stop;}
+#endif
    if(j+1<l1_cases[i].outputs){status=l1_step(queue,&serial,result,l1_cases[i].inputs+j,&result);if(status!=NV_OK)goto stop;}
   }
   pr_info("L1_QWEN_CASE_PASS case=%u tokens=%u\n",i,l1_cases[i].outputs);
@@ -239,7 +255,12 @@ stop:
  while(READ_ONCE(*released)!=1 && ktime_get_ns()<deadline)usleep_range(50,100);
  pr_info("L1_QWEN_FINISH status=0x%x release=%u matched=%u steps=%u elapsed_ns=%llu\n",status,READ_ONCE(*released),matched,serial,ktime_get_ns()-start);
  if(READ_ONCE(*released)!=1)return NV_ERR_TIMEOUT;
- if(status==NV_OK)pr_info("L1_QWEN_PASS cases=5 tokens=320 cpl=0 mm=none\n");
+ if(status==NV_OK)
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+  pr_info("KEXEC_QWEN_PASS matched=%u cpl=0 mm=none\n",matched);
+#else
+  pr_info("L1_QWEN_PASS cases=5 tokens=320 cpl=0 mm=none\n");
+#endif
  return status;
 }
 #endif
