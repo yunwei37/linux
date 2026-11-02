@@ -15,7 +15,8 @@ int modelos_gpu_step(unsigned worker, unsigned arena, u32 request,
                      u32 token, u32 position, u32 *result);
 int modelos_gpu_stop(void);
 int modelos_gpu_prefill(unsigned worker,unsigned arena,u32 request,const u32 *tokens,unsigned count,u32 *result);
-void modelos_gpu_domain_account(u32 id,u32 input,u32 output,u64 wait,u64 send,u64 alloc,u64 compute,u64 prefill,u64 decode);
+u64 modelos_kernel_faults(void);
+void modelos_gpu_domain_account(u32 id,u32 input,u32 output,u64 wait,u64 send,u64 alloc,u64 free,u64 compute,u64 prefill,u64 decode);
 bool modelos_l1_serving(void);
 int modelos_l1_release_held(void);
 #endif

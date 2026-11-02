@@ -7,6 +7,10 @@
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
+#include <linux/completion.h>
+#include <linux/list.h>
+#include <linux/spinlock.h>
+#include <linux/wait.h>
 #include <linux/sched.h>
 #ifdef CONFIG_MODELOS_L1_TCP
 #include <linux/modelos_gpu.h>
@@ -16,6 +20,18 @@
 #include "launch.h"
 struct l1_launch_node {const char *name;const unsigned char *code,*constant;unsigned code_bytes,constant_bytes,registers,shared_bytes;int next;NvU32 qmd[96];};
 #include "l1-launch.h"
+#ifndef L1_LAUNCH_MAX_BATCH
+#define L1_LAUNCH_MAX_BATCH 1
+#endif
+#ifndef L1_LAUNCH_PREFILL_TILE
+#define L1_LAUNCH_PREFILL_TILE 16
+#endif
+#ifndef L1_LAUNCH_FUSED_QKV
+#define L1_LAUNCH_FUSED_QKV 0
+#endif
+#if L1_LAUNCH_IS_QWEN
+#include "../modelos_serve/qwen.h"
+#endif
 #if L1_LAUNCH_IS_QWEN
 #include "l1-golden.h"
 #endif
@@ -159,6 +175,10 @@ static NV_STATUS upload_model(struct executor *c)
 {
  NvU64 upload_start=ktime_get_ns();void *source=memremap(c->r->weights_phys,c->r->model_bytes,MEMREMAP_WB);if(!source)return NV_ERR_NO_MEMORY;
  if(memcmp(source,"MOSQ3B1",7)||(*(NvU64 *)((char *)source+48)!=c->r->model_bytes&&!(IS_ENABLED(CONFIG_MODELOS_L1_TCP)&&*(NvU64 *)((char *)source+48)==1192235008ULL))){memunmap(source);return NV_ERR_INVALID_DATA;}
+#if L1_LAUNCH_FUSED_QKV
+ const struct q_header *header=source;
+ for(unsigned layer=0;layer<Q_LAYERS;layer++){const struct q_layer *l=&header->layer[layer];if(l->wk!=l->wq+Q_QDIM*Q_DIM*2ULL||l->wv!=l->wk+Q_KVDIM*Q_DIM*2ULL||l->wu!=l->wg+Q_FF*Q_DIM*2ULL){memunmap(source);return NV_ERR_INVALID_DATA;}}
+#endif
  int upload=-1;NvU64 gpu_copy_ns=0,submit_ns=0;unsigned submissions=0;
  for(unsigned i=0;i<ARRAY_SIZE(graph_nodes);i++)if(!strcmp(graph_nodes[i].name,"modelos_upload"))upload=i;
  if(upload>=0&&c->r->staging.bytes){
@@ -293,18 +313,19 @@ static struct executor *service;
 static struct l1_launch_resources service_resources;
 static unsigned service_owner[MODELOS_GPU_ARENAS];
 static u64 service_gpu[MODELOS_GPU_ARENAS],service_submit[MODELOS_GPU_ARENAS],service_wait[MODELOS_GPU_ARENAS];
+static u64 service_prefill[MODELOS_GPU_ARENAS],service_decode[MODELOS_GPU_ARENAS],service_fault_start[MODELOS_GPU_ARENAS];
 static unsigned service_steps[MODELOS_GPU_ARENAS];
-struct service_account {u32 id,steps,input,output;u64 gpu,submit,queue,ready_wait,send,alloc,compute,prefill,decode;};
+struct service_account {u32 id,steps,input,output;u64 gpu,submit,queue,ready_wait,send,alloc,free,compute,prefill,decode,gpu_prefill,gpu_decode,faults;};
 static struct service_account accounts[1024];static unsigned account_count;
-void modelos_gpu_domain_account(u32 id,u32 input,u32 output,u64 wait,u64 send,u64 alloc,u64 compute,u64 prefill,u64 decode){
- mutex_lock(&service_lock);for(unsigned i=account_count;i>0;i--)if(accounts[i-1].id==id){struct service_account *a=&accounts[i-1];a->input=input;a->output=output;a->ready_wait=wait;a->send=send;a->alloc=alloc;a->compute=compute;a->prefill=prefill;a->decode=decode;break;}mutex_unlock(&service_lock);
+void modelos_gpu_domain_account(u32 id,u32 input,u32 output,u64 wait,u64 send,u64 alloc,u64 free,u64 compute,u64 prefill,u64 decode){
+ mutex_lock(&service_lock);for(unsigned i=account_count;i>0;i--)if(accounts[i-1].id==id){struct service_account *a=&accounts[i-1];a->input=input;a->output=output;a->ready_wait=wait;a->send=send;a->alloc=alloc;a->free=free;a->compute=compute;a->prefill=prefill;a->decode=decode;break;}mutex_unlock(&service_lock);
 }
 bool modelos_l1_serving(void){return smp_load_acquire(&service)!=NULL;}
 int modelos_gpu_prepare(void){return modelos_l1_serving()&&!current->mm?0:-ENODEV;}
 int modelos_gpu_arena_acquire(unsigned arena,u32 request){
  if(arena>=MODELOS_GPU_ARENAS||!request||!modelos_l1_serving())return -EINVAL;
  mutex_lock(&service_lock);if(service_owner[arena]){mutex_unlock(&service_lock);return -EBUSY;}
- service_owner[arena]=request;service_gpu[arena]=service_submit[arena]=service_wait[arena]=0;service_steps[arena]=0;
+ service_owner[arena]=request;service_gpu[arena]=service_submit[arena]=service_wait[arena]=0;service_steps[arena]=0;service_prefill[arena]=service_decode[arena]=0;service_fault_start[arena]=modelos_kernel_faults();
  memset_io((void __iomem *)service->r->state.cpu+arena*MODELOS_GPU_ARENA_BYTES+0x1d100000,0,82*4);wmb();
  for(unsigned j=0;j<16;j++){writel(0x51a70000U+arena*256+j,(void __iomem *)service->r->state.cpu+arena*MODELOS_GPU_ARENA_BYTES+0x1d000000+j*4);writel(0x93c80000U+arena*256+j,(void __iomem *)service->r->state.cpu+(arena+1)*MODELOS_GPU_ARENA_BYTES-0x1000+j*4);}wmb();
  mutex_unlock(&service_lock);return 0;
@@ -315,7 +336,7 @@ int modelos_gpu_arena_release(unsigned arena,u32 request){
  for(unsigned j=0;j<16;j++)if(readl((void __iomem *)service->r->state.cpu+arena*MODELOS_GPU_ARENA_BYTES+0x1d000000+j*4)!=0x51a70000U+arena*256+j||readl((void __iomem *)service->r->state.cpu+(arena+1)*MODELOS_GPU_ARENA_BYTES-0x1000+j*4)!=0x93c80000U+arena*256+j){mutex_unlock(&service_lock);return -EIO;}
  service_owner[arena]=0;
  if(account_count>=ARRAY_SIZE(accounts)){mutex_unlock(&service_lock);return -ENOSPC;}
- accounts[account_count++]=(struct service_account){.id=request,.steps=service_steps[arena],.gpu=service_gpu[arena],.submit=service_submit[arena],.queue=service_wait[arena]};
+ accounts[account_count++]=(struct service_account){.id=request,.steps=service_steps[arena],.gpu=service_gpu[arena],.submit=service_submit[arena],.queue=service_wait[arena],.gpu_prefill=service_prefill[arena],.gpu_decode=service_decode[arena],.faults=modelos_kernel_faults()-service_fault_start[arena]};
  mutex_unlock(&service_lock);return 0;
 }
 static void bind_arena(struct executor *c,unsigned arena){
@@ -324,27 +345,77 @@ static void bind_arena(struct executor *c,unsigned arena){
   field(c->nodes[node].qmd,1375,1344,(NvU32)(address>>6));field(c->nodes[node].qmd,1394,1376,address>>38);
  }
 }
+#if L1_LAUNCH_MAX_BATCH > 1
+struct decode_job {struct list_head link;struct completion done;unsigned worker,arena;u32 request,token,position,result;int status;u64 enqueued;};
+static LIST_HEAD(decode_jobs);static DEFINE_SPINLOCK(decode_lock);
+static DECLARE_WAIT_QUEUE_HEAD(decode_wait);static atomic_t decode_leader=ATOMIC_INIT(0);
+static u64 batch_histogram[5];
+static void dispatch_decode(void){
+ struct decode_job *jobs[4];unsigned n=0;unsigned long flags;NV_STATUS status=NV_OK;
+ mutex_lock(&service_lock);
+ spin_lock_irqsave(&decode_lock,flags);
+ while(n<4&&!list_empty(&decode_jobs)){jobs[n]=list_first_entry(&decode_jobs,struct decode_job,link);list_del(&jobs[n]->link);n++;}
+ spin_unlock_irqrestore(&decode_lock,flags);
+ if(!n){mutex_unlock(&service_lock);return;}
+ u64 locked=ktime_get_ns(),submitted,gpu;
+ for(unsigned i=0;i<n;i++)if(!service||service_owner[jobs[i]->arena]!=jobs[i]->request)status=NV_ERR_INVALID_STATE;
+ if(status!=NV_OK)goto complete;
+ NvU32 *q=queue(service);bind_arena(service,n==1?jobs[0]->arena:0);
+ WRITE_ONCE(q[7],n==1?0:n);WRITE_ONCE(q[9],n==1?0:2);
+ if(n==1){WRITE_ONCE(q[2],jobs[0]->token);WRITE_ONCE(q[3],jobs[0]->position);}
+ else for(unsigned i=0;i<n;i++){WRITE_ONCE(q[2048+i*4],jobs[i]->token);WRITE_ONCE(q[2048+i*4+1],jobs[i]->position);WRITE_ONCE(q[2048+i*4+2],jobs[i]->arena);WRITE_ONCE(q[2048+i*4+3],jobs[i]->request);}
+ WRITE_ONCE(q[0],service->completion+1);wmb();NvU32 completion=submit(service,0,true);submitted=ktime_get_ns();status=wait_counter(release_ptr(service),completion);
+ if(status==NV_OK&&READ_ONCE(q[5]))status=NV_ERR_INVALID_DATA;
+ if(status==NV_OK){
+  gpu=counter(q,14)-counter(q,12);batch_histogram[n]++;
+  for(unsigned i=0;i<n;i++){
+   if(n>1&&READ_ONCE(q[68+i])!=jobs[i]->request){status=NV_ERR_INVALID_DATA;break;}
+   jobs[i]->result=READ_ONCE(q[n==1?4:64+i]);unsigned arena=jobs[i]->arena;
+   /* Charge shared work once in total; per-request wall time stays in core. */
+   u64 share=gpu/n+(i<gpu%n);service_gpu[arena]+=share;service_decode[arena]+=share;service_submit[arena]+=(submitted-locked)/n;service_wait[arena]+=locked-jobs[i]->enqueued;service_steps[arena]++;
+  }
+ }
+complete:
+ for(unsigned i=0;i<n;i++)jobs[i]->status=status==NV_OK?0:-EIO;
+ mutex_unlock(&service_lock);
+ /* Do not access a job after completion: the waiting worker owns its stack. */
+ for(unsigned i=0;i<n;i++)complete(&jobs[i]->done);
+}
+int modelos_gpu_step(unsigned worker,unsigned arena,u32 request,u32 token,u32 position,u32 *result){
+ if(worker>=4||arena>=MODELOS_GPU_ARENAS||READ_ONCE(service_owner[arena])!=request)return -EINVAL;
+ struct decode_job own={.worker=worker,.arena=arena,.request=request,.token=token,.position=position,.enqueued=ktime_get_ns()};unsigned long flags;init_completion(&own.done);
+ spin_lock_irqsave(&decode_lock,flags);list_add_tail(&own.link,&decode_jobs);spin_unlock_irqrestore(&decode_lock,flags);wake_up_all(&decode_wait);
+ while(!completion_done(&own.done)){
+  if(atomic_cmpxchg(&decode_leader,0,1)==0){
+   unsigned active=0;for(unsigned a=0;a<MODELOS_GPU_ARENAS;a++)active+=READ_ONCE(service_owner[a])!=0;
+   if(active>1)udelay(20);dispatch_decode();atomic_set(&decode_leader,0);wake_up_all(&decode_wait);
+  }else wait_event(decode_wait,completion_done(&own.done)||!atomic_read(&decode_leader));
+ }
+ *result=own.result;return own.status;
+}
+#else
 int modelos_gpu_step(unsigned worker,unsigned arena,u32 request,u32 token,u32 position,u32 *result){
  u64 begin=ktime_get_ns(),locked,submitted;NV_STATUS status;NvU32 completion;
  if(worker>=4||arena>=MODELOS_GPU_ARENAS)return -EINVAL;
  mutex_lock(&service_lock);locked=ktime_get_ns();if(!service||service_owner[arena]!=request){mutex_unlock(&service_lock);return -EINVAL;}
  bind_arena(service,arena);
- NvU32 *q=queue(service);WRITE_ONCE(q[7],0);WRITE_ONCE(q[2],token);WRITE_ONCE(q[3],position);WRITE_ONCE(q[0],service->completion+1);wmb();
+ NvU32 *q=queue(service);WRITE_ONCE(q[9],0);WRITE_ONCE(q[7],0);WRITE_ONCE(q[2],token);WRITE_ONCE(q[3],position);WRITE_ONCE(q[0],service->completion+1);wmb();
  completion=submit(service,0,true);submitted=ktime_get_ns();status=wait_counter(release_ptr(service),completion);
  if(status==NV_OK&&READ_ONCE(q[5]))status=NV_ERR_INVALID_DATA;
- if(status==NV_OK){*result=READ_ONCE(q[4]);service_gpu[arena]+=counter(q,14)-counter(q,12);service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;}
+ if(status==NV_OK){*result=READ_ONCE(q[4]);service_gpu[arena]+=counter(q,14)-counter(q,12);service_decode[arena]+=counter(q,14)-counter(q,12);service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;}
  mutex_unlock(&service_lock);return status==NV_OK?0:-EIO;
 }
+#endif
 int modelos_gpu_prefill(unsigned worker,unsigned arena,u32 request,const u32 *tokens,unsigned count,u32 *result){
  if(worker>=4||arena>=MODELOS_GPU_ARENAS||!count||count>1024)return -EINVAL;
- for(unsigned base=0;base<count;base+=16){
-  u64 begin=ktime_get_ns(),locked,submitted;unsigned n=min(16U,count-base);NV_STATUS status;NvU32 completion;
+ for(unsigned base=0;base<count;base+=L1_LAUNCH_PREFILL_TILE){
+  u64 begin=ktime_get_ns(),locked,submitted;unsigned n=min((unsigned)L1_LAUNCH_PREFILL_TILE,count-base);NV_STATUS status;NvU32 completion;
   mutex_lock(&service_lock);locked=ktime_get_ns();if(!service||service_owner[arena]!=request){mutex_unlock(&service_lock);return -EINVAL;}
   bind_arena(service,arena);
-  NvU32 *q=queue(service);for(unsigned i=0;i<n;i++)WRITE_ONCE(q[2048+i],tokens[base+i]);WRITE_ONCE(q[3],base);WRITE_ONCE(q[7],n);WRITE_ONCE(q[8],base+n==count);WRITE_ONCE(q[0],service->completion+1);wmb();
+  NvU32 *q=queue(service);WRITE_ONCE(q[9],0);for(unsigned i=0;i<n;i++)WRITE_ONCE(q[2048+i],tokens[base+i]);WRITE_ONCE(q[3],base);WRITE_ONCE(q[7],n);WRITE_ONCE(q[8],base+n==count);WRITE_ONCE(q[0],service->completion+1);wmb();
   completion=submit(service,0,true);submitted=ktime_get_ns();status=wait_counter(release_ptr(service),completion);
   if(status==NV_OK&&READ_ONCE(q[5]))status=NV_ERR_INVALID_DATA;
-  if(status==NV_OK){*result=READ_ONCE(q[4]);service_gpu[arena]+=counter(q,14)-counter(q,12);service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;}
+  if(status==NV_OK){*result=READ_ONCE(q[4]);service_gpu[arena]+=counter(q,14)-counter(q,12);service_prefill[arena]+=counter(q,14)-counter(q,12);service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;}
   mutex_unlock(&service_lock);if(status!=NV_OK)return -EIO;cond_resched();
  }return 0;
 }
@@ -352,7 +423,10 @@ int modelos_gpu_stop(void){
  mutex_lock(&service_lock);if(!service){mutex_unlock(&service_lock);return -ENODEV;}
  for(unsigned i=0;i<MODELOS_GPU_ARENAS;i++)if(service_owner[i]){mutex_unlock(&service_lock);return -EBUSY;}
  struct executor *c=service;smp_store_release(&service,NULL);kvfree(c);mutex_unlock(&service_lock);
- for(unsigned i=0;i<account_count;i++){struct service_account *a=&accounts[i];pr_info("L1_TCP_ACCOUNT id=%u input=%u output=%u steps=%u gpu_ns=%llu submit_ns=%llu submit_queue_wait_ns=%llu scheduler_wait_ns=%llu send_ns=%llu alloc_ns=%llu compute_ns=%llu prefill_ns=%llu decode_ns=%llu canaries=32\n",a->id,a->input,a->output,a->steps,a->gpu,a->submit,a->queue,a->ready_wait,a->send,a->alloc,a->compute,a->prefill,a->decode);}
+ for(unsigned i=0;i<account_count;i++){struct service_account *a=&accounts[i];pr_info("L1_TCP_ACCOUNT id=%u input=%u output=%u steps=%u gpu_ns=%llu submit_ns=%llu submit_queue_wait_ns=%llu scheduler_wait_ns=%llu send_ns=%llu alloc_ns=%llu release_ns=%llu compute_ns=%llu prefill_ns=%llu decode_ns=%llu gpu_prefill_ns=%llu gpu_decode_ns=%llu guest_pf_entries=%llu canaries=32\n",a->id,a->input,a->output,a->steps,a->gpu,a->submit,a->queue,a->ready_wait,a->send,a->alloc,a->free,a->compute,a->prefill,a->decode,a->gpu_prefill,a->gpu_decode,a->faults);}
+#if L1_LAUNCH_MAX_BATCH > 1
+ pr_info("L1_GPU_BATCH_HIST size1=%llu size2=%llu size3=%llu size4=%llu coalesce_us=20 shared_work_charged_once=1\n",batch_histogram[1],batch_histogram[2],batch_histogram[3],batch_histogram[4]);
+#endif
  pr_info("L1_GPU_TCP_DRAIN release=1 owners=0 graph=1 no_libcuda=1\n");return modelos_l1_release_held();
 }
 #endif

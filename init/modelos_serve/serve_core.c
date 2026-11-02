@@ -52,7 +52,7 @@ struct domain {
 	struct completion finished;
 	struct q_state *arena;
 	u64 bytes;
-	u64 ready_ns,wait_ns,send_ns,alloc_ns,compute_ns,prefill_ns,decode_ns;
+	u64 ready_ns,wait_ns,send_ns,alloc_ns,free_ns,compute_ns,prefill_ns,decode_ns;
 	u32 id, prompt_len, budget, pos, generated, token, slot;
 	u32 prompt[PROMPT_MAX];
 	enum domain_state state;
@@ -220,7 +220,7 @@ static void finish_domain(struct domain *d, u32 reason)
 	unsigned long flags;
 	struct socket *sock = d->sock;
 #ifdef CONFIG_MODELOS_L1_TCP
-	if(modelos_gpu_arena_release(d->slot,d->id))panic("GPU arena release failed");
+	{u64 start=ktime_get_ns();if(modelos_gpu_arena_release(d->slot,d->id))panic("GPU arena release failed");d->free_ns=ktime_get_ns()-start;}
 #else
 	kvfree(d->arena);
 #endif
@@ -234,7 +234,7 @@ static void finish_domain(struct domain *d, u32 reason)
 	if(!IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))pr_info("DOMAIN_RELEASE id=%u generated=%u reason=%u bytes=%llu\n",
 		d->id, d->generated, reason, d->bytes);
 #ifdef CONFIG_MODELOS_L1_LAUNCH
- modelos_gpu_domain_account(d->id,d->prompt_len,d->generated,d->wait_ns,d->send_ns,d->alloc_ns,d->compute_ns,d->prefill_ns,d->decode_ns);
+ modelos_gpu_domain_account(d->id,d->prompt_len,d->generated,d->wait_ns,d->send_ns,d->alloc_ns,d->free_ns,d->compute_ns,d->prefill_ns,d->decode_ns);
 #endif
 	frame(sock, OUT_DONE, d->id, reason);
 	kernel_sock_shutdown(sock, SHUT_RD);
@@ -410,7 +410,9 @@ static int connection_main(void *arg)
 		goto bad;
 	}
 #ifdef CONFIG_MODELOS_L1_TCP
-	if(modelos_gpu_arena_acquire(slot,id)) {
+	u64 arena_begin=ktime_get_ns();int arena_status=modelos_gpu_arena_acquire(slot,id);
+ d->alloc_ns+=ktime_get_ns()-arena_begin;
+ if(arena_status) {
 #else
 	d->arena = kvzalloc(d->bytes, GFP_KERNEL);
 	if (!d->arena) {

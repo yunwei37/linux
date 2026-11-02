@@ -1487,8 +1487,22 @@ handle_page_fault(struct pt_regs *regs, unsigned long error_code,
 	local_irq_disable();
 }
 
+#if defined(CONFIG_MODELOS_L1_TCP) && defined(CONFIG_MODELOS_L1_LAUNCH)
+#include <linux/modelos_gpu.h>
+static DEFINE_PER_CPU(unsigned long, modelos_pf_entries);
+u64 modelos_kernel_faults(void)
+{
+ u64 total=0;int cpu;
+ for_each_possible_cpu(cpu)total+=READ_ONCE(per_cpu(modelos_pf_entries,cpu));
+ return total;
+}
+#endif
+
 DEFINE_IDTENTRY_RAW_ERRORCODE(exc_page_fault)
 {
+#if defined(CONFIG_MODELOS_L1_TCP) && defined(CONFIG_MODELOS_L1_LAUNCH)
+ raw_cpu_inc(modelos_pf_entries);
+#endif
 	irqentry_state_t state;
 	unsigned long address;
 
