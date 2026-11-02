@@ -355,9 +355,25 @@ struct decode_job {struct list_head link;struct completion done;unsigned worker,
 static LIST_HEAD(decode_jobs);static DEFINE_SPINLOCK(decode_lock);
 static DECLARE_WAIT_QUEUE_HEAD(decode_wait);static atomic_t decode_leader=ATOMIC_INIT(0);
 static u64 batch_histogram[5];
+/* Alternate prefill chunks and ready decode batches under mixed load. */
+static atomic_t prefill_waiters=ATOMIC_INIT(0);
+static bool last_prefill;
+static bool pending_decodes(void){
+ unsigned long flags;bool pending;
+ spin_lock_irqsave(&decode_lock,flags);pending=!list_empty(&decode_jobs);spin_unlock_irqrestore(&decode_lock,flags);
+ return pending;
+}
+
 static void dispatch_decode(void){
  struct decode_job *jobs[4];unsigned n=0;unsigned long flags;NV_STATUS status=NV_OK;
+decode_turn:
  mutex_lock(&service_lock);
+ if(!pending_decodes()){mutex_unlock(&service_lock);return;}
+ if(!READ_ONCE(last_prefill)&&atomic_read(&prefill_waiters)){
+  mutex_unlock(&service_lock);
+  wait_event(decode_wait,READ_ONCE(last_prefill)||!atomic_read(&prefill_waiters));
+  goto decode_turn;
+ }
  spin_lock_irqsave(&decode_lock,flags);
  while(n<4&&!list_empty(&decode_jobs)){jobs[n]=list_first_entry(&decode_jobs,struct decode_job,link);list_del(&jobs[n]->link);n++;}
  spin_unlock_irqrestore(&decode_lock,flags);
@@ -382,7 +398,9 @@ static void dispatch_decode(void){
  }
 complete:
  for(unsigned i=0;i<n;i++)jobs[i]->status=status==NV_OK?0:-EIO;
+ WRITE_ONCE(last_prefill,false);
  mutex_unlock(&service_lock);
+ wake_up_all(&decode_wait);
  /* Do not access a job after completion: the waiting worker owns its stack. */
  for(unsigned i=0;i<n;i++)complete(&jobs[i]->done);
 }
@@ -415,13 +433,33 @@ int modelos_gpu_prefill(unsigned worker,unsigned arena,u32 request,const u32 *to
  if(worker>=4||arena>=MODELOS_GPU_ARENAS||!count||count>1024)return -EINVAL;
  for(unsigned base=0;base<count;base+=L1_LAUNCH_PREFILL_TILE){
   u64 begin=ktime_get_ns(),locked,submitted;unsigned n=min((unsigned)L1_LAUNCH_PREFILL_TILE,count-base);NV_STATUS status;NvU32 completion;
-  mutex_lock(&service_lock);locked=ktime_get_ns();if(!service||service_owner[arena]!=request){mutex_unlock(&service_lock);return -EINVAL;}
+#if L1_LAUNCH_MAX_BATCH > 1
+  atomic_inc(&prefill_waiters);
+prefill_turn:
+  mutex_lock(&service_lock);
+  if(READ_ONCE(last_prefill)&&pending_decodes()){
+   mutex_unlock(&service_lock);
+   wait_event(decode_wait,!READ_ONCE(last_prefill)||!pending_decodes());
+   goto prefill_turn;
+  }
+  atomic_dec(&prefill_waiters);
+#else
+  mutex_lock(&service_lock);
+#endif
+  locked=ktime_get_ns();if(!service||service_owner[arena]!=request){mutex_unlock(&service_lock);return -EINVAL;}
   bind_arena(service,arena);
   NvU32 *q=queue(service);WRITE_ONCE(q[9],0);for(unsigned i=0;i<n;i++)WRITE_ONCE(q[2048+i],tokens[base+i]);WRITE_ONCE(q[3],base);WRITE_ONCE(q[7],n);WRITE_ONCE(q[8],base+n==count);WRITE_ONCE(q[0],service->completion+1);wmb();
   completion=submit(service,0,true);submitted=ktime_get_ns();status=wait_counter(release_ptr(service),completion);
   if(status==NV_OK&&READ_ONCE(q[5]))status=NV_ERR_INVALID_DATA;
   if(status==NV_OK){*result=READ_ONCE(q[4]);service_gpu[arena]+=counter(q,14)-counter(q,12);service_prefill[arena]+=counter(q,14)-counter(q,12);service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;account_frontend(arena,1,0);}
-  mutex_unlock(&service_lock);if(status!=NV_OK)return -EIO;cond_resched();
+#if L1_LAUNCH_MAX_BATCH > 1
+  WRITE_ONCE(last_prefill,true);
+#endif
+  mutex_unlock(&service_lock);
+#if L1_LAUNCH_MAX_BATCH > 1
+  wake_up_all(&decode_wait);
+#endif
+  if(status!=NV_OK)return -EIO;cond_resched();
  }return 0;
 }
 int modelos_gpu_stop(void){

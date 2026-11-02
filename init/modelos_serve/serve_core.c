@@ -52,6 +52,9 @@ struct domain {
 	struct completion finished;
 	struct q_state *arena;
 	u64 bytes;
+#ifdef CONFIG_MODELOS_L1_TCP
+	bool persistent;
+#endif
 	u64 ready_ns,wait_ns,send_ns,alloc_ns,free_ns,compute_ns,prefill_ns,decode_ns;
 	u32 id, prompt_len, budget, pos, generated, token, slot;
 	u32 prompt[PROMPT_MAX];
@@ -237,6 +240,18 @@ static void finish_domain(struct domain *d, u32 reason)
  modelos_gpu_domain_account(d->id,d->prompt_len,d->generated,d->wait_ns,d->send_ns,d->alloc_ns,d->free_ns,d->compute_ns,d->prefill_ns,d->decode_ns);
 #endif
 	frame(sock, OUT_DONE, d->id, reason);
+#ifdef CONFIG_MODELOS_L1_TCP
+ if(d->persistent){
+  struct sock *sk=sock->sk;
+  sock_hold(sk);
+  complete(&d->finished);
+  /* The owner may free d/socket now; the held sk and default RCU callback
+   * remain valid even if it has already orphaned the socket. */
+  sk->sk_data_ready(sk);
+  sock_put(sk);
+  return;
+ }
+#endif
 	kernel_sock_shutdown(sock, SHUT_RD);
 	/* The connection owner may free d as soon as this completion is visible. */
 	complete(&d->finished);
@@ -340,9 +355,26 @@ static int connection_main(void *arg)
 	unsigned long flags;
 	u32 i, slot = DOMAIN_MAX, id = 0, count;
 	int error = EINVAL;
+#ifdef CONFIG_MODELOS_L1_TCP
+ bool persistent=false,lost=false;size_t buffered=0;
+next_request:
+ d=NULL;slot=DOMAIN_MAX;id=0;error=EINVAL;lost=false;
+ if(buffered<sizeof(h)&&recv_bytes(sock,(char *)&h+buffered,sizeof(h)-buffered))goto out;
+ buffered=0;
+ if(le32_to_cpu(h.magic)!=WIRE_MAGIC)goto out;
+#else
 	if (recv_bytes(sock, &h, sizeof(h)) || le32_to_cpu(h.magic) != WIRE_MAGIC)
 		goto out;
+#endif
 	id = le32_to_cpu(h.id);
+#ifdef CONFIG_MODELOS_L1_TCP
+ if(le32_to_cpu(h.op)==5){
+  if(persistent||id||le32_to_cpu(h.arg))goto bad;
+  persistent=true;
+  if(frame(sock,OUT_DONE,0,0))goto out;
+  goto next_request;
+ }
+#endif
 #ifdef CONFIG_MODELOS_L1_TCP
 	if(le32_to_cpu(h.op)==4) { /* Test/gateway drain: reject new admissions. */
 		int ret;
@@ -371,6 +403,9 @@ static int connection_main(void *arg)
 	}
 	d->id = id;
 	d->sock = sock;
+#ifdef CONFIG_MODELOS_L1_TCP
+ d->persistent=persistent;
+#endif
 	d->prompt_len = count;
 	d->budget = le32_to_cpu(budget);
 #ifdef CONFIG_MODELOS_L1_TCP
@@ -439,6 +474,29 @@ static int connection_main(void *arg)
 	spin_unlock_irqrestore(&queue_lock, flags);
 	if(!IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))pr_info("DOMAIN_ADMIT id=%u prompt=%u budget=%u bytes=%llu\n", id, count, d->budget, d->bytes);
 	wake_up_all(&work_wait);
+#ifdef CONFIG_MODELOS_L1_TCP
+ if(persistent){
+  while(!completion_done(&d->finished)){
+   struct msghdr msg={};struct kvec vec={.iov_base=(char *)&h+buffered,.iov_len=sizeof(h)-buffered};
+   int got=kernel_recvmsg(sock,&msg,&vec,1,vec.iov_len,MSG_DONTWAIT);
+   if(got>0){
+    buffered+=got;if(buffered<sizeof(h))continue;
+    if(le32_to_cpu(h.magic)==WIRE_MAGIC&&le32_to_cpu(h.id)==id&&le32_to_cpu(h.op)==OP_CANCEL){
+     buffered=0;WRITE_ONCE(d->cancel,true);wake_up_all(&work_wait);
+    }else if(le32_to_cpu(h.magic)==WIRE_MAGIC&&le32_to_cpu(h.op)==OP_SUBMIT&&READ_ONCE(d->state)==DONE){
+     /* DONE can reach the client before finished becomes visible. Preserve
+      * its next header (including any partial read) across domain teardown. */
+     break;
+    }else{lost=true;break;}
+   }else if(got==-EAGAIN||got==-EWOULDBLOCK){
+    wait_event_interruptible(*sk_sleep(sock->sk),completion_done(&d->finished)||
+      !skb_queue_empty_lockless(&sock->sk->sk_receive_queue)||
+      (READ_ONCE(sock->sk->sk_shutdown)&RCV_SHUTDOWN));
+   }else{lost=true;break;}
+  }
+ }else
+#endif
+ {
 	while (!completion_done(&d->finished)) {
 		if (recv_bytes(sock, &h, sizeof(h)))
 			break;
@@ -448,6 +506,7 @@ static int connection_main(void *arg)
 		WRITE_ONCE(d->cancel, true);
 		wake_up_all(&work_wait);
 	}
+ }
 	WRITE_ONCE(d->cancel, true);
 	wake_up_all(&work_wait);
 	wait_for_completion(&d->finished);
@@ -457,6 +516,9 @@ static int connection_main(void *arg)
 	spin_unlock_irqrestore(&queue_lock, flags);
 	kfree(d);
 	d = NULL;
+#ifdef CONFIG_MODELOS_L1_TCP
+ if(persistent&&!lost)goto next_request;
+#endif
 	goto out;
 bad:
 	frame(sock, OUT_ERROR, id, error);
