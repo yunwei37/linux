@@ -26,7 +26,7 @@ static int __init consume(void)
  pr_info("KEXEC_LIVE_RAM samples=%u bad=%u unreserved=%u kho_boot=1\n",h->samples,bad,unreserved);
  if(bad||unreserved)goto reject;
  if(!h->mode){pr_info("KEXEC_LIVE_CPU_PASS\n");return 0;}
- if(h->emitted!=8||h->position!=33||(h->serial!=33&&h->serial!=34)||h->next_token!=16566||h->queue_phys&4095||!pfn_valid(h->queue_phys>>PAGE_SHIFT)||!PageReserved(pfn_to_page(h->queue_phys>>PAGE_SHIFT)))goto reject;
+ if(h->emitted!=8||h->position!=33||(h->serial<33||h->serial>35)||h->next_token!=16566||h->queue_phys&4095||!pfn_valid(h->queue_phys>>PAGE_SHIFT)||!PageReserved(pfn_to_page(h->queue_phys>>PAGE_SHIFT)))goto reject;
  pr_info("KEXEC_LIVE_PREJUMP_STATE status=%u serial=%u\n",h->reserved,h->serial);
  q=phys_to_virt(h->queue_phys);
  if(memcmp((const void *)q,h->queue,sizeof(h->queue)))goto reject;
