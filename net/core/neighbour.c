@@ -1890,6 +1890,7 @@ int neigh_table_clear(int index, struct neigh_table *tbl)
 }
 EXPORT_SYMBOL(neigh_table_clear);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct neigh_table *neigh_find_table(int family)
 {
 	struct neigh_table *tbl = NULL;
@@ -1905,6 +1906,7 @@ static struct neigh_table *neigh_find_table(int family)
 
 	return tbl;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 const struct nla_policy nda_policy[NDA_MAX+1] = {
 	[NDA_UNSPEC]		= { .strict_start_type = NDA_NH_ID },
@@ -1923,6 +1925,7 @@ const struct nla_policy nda_policy[NDA_MAX+1] = {
 	[NDA_FDB_EXT_ATTRS]	= { .type = NLA_NESTED },
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int neigh_delete(struct sk_buff *skb, struct nlmsghdr *nlh,
 			struct netlink_ext_ack *extack)
 {
@@ -1987,7 +1990,9 @@ static int neigh_delete(struct sk_buff *skb, struct nlmsghdr *nlh,
 out:
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int neigh_add(struct sk_buff *skb, struct nlmsghdr *nlh,
 		     struct netlink_ext_ack *extack)
 {
@@ -2167,7 +2172,9 @@ static int neigh_add(struct sk_buff *skb, struct nlmsghdr *nlh,
 out:
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int neightbl_fill_parms(struct sk_buff *skb, struct neigh_parms *parms)
 {
 	struct nlattr *nest;
@@ -2217,7 +2224,9 @@ nla_put_failure:
 	nla_nest_cancel(skb, nest);
 	return -EMSGSIZE;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int neightbl_fill_info(struct sk_buff *skb, struct neigh_table *tbl,
 			      u32 pid, u32 seq, int type, int flags)
 {
@@ -2301,7 +2310,9 @@ nla_put_failure:
 	nlmsg_cancel(skb, nlh);
 	return -EMSGSIZE;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int neightbl_fill_param_info(struct sk_buff *skb,
 				    struct neigh_table *tbl,
 				    struct neigh_parms *parms,
@@ -2330,6 +2341,7 @@ errout:
 	nlmsg_cancel(skb, nlh);
 	return -EMSGSIZE;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static const struct nla_policy nl_neightbl_policy[NDTA_MAX+1] = {
 	[NDTA_NAME]		= { .type = NLA_STRING },
@@ -2367,6 +2379,7 @@ static const struct nla_policy nl_ntbl_parm_policy[NDTPA_MAX+1] = {
 								&nl_ntbl_parm_ms_range),
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int neightbl_set(struct sk_buff *skb, struct nlmsghdr *nlh,
 			struct netlink_ext_ack *extack)
 {
@@ -2531,7 +2544,9 @@ errout_tbl_lock:
 errout:
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int neightbl_valid_dump_info(const struct nlmsghdr *nlh,
 				    struct netlink_ext_ack *extack)
 {
@@ -2555,7 +2570,9 @@ static int neightbl_valid_dump_info(const struct nlmsghdr *nlh,
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int neightbl_dump_info(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	const struct nlmsghdr *nlh = cb->nlh;
@@ -2628,6 +2645,7 @@ out:
 
 	return skb->len;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int neigh_fill_info(struct sk_buff *skb, struct neighbour *neigh,
 			   u32 pid, u32 seq, int type, unsigned int flags)
@@ -2691,6 +2709,7 @@ nla_put_failure:
 	return -EMSGSIZE;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int pneigh_fill_info(struct sk_buff *skb, struct pneigh_entry *pn,
 			    u32 pid, u32 seq, int type, unsigned int flags,
 			    struct neigh_table *tbl)
@@ -2733,6 +2752,7 @@ nla_put_failure:
 	nlmsg_cancel(skb, nlh);
 	return -EMSGSIZE;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void neigh_update_notify(struct neighbour *neigh, u32 nlmsg_pid)
 {
@@ -2740,6 +2760,7 @@ static void neigh_update_notify(struct neighbour *neigh, u32 nlmsg_pid)
 	__neigh_notify(neigh, RTM_NEWNEIGH, 0, nlmsg_pid);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static bool neigh_master_filtered(struct net_device *dev, int master_idx)
 {
 	struct net_device *master;
@@ -2760,7 +2781,9 @@ static bool neigh_master_filtered(struct net_device *dev, int master_idx)
 
 	return false;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static bool neigh_ifindex_filtered(struct net_device *dev, int filter_idx)
 {
 	if (filter_idx && (!dev || dev->ifindex != filter_idx))
@@ -2768,12 +2791,14 @@ static bool neigh_ifindex_filtered(struct net_device *dev, int filter_idx)
 
 	return false;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 struct neigh_dump_filter {
 	int master_idx;
 	int dev_idx;
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int neigh_dump_table(struct neigh_table *tbl, struct sk_buff *skb,
 			    struct netlink_callback *cb,
 			    struct neigh_dump_filter *filter)
@@ -2814,7 +2839,9 @@ out:
 	cb->args[2] = idx;
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int pneigh_dump_table(struct neigh_table *tbl, struct sk_buff *skb,
 			     struct netlink_callback *cb,
 			     struct neigh_dump_filter *filter)
@@ -2854,7 +2881,9 @@ out:
 	cb->args[4] = idx;
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int neigh_valid_dump_req(const struct nlmsghdr *nlh,
 				bool strict_check,
 				struct neigh_dump_filter *filter,
@@ -2915,7 +2944,9 @@ static int neigh_valid_dump_req(const struct nlmsghdr *nlh,
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int neigh_dump_info(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	const struct nlmsghdr *nlh = cb->nlh;
@@ -2964,7 +2995,9 @@ static int neigh_dump_info(struct sk_buff *skb, struct netlink_callback *cb)
 	cb->args[0] = t;
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct ndmsg *neigh_valid_get_req(const struct nlmsghdr *nlh,
 					 struct nlattr **tb,
 					 struct netlink_ext_ack *extack)
@@ -3018,6 +3051,7 @@ static struct ndmsg *neigh_valid_get_req(const struct nlmsghdr *nlh,
 
 	return ndm;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static inline size_t neigh_nlmsg_size(void)
 {
@@ -3038,6 +3072,7 @@ static inline size_t pneigh_nlmsg_size(void)
 	       + nla_total_size(1); /* NDA_PROTOCOL */
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int neigh_get(struct sk_buff *in_skb, struct nlmsghdr *nlh,
 		     struct netlink_ext_ack *extack)
 {
@@ -3125,6 +3160,7 @@ err_unlock:
 	kfree_skb(skb);
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 void neigh_for_each(struct neigh_table *tbl, void (*cb)(struct neighbour *, void *), void *cookie)
 {
@@ -3920,6 +3956,7 @@ EXPORT_SYMBOL(neigh_sysctl_unregister);
 
 #endif	/* CONFIG_SYSCTL */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct rtnl_msg_handler neigh_rtnl_msg_handlers[] __initconst = {
 	{.msgtype = RTM_NEWNEIGH, .doit = neigh_add},
 	{.msgtype = RTM_DELNEIGH, .doit = neigh_delete},
@@ -3929,10 +3966,13 @@ static const struct rtnl_msg_handler neigh_rtnl_msg_handlers[] __initconst = {
 	 .flags = RTNL_FLAG_DUMP_UNLOCKED},
 	{.msgtype = RTM_SETNEIGHTBL, .doit = neightbl_set},
 };
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int __init neigh_init(void)
 {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	rtnl_register_many(neigh_rtnl_msg_handlers);
+#endif
 	return 0;
 }
 

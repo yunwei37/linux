@@ -623,6 +623,7 @@ struct in_ifaddr *inet_ifa_byprefix(struct in_device *in_dev, __be32 prefix,
 	return NULL;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int ip_mc_autojoin_config(struct net *net, bool join,
 				 const struct in_ifaddr *ifa)
 {
@@ -648,7 +649,9 @@ static int ip_mc_autojoin_config(struct net *net, bool join,
 	return -EOPNOTSUPP;
 #endif
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_rtm_deladdr(struct sk_buff *skb, struct nlmsghdr *nlh,
 			    struct netlink_ext_ack *extack)
 {
@@ -705,6 +708,7 @@ unlock:
 out:
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void check_lifetime(struct work_struct *work)
 {
@@ -841,6 +845,7 @@ static void set_ifa_lifetime(struct in_ifaddr *ifa, __u32 valid_lft,
 		WRITE_ONCE(ifa->ifa_cstamp, ifa->ifa_tstamp);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_validate_rtm(struct nlmsghdr *nlh, struct nlattr **tb,
 			     struct netlink_ext_ack *extack,
 			     __u32 *valid_lft, __u32 *prefered_lft)
@@ -878,7 +883,9 @@ static int inet_validate_rtm(struct nlmsghdr *nlh, struct nlattr **tb,
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct in_ifaddr *inet_rtm_to_ifa(struct net *net, struct nlmsghdr *nlh,
 					 struct nlattr **tb,
 					 struct netlink_ext_ack *extack)
@@ -941,7 +948,9 @@ static struct in_ifaddr *inet_rtm_to_ifa(struct net *net, struct nlmsghdr *nlh,
 errout:
 	return ERR_PTR(err);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct in_ifaddr *find_matching_ifa(struct net *net, struct in_ifaddr *ifa)
 {
 	struct in_device *in_dev = ifa->ifa_dev;
@@ -956,7 +965,9 @@ static struct in_ifaddr *find_matching_ifa(struct net *net, struct in_ifaddr *if
 
 	return NULL;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_rtm_newaddr(struct sk_buff *skb, struct nlmsghdr *nlh,
 			    struct netlink_ext_ack *extack)
 {
@@ -1032,6 +1043,7 @@ unlock:
 
 	return ret;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /*
  *	Determine a default network mask, based on the IP address.
@@ -1783,6 +1795,7 @@ nla_put_failure:
 	return -EMSGSIZE;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_valid_dump_ifaddr_req(const struct nlmsghdr *nlh,
 				      struct inet_fill_args *fillargs,
 				      struct net **tgt_net, struct sock *sk,
@@ -1839,7 +1852,9 @@ static int inet_valid_dump_ifaddr_req(const struct nlmsghdr *nlh,
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int in_dev_dump_ifmcaddr(struct in_device *in_dev, struct sk_buff *skb,
 				struct netlink_callback *cb, int *s_ip_idx,
 				struct inet_fill_args *fillargs)
@@ -1868,7 +1883,9 @@ done:
 	*s_ip_idx = ip_idx;
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int in_dev_dump_ifaddr(struct in_device *in_dev, struct sk_buff *skb,
 			      struct netlink_callback *cb, int *s_ip_idx,
 			      struct inet_fill_args *fillargs)
@@ -1896,7 +1913,9 @@ done:
 
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int in_dev_dump_addr(struct in_device *in_dev, struct sk_buff *skb,
 			    struct netlink_callback *cb, int *s_ip_idx,
 			    struct inet_fill_args *fillargs)
@@ -1911,9 +1930,11 @@ static int in_dev_dump_addr(struct in_device *in_dev, struct sk_buff *skb,
 		return -EINVAL;
 	}
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* Combine dev_addr_genid and dev_base_seq to detect changes.
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static u32 inet_base_seq(const struct net *net)
 {
 	u32 res = atomic_read(&net->ipv4.dev_addr_genid) +
@@ -1926,7 +1947,9 @@ static u32 inet_base_seq(const struct net *net)
 		res = 0x80000000;
 	return res;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_dump_addr(struct sk_buff *skb, struct netlink_callback *cb,
 			  int event)
 {
@@ -1987,16 +2010,21 @@ done:
 	rcu_read_unlock();
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_dump_ifaddr(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	return inet_dump_addr(skb, cb, RTM_NEWADDR);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_dump_ifmcaddr(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	return inet_dump_addr(skb, cb, RTM_GETMULTICAST);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void rtmsg_ifa(int event, struct in_ifaddr *ifa, struct nlmsghdr *nlh,
 		      u32 portid)
@@ -2234,6 +2262,7 @@ static const struct nla_policy devconf_ipv4_policy[NETCONFA_MAX+1] = {
 	[NETCONFA_IGNORE_ROUTES_WITH_LINKDOWN]	= { .len = sizeof(int) },
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_netconf_valid_get_req(struct sk_buff *skb,
 				      const struct nlmsghdr *nlh,
 				      struct nlattr **tb,
@@ -2272,7 +2301,9 @@ static int inet_netconf_valid_get_req(struct sk_buff *skb,
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_netconf_get_devconf(struct sk_buff *in_skb,
 				    struct nlmsghdr *nlh,
 				    struct netlink_ext_ack *extack)
@@ -2334,7 +2365,9 @@ errout:
 	dev_put(dev);
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_netconf_dump_devconf(struct sk_buff *skb,
 				     struct netlink_callback *cb)
 {
@@ -2403,6 +2436,7 @@ done:
 	rcu_read_unlock();
 	return err;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #ifdef CONFIG_SYSCTL
 
@@ -2884,6 +2918,7 @@ static struct rtnl_af_ops inet_af_ops __read_mostly = {
 	.set_link_af	  = inet_set_link_af,
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct rtnl_msg_handler devinet_rtnl_msg_handlers[] __initconst = {
 	{.protocol = PF_INET, .msgtype = RTM_NEWADDR, .doit = inet_rtm_newaddr,
 	 .flags = RTNL_FLAG_DOIT_PERNET},
@@ -2897,6 +2932,7 @@ static const struct rtnl_msg_handler devinet_rtnl_msg_handlers[] __initconst = {
 	{.owner = THIS_MODULE, .protocol = PF_INET, .msgtype = RTM_GETMULTICAST,
 	 .dumpit = inet_dump_ifmcaddr, .flags = RTNL_FLAG_DUMP_UNLOCKED},
 };
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 void __init devinet_init(void)
 {
@@ -2906,5 +2942,7 @@ void __init devinet_init(void)
 	if (rtnl_af_register(&inet_af_ops))
 		panic("Unable to register inet_af_ops\n");
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	rtnl_register_many(devinet_rtnl_msg_handlers);
+#endif
 }
