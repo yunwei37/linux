@@ -73,7 +73,7 @@ Those object domains do not exist in the kernel-only image. Physical page and
 GFP flag diagnostics remain, as do the ordinary Linux formatting branches.
 
 
-The series has 20 core commits, or 21 with the incoming-only KHO support.
+The series has 23 core commits, or 24 with the incoming-only KHO support.
 The event-input cuts exclude synthetic-uevent sysfs attributes and parsing,
 uevent Netlink receive/forward callbacks, and Netlink bind/connect/getname
 and automatic-address helpers. The public AF_NETLINK family creation and
@@ -113,3 +113,26 @@ The public branch also includes the serving owner's application commits.
 The source-only export excludes them. A concurrent application update was
 retained and the combined CPU service revalidated; detailed provenance and
 before/after size data live in ModelOS docs/kernel-trim/dispatch.md.
+
+
+The netdev/TCP metrics cut removes their Generic Netlink presentation,
+registration and event calls. Kernel TCP metric-cache allocation/lifetime and
+page-pool lifecycle remain. All net_device.stat_ops reads were in the removed
+netdev presentation unit; the selected virtio driver therefore loses its three
+query callbacks, table and assignment instead of relocating a helper.
+Other network-driver selections require their own consumer validation.
+
+The ACPI cut removes its userspace event producer/family/initcall and the
+x86 caller statements while keeping the blocking notifier chain and critical
+thermal action. The unselected BlueField pwr-mlxbf driver is outside these
+reference configs; selecting it needs a port. No empty event stub is added.
+
+Finally, with no enabled Generic Netlink family consumers left, genetlink.o
+and policy.o are omitted in the kernel-only build. The remaining raw-Netlink
+user request/dump/ACK bodies and GENL-specific destructor accounting are also
+excluded. The unconditional sock_diag request/socket/workqueue root is also
+removed; socket destruction and the generic cookie generator remain.
+Raw kernel notification sockets, TCP and hardware lifetime remain.
+Normal Linux keeps the original units and interfaces. Detailed before/after
+six-profile metrics, object controls, cold/service/warm-KHO acceptance and
+source provenance are in ModelOS docs/kernel-trim/genl.md.
