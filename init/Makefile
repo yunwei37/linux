@@ -71,3 +71,5 @@ obj-$(CONFIG_MODELOS_L1) += modelos_l1/
 
 obj-$(CONFIG_MODELOS_KEXEC_TEST) += modelos_kho_check.o
 obj-$(CONFIG_MODELOS_SERVE) += modelos_serve/
+
+obj-$(CONFIG_MODELOS_KEXEC_RESIDENT) += modelos_resident.o

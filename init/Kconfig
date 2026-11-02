@@ -2273,3 +2273,12 @@ config MODELOS_L1_TCP
 config MODELOS_L1_LAUNCH
  bool "Validate recorded L1 launch mechanisms"
  depends on MODELOS_L1
+
+config MODELOS_KEXEC_RESIDENT
+ bool "Experimental live GPU kexec receiver with DMA RAM quarantine"
+ depends on MODELOS_KERNEL_ONLY && KEXEC_HANDOVER_RECEIVER && PCI
+ help
+   Keep all pre-kexec non-scratch RAM out of the new allocator, validate
+   a named handoff and continue an existing GPU polling queue. This does
+   not construct RM or reclaim the old GPU context; memory is retained
+   until the VM exits. Experimental, opt-in, one-way handoff only.
