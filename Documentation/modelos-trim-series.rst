@@ -71,3 +71,17 @@ The final source cuts also exclude VFS pointer formatting (%pd/%pD) and user
 VMA flag formatting (%pGv), its descriptor table and user VMA debug dump.
 Those object domains do not exist in the kernel-only image. Physical page and
 GFP flag diagnostics remain, as do the ordinary Linux formatting branches.
+
+
+The series has 15 core commits, or 16 with the incoming-only KHO support.
+The event-input cuts exclude synthetic-uevent sysfs attributes and parsing,
+uevent Netlink receive/forward callbacks, and Netlink bind/connect/getname
+and automatic-address helpers. The public AF_NETLINK family creation and
+NETLINK_USERSOCK reservation are absent; internal netlink_kernel_create
+still uses sock_create_lite and __netlink_create directly.
+
+Thermal Netlink management and its three reverse selectors are unavailable
+under MODELOS_KERNEL_ONLY. Thermal core, the configured governor and package
+temperature driver remain. Run olddefconfig after applying this series;
+do not restore the userspace management interface merely to retain a sensor.
+Ordinary Linux keeps the original interfaces and reverse selections.
