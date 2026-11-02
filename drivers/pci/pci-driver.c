@@ -525,6 +525,17 @@ static void pci_device_remove(struct device *dev)
 	pci_dev_put(pci_dev);
 }
 
+
+#ifdef CONFIG_MODELOS_KEXEC_KEEP_GPU_MASTER
+static bool modelos_keep_gpu_master;
+static int __init modelos_keep_master_setup(char *unused)
+{
+ modelos_keep_gpu_master = true;
+ return 1;
+}
+__setup("modelos_keep_gpu_master", modelos_keep_master_setup);
+#endif
+
 static void pci_device_shutdown(struct device *dev)
 {
 	struct pci_dev *pci_dev = to_pci_dev(dev);
@@ -542,8 +553,17 @@ static void pci_device_shutdown(struct device *dev)
 	 * If it is not a kexec reboot, firmware will hit the PCI
 	 * devices with big hammer and stop their DMA any way.
 	 */
-	if (kexec_in_progress && (pci_dev->current_state <= PCI_D3hot))
+	if (kexec_in_progress && (pci_dev->current_state <= PCI_D3hot)) {
+#ifdef CONFIG_MODELOS_KEXEC_KEEP_GPU_MASTER
+                if (modelos_keep_gpu_master &&
+                    pci_dev->vendor == PCI_VENDOR_ID_NVIDIA &&
+                    (pci_dev->class >> 16) == PCI_BASE_CLASS_DISPLAY) {
+                        pci_info(pci_dev, "KEXEC_LIVE_KEEP_MASTER\n");
+                        return;
+                }
+#endif
 		pci_clear_master(pci_dev);
+        }
 }
 
 #ifdef CONFIG_PM_SLEEP
