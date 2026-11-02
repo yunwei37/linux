@@ -226,11 +226,14 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
  L1_TRY("work-token",modelos_rm_control(stack,client,c.channel,NVC36F_CTRL_CMD_GPFIFO_GET_WORK_SUBMIT_TOKEN,&token,sizeof(token)));
  c.token=token.workSubmitToken;
  pr_info("L1_REPLAY_RESOURCES_PASS token=0x%x no_submission=1\n",c.token);
+ extern void l2_counts_phase(unsigned);
+ l2_counts_phase(0);
 #ifdef CONFIG_MODELOS_L1_QWEN
  result=l1_qwen(&c,&local,&host);
 #else
  result=l1_execute(&c,&local,&host);
 #endif
+ l2_counts_phase(1);
  if(result==NV_OK){iounmap((void __iomem *)c.doorbell);pr_info("L2_DIRECT_BAR0_UNMAP status=0x0\n");}
  return result;
 }
