@@ -54,6 +54,7 @@ static void genl_unlock_all(void)
 	up_write(&cb_lock);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void genl_op_lock(const struct genl_family *family)
 {
 	if (!family->parallel_ops)
@@ -65,6 +66,8 @@ static void genl_op_unlock(const struct genl_family *family)
 	if (!family->parallel_ops)
 		genl_unlock();
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static DEFINE_IDR(genl_fam_idr);
 
@@ -166,6 +169,7 @@ static void genl_op_from_full(const struct genl_family *family,
 	genl_op_fill_in_reject_policy(family, op);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int genl_get_cmd_full(u32 cmd, const struct genl_family *family,
 			     struct genl_ops *op)
 {
@@ -179,6 +183,8 @@ static int genl_get_cmd_full(u32 cmd, const struct genl_family *family,
 
 	return -ENOENT;
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void genl_op_from_small(const struct genl_family *family,
 			       unsigned int i, struct genl_ops *op)
@@ -197,6 +203,7 @@ static void genl_op_from_small(const struct genl_family *family,
 	genl_op_fill_in_reject_policy(family, op);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int genl_get_cmd_small(u32 cmd, const struct genl_family *family,
 			      struct genl_ops *op)
 {
@@ -210,6 +217,8 @@ static int genl_get_cmd_small(u32 cmd, const struct genl_family *family,
 
 	return -ENOENT;
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void genl_op_from_split(struct genl_op_iter *iter)
 {
@@ -240,6 +249,7 @@ static void genl_op_from_split(struct genl_op_iter *iter)
 	iter->entry_idx += cnt;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int
 genl_get_cmd_split(u32 cmd, u8 flag, const struct genl_family *family,
 		   struct genl_split_ops *op)
@@ -255,6 +265,8 @@ genl_get_cmd_split(u32 cmd, u8 flag, const struct genl_family *family,
 
 	return -ENOENT;
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int
 genl_cmd_full_to_split(struct genl_split_ops *op,
@@ -297,6 +309,7 @@ genl_cmd_full_to_split(struct genl_split_ops *op,
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 /* Must make sure that op is initialized to 0 on failure */
 static int
 genl_get_cmd(u32 cmd, u8 flags, const struct genl_family *family,
@@ -332,6 +345,8 @@ genl_get_cmd_both(u32 cmd, const struct genl_family *family,
 
 	return err1 && err2 ? -ENOENT : 0;
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static bool
 genl_op_iter_init(const struct genl_family *family, struct genl_op_iter *iter)
@@ -681,6 +696,7 @@ static void genl_sk_privs_free(const struct genl_family *family)
 	kfree(family->sock_privs);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void genl_sk_priv_free_by_sock(struct genl_family *family,
 				      struct sock *sk)
 {
@@ -706,6 +722,8 @@ static void genl_release(struct sock *sk, unsigned long *groups)
 
 	up_read(&cb_lock);
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * __genl_sk_priv_get - Get family private pointer for socket, if exists
@@ -910,6 +928,7 @@ void *genlmsg_put(struct sk_buff *skb, u32 portid, u32 seq,
 }
 EXPORT_SYMBOL(genlmsg_put);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct genl_dumpit_info *genl_dumpit_info_alloc(void)
 {
 	return kmalloc(sizeof(struct genl_dumpit_info), GFP_KERNEL);
@@ -1219,6 +1238,8 @@ static void genl_rcv(struct sk_buff *skb)
 	netlink_rcv_skb(skb, &genl_rcv_msg);
 	up_read(&cb_lock);
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**************************************************************************
  * Controller
@@ -1833,6 +1854,7 @@ static struct genl_family genl_ctrl __ro_after_init = {
 	.netnsok = true,
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int genl_bind(struct net *net, int group)
 {
 	const struct genl_family *family;
@@ -1899,8 +1921,11 @@ static void genl_unbind(struct net *net, int group)
 	up_read(&cb_lock);
 }
 
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
+
 static int __net_init genl_pernet_init(struct net *net)
 {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	struct netlink_kernel_cfg cfg = {
 		.input		= genl_rcv,
 		.flags		= NL_CFG_F_NONROOT_RECV,
@@ -1909,8 +1934,14 @@ static int __net_init genl_pernet_init(struct net *net)
 		.release	= genl_release,
 	};
 
+#endif
+
 	/* we'll bump the group number right afterwards */
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	net->genl_sock = netlink_kernel_create(net, NETLINK_GENERIC, NULL);
+#else
 	net->genl_sock = netlink_kernel_create(net, NETLINK_GENERIC, &cfg);
+#endif
 
 	if (!net->genl_sock && net_eq(net, &init_net))
 		panic("GENL: Cannot initialize generic netlink\n");
