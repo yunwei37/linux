@@ -20,9 +20,9 @@
 static struct dps_request_handoff *requests;
 static volatile u32 *queue;
 static u32 serial;
-enum state_policy { HOT, EAGER, EAGER_VERBOSE };
+enum state_policy { EAGER, EAGER_VERBOSE };
 static enum state_policy policy;
-static struct dps_request_handoff active_requests,*retained_requests;
+static struct dps_request_handoff *retained_requests;
 struct ktcp_timing {
  u32 valid,id,seq,serial,polls,reschedules;
  u64 elapsed_ns,submit_ns,wait_ns,publish_ns,crc_ns,gpu_ns,ack_ns;
@@ -30,8 +30,7 @@ struct ktcp_timing {
 static struct ktcp_timing timing[DPS_REQUEST_COUNT*128];
 static int __init policy_setup(char *value)
 {
- if(!strcmp(value,"hot"))policy=HOT;
- else if(!strcmp(value,"eager"))policy=EAGER;
+ if(!strcmp(value,"eager"))policy=EAGER;
  else if(!strcmp(value,"eager-verbose"))policy=EAGER_VERBOSE;
  else return 0;
  return 1;
@@ -49,7 +48,6 @@ static int receive(struct socket *sock,struct ktcp_frame *f)
 static u64 commit(void)
 {
  u64 begin;
- if(policy==HOT)return 0;
  begin=ktime_get_ns();requests->checksum=dps_request_checksum(requests);wmb();
  return ktime_get_ns()-begin;
 }
@@ -57,7 +55,6 @@ static int save_checkpoint(u32 id)
 {
  u64 begin=ktime_get_ns();
  requests->checksum=dps_request_checksum(requests);
- if(policy==HOT)memcpy(retained_requests,requests,sizeof(*requests));
  wmb();
  if(retained_requests->checksum!=dps_request_checksum(retained_requests)||memcmp(retained_requests,requests,sizeof(*requests))){failed=true;return -EIO;}
  pr_info("KEXEC_TCP_CHECKPOINT id=%u elapsed_ns=%llu checksum=%u valid=1\n",id,ktime_get_ns()-begin,retained_requests->checksum);
@@ -111,7 +108,7 @@ static int server(void *unused)
  if(ret){sock_release(listener);pr_err("KEXEC_TCP_LISTEN_FAIL error=%d\n",ret);return ret;}
  {
  phys_addr_t timing_phys=__pa_symbol(timing),state_phys=virt_to_phys(retained_requests);
- pr_info("KEXEC_TCP_READY mode=%s port=7373 mm=%s serial=%u policy=%s timing_phys=%pa timing_bytes=%zu timing_stride=%zu state_phys=%pa state_bytes=%zu cpu_khz=%u tsc_khz=%u lpj=%lu\n",IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY)?"modelos":"linux",current->mm?"present":"none",serial,policy==HOT?"hot":policy==EAGER?"eager":"eager-verbose",&timing_phys,sizeof(timing),sizeof(timing[0]),&state_phys,sizeof(*requests),cpu_khz,tsc_khz,loops_per_jiffy);
+ pr_info("KEXEC_TCP_READY mode=%s port=7373 mm=%s serial=%u policy=%s timing_phys=%pa timing_bytes=%zu timing_stride=%zu state_phys=%pa state_bytes=%zu cpu_khz=%u tsc_khz=%u lpj=%lu\n",IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY)?"modelos":"linux",current->mm?"present":"none",serial,policy==EAGER?"eager":"eager-verbose",&timing_phys,sizeof(timing),sizeof(timing[0]),&state_phys,sizeof(*requests),cpu_khz,tsc_khz,loops_per_jiffy);
  }
  for(;;){struct socket *sock;ret=kernel_accept(listener,&sock,0);if(ret){msleep(10);continue;}sock->sk->sk_rcvtimeo=10*HZ;sock->sk->sk_sndtimeo=10*HZ;tcp_sock_set_nodelay(sock->sk);connection(sock);sock_release(sock);}
 }
@@ -132,7 +129,6 @@ static int __init consume(void)
  pci_read_config_word(dev,PCI_COMMAND,&command);pci_dev_put(dev);
  if(!(command&PCI_COMMAND_MASTER))goto reject;
  retained_requests=requests;
- if(policy==HOT){memcpy(&active_requests,requests,sizeof(*requests));requests=&active_requests;}
  if(IS_ERR(kthread_run(server,NULL,"modelos/kexec-tcp")))goto reject;
  return 0;
 reject:pr_err("KEXEC_TCP_REJECT\n");return -EINVAL;
