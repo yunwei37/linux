@@ -179,18 +179,18 @@ static NV_STATUS upload_model(struct executor *c)
  const struct q_header *header=source;
  for(unsigned layer=0;layer<Q_LAYERS;layer++){const struct q_layer *l=&header->layer[layer];if(l->wk!=l->wq+Q_QDIM*Q_DIM*2ULL||l->wv!=l->wk+Q_KVDIM*Q_DIM*2ULL||l->wu!=l->wg+Q_FF*Q_DIM*2ULL){memunmap(source);return NV_ERR_INVALID_DATA;}}
 #endif
- int upload=-1;NvU64 gpu_copy_ns=0,submit_ns=0;unsigned submissions=0;
+ int upload=-1;NvU64 gpu_copy_ns=0,submit_ns=0,cpu_stage_ns=0;unsigned submissions=0;
  for(unsigned i=0;i<ARRAY_SIZE(graph_nodes);i++)if(!strcmp(graph_nodes[i].name,"modelos_upload"))upload=i;
  if(upload>=0&&c->r->staging.bytes){
   if(c->r->weights.bytes<c->r->model_bytes+4||c->r->model_bytes>U32_MAX||c->r->model_bytes%16){memunmap(source);return NV_ERR_INVALID_ARGUMENT;}
   writel(0,(void __iomem *)c->r->weights.cpu+c->r->model_bytes);if(readl((void __iomem *)c->r->weights.cpu+c->r->model_bytes)){memunmap(source);return NV_ERR_INVALID_DATA;}
   for(NvU64 off=0;off<c->r->model_bytes;off+=c->r->staging.bytes){
-   unsigned bytes=min_t(NvU64,c->r->staging.bytes,c->r->model_bytes-off);memcpy(c->r->staging.cpu,(char *)source+off,bytes);
+   unsigned bytes=min_t(NvU64,c->r->staging.bytes,c->r->model_bytes-off);NvU64 copy_start=ktime_get_ns();memcpy(c->r->staging.cpu,(char *)source+off,bytes);cpu_stage_ns+=ktime_get_ns()-copy_start;
    NvU32 *q=queue(c);WRITE_ONCE(q[2],off);WRITE_ONCE(q[3],bytes);WRITE_ONCE(q[6],c->r->model_bytes);wmb();NvU64 start=ktime_get_ns();NvU32 completion=submit(c,upload,true);submit_ns+=ktime_get_ns()-start;
    NV_STATUS status=wait_counter(release_ptr(c),completion);if(status!=NV_OK){memunmap(source);return status;}gpu_copy_ns+=counter(q,14)-counter(q,12);submissions++;cond_resched();
   }
  }else for(NvU64 off=0;off<c->r->model_bytes;off+=0x10000){memcpy_toio((void __iomem *)c->r->weights.cpu+off,(char *)source+off,min_t(NvU64,0x10000,c->r->model_bytes-off));cond_resched();}
- pr_info("L1_MODEL_COPY mode=%s bytes=%llu staging_bytes=%llu submissions=%u gpu_ns=%llu submit_ns=%llu\n",upload>=0&&c->r->staging.bytes?"gpu-dma":"cpu-bar",c->r->model_bytes,c->r->staging.bytes,submissions,gpu_copy_ns,submit_ns);
+ pr_info("L1_MODEL_COPY mode=%s bytes=%llu staging_bytes=%llu submissions=%u gpu_ns=%llu submit_ns=%llu cpu_stage_ns=%llu\n",upload>=0&&c->r->staging.bytes?"gpu-dma":"cpu-bar",c->r->model_bytes,c->r->staging.bytes,submissions,gpu_copy_ns,submit_ns,cpu_stage_ns);
  if(IS_ENABLED(CONFIG_MODELOS_L1_TCP)){
   NvU32 sequence=2048;NvU64 total=c->r->model_bytes,cosine=1192235008ULL,sine=1192759296ULL;
   memcpy_toio((void __iomem *)c->r->weights.cpu+40,&sequence,4);memcpy_toio((void __iomem *)c->r->weights.cpu+48,&total,8);
@@ -315,7 +315,12 @@ static unsigned service_owner[MODELOS_GPU_ARENAS];
 static u64 service_gpu[MODELOS_GPU_ARENAS],service_submit[MODELOS_GPU_ARENAS],service_wait[MODELOS_GPU_ARENAS];
 static u64 service_prefill[MODELOS_GPU_ARENAS],service_decode[MODELOS_GPU_ARENAS],service_fault_start[MODELOS_GPU_ARENAS];
 static unsigned service_steps[MODELOS_GPU_ARENAS];
-struct service_account {u32 id,steps,input,output;u64 gpu,submit,queue,ready_wait,send,alloc,free,compute,prefill,decode,gpu_prefill,gpu_decode,faults;};
+static u64 service_frontend[MODELOS_GPU_ARENAS],service_front_valid[MODELOS_GPU_ARENAS];
+static void account_frontend(unsigned arena,unsigned parts,unsigned member){
+ NvU32 *q=queue(service);u64 stamp=counter(q,1090),begin=counter(q,12);
+ if(stamp&&begin>=stamp){u64 ns=begin-stamp;service_frontend[arena]+=ns/parts+(member<ns%parts);service_front_valid[arena]++;}
+}
+struct service_account {u32 id,steps,input,output;u64 gpu,submit,queue,ready_wait,send,alloc,free,compute,prefill,decode,gpu_prefill,gpu_decode,faults,frontend,front_valid;};
 static struct service_account accounts[1024];static unsigned account_count;
 void modelos_gpu_domain_account(u32 id,u32 input,u32 output,u64 wait,u64 send,u64 alloc,u64 free,u64 compute,u64 prefill,u64 decode){
  mutex_lock(&service_lock);for(unsigned i=account_count;i>0;i--)if(accounts[i-1].id==id){struct service_account *a=&accounts[i-1];a->input=input;a->output=output;a->ready_wait=wait;a->send=send;a->alloc=alloc;a->free=free;a->compute=compute;a->prefill=prefill;a->decode=decode;break;}mutex_unlock(&service_lock);
@@ -325,7 +330,7 @@ int modelos_gpu_prepare(void){return modelos_l1_serving()&&!current->mm?0:-ENODE
 int modelos_gpu_arena_acquire(unsigned arena,u32 request){
  if(arena>=MODELOS_GPU_ARENAS||!request||!modelos_l1_serving())return -EINVAL;
  mutex_lock(&service_lock);if(service_owner[arena]){mutex_unlock(&service_lock);return -EBUSY;}
- service_owner[arena]=request;service_gpu[arena]=service_submit[arena]=service_wait[arena]=0;service_steps[arena]=0;service_prefill[arena]=service_decode[arena]=0;service_fault_start[arena]=modelos_kernel_faults();
+ service_owner[arena]=request;service_gpu[arena]=service_submit[arena]=service_wait[arena]=0;service_steps[arena]=0;service_prefill[arena]=service_decode[arena]=0;service_fault_start[arena]=modelos_kernel_faults();service_frontend[arena]=service_front_valid[arena]=0;
  memset_io((void __iomem *)service->r->state.cpu+arena*MODELOS_GPU_ARENA_BYTES+0x1d100000,0,82*4);wmb();
  for(unsigned j=0;j<16;j++){writel(0x51a70000U+arena*256+j,(void __iomem *)service->r->state.cpu+arena*MODELOS_GPU_ARENA_BYTES+0x1d000000+j*4);writel(0x93c80000U+arena*256+j,(void __iomem *)service->r->state.cpu+(arena+1)*MODELOS_GPU_ARENA_BYTES-0x1000+j*4);}wmb();
  mutex_unlock(&service_lock);return 0;
@@ -336,7 +341,7 @@ int modelos_gpu_arena_release(unsigned arena,u32 request){
  for(unsigned j=0;j<16;j++)if(readl((void __iomem *)service->r->state.cpu+arena*MODELOS_GPU_ARENA_BYTES+0x1d000000+j*4)!=0x51a70000U+arena*256+j||readl((void __iomem *)service->r->state.cpu+(arena+1)*MODELOS_GPU_ARENA_BYTES-0x1000+j*4)!=0x93c80000U+arena*256+j){mutex_unlock(&service_lock);return -EIO;}
  service_owner[arena]=0;
  if(account_count>=ARRAY_SIZE(accounts)){mutex_unlock(&service_lock);return -ENOSPC;}
- accounts[account_count++]=(struct service_account){.id=request,.steps=service_steps[arena],.gpu=service_gpu[arena],.submit=service_submit[arena],.queue=service_wait[arena],.gpu_prefill=service_prefill[arena],.gpu_decode=service_decode[arena],.faults=modelos_kernel_faults()-service_fault_start[arena]};
+ accounts[account_count++]=(struct service_account){.id=request,.steps=service_steps[arena],.gpu=service_gpu[arena],.submit=service_submit[arena],.queue=service_wait[arena],.gpu_prefill=service_prefill[arena],.gpu_decode=service_decode[arena],.faults=modelos_kernel_faults()-service_fault_start[arena],.frontend=service_frontend[arena],.front_valid=service_front_valid[arena]};
  mutex_unlock(&service_lock);return 0;
 }
 static void bind_arena(struct executor *c,unsigned arena){
@@ -372,7 +377,7 @@ static void dispatch_decode(void){
    if(n>1&&READ_ONCE(q[68+i])!=jobs[i]->request){status=NV_ERR_INVALID_DATA;break;}
    jobs[i]->result=READ_ONCE(q[n==1?4:64+i]);unsigned arena=jobs[i]->arena;
    /* Charge shared work once in total; per-request wall time stays in core. */
-   u64 share=gpu/n+(i<gpu%n);service_gpu[arena]+=share;service_decode[arena]+=share;service_submit[arena]+=(submitted-locked)/n;service_wait[arena]+=locked-jobs[i]->enqueued;service_steps[arena]++;
+   u64 share=gpu/n+(i<gpu%n);service_gpu[arena]+=share;service_decode[arena]+=share;service_submit[arena]+=(submitted-locked)/n;service_wait[arena]+=locked-jobs[i]->enqueued;service_steps[arena]++;account_frontend(arena,n,i);
   }
  }
 complete:
@@ -388,7 +393,7 @@ int modelos_gpu_step(unsigned worker,unsigned arena,u32 request,u32 token,u32 po
  while(!completion_done(&own.done)){
   if(atomic_cmpxchg(&decode_leader,0,1)==0){
    unsigned active=0;for(unsigned a=0;a<MODELOS_GPU_ARENAS;a++)active+=READ_ONCE(service_owner[a])!=0;
-   if(active>1)udelay(20);dispatch_decode();atomic_set(&decode_leader,0);wake_up_all(&decode_wait);
+   if(active>1)udelay(200);dispatch_decode();atomic_set(&decode_leader,0);wake_up_all(&decode_wait);
   }else wait_event(decode_wait,completion_done(&own.done)||!atomic_read(&decode_leader));
  }
  *result=own.result;return own.status;
@@ -402,7 +407,7 @@ int modelos_gpu_step(unsigned worker,unsigned arena,u32 request,u32 token,u32 po
  NvU32 *q=queue(service);WRITE_ONCE(q[9],0);WRITE_ONCE(q[7],0);WRITE_ONCE(q[2],token);WRITE_ONCE(q[3],position);WRITE_ONCE(q[0],service->completion+1);wmb();
  completion=submit(service,0,true);submitted=ktime_get_ns();status=wait_counter(release_ptr(service),completion);
  if(status==NV_OK&&READ_ONCE(q[5]))status=NV_ERR_INVALID_DATA;
- if(status==NV_OK){*result=READ_ONCE(q[4]);service_gpu[arena]+=counter(q,14)-counter(q,12);service_decode[arena]+=counter(q,14)-counter(q,12);service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;}
+ if(status==NV_OK){*result=READ_ONCE(q[4]);service_gpu[arena]+=counter(q,14)-counter(q,12);service_decode[arena]+=counter(q,14)-counter(q,12);service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;account_frontend(arena,1,0);}
  mutex_unlock(&service_lock);return status==NV_OK?0:-EIO;
 }
 #endif
@@ -415,7 +420,7 @@ int modelos_gpu_prefill(unsigned worker,unsigned arena,u32 request,const u32 *to
   NvU32 *q=queue(service);WRITE_ONCE(q[9],0);for(unsigned i=0;i<n;i++)WRITE_ONCE(q[2048+i],tokens[base+i]);WRITE_ONCE(q[3],base);WRITE_ONCE(q[7],n);WRITE_ONCE(q[8],base+n==count);WRITE_ONCE(q[0],service->completion+1);wmb();
   completion=submit(service,0,true);submitted=ktime_get_ns();status=wait_counter(release_ptr(service),completion);
   if(status==NV_OK&&READ_ONCE(q[5]))status=NV_ERR_INVALID_DATA;
-  if(status==NV_OK){*result=READ_ONCE(q[4]);service_gpu[arena]+=counter(q,14)-counter(q,12);service_prefill[arena]+=counter(q,14)-counter(q,12);service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;}
+  if(status==NV_OK){*result=READ_ONCE(q[4]);service_gpu[arena]+=counter(q,14)-counter(q,12);service_prefill[arena]+=counter(q,14)-counter(q,12);service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;account_frontend(arena,1,0);}
   mutex_unlock(&service_lock);if(status!=NV_OK)return -EIO;cond_resched();
  }return 0;
 }
@@ -423,9 +428,9 @@ int modelos_gpu_stop(void){
  mutex_lock(&service_lock);if(!service){mutex_unlock(&service_lock);return -ENODEV;}
  for(unsigned i=0;i<MODELOS_GPU_ARENAS;i++)if(service_owner[i]){mutex_unlock(&service_lock);return -EBUSY;}
  struct executor *c=service;smp_store_release(&service,NULL);kvfree(c);mutex_unlock(&service_lock);
- for(unsigned i=0;i<account_count;i++){struct service_account *a=&accounts[i];pr_info("L1_TCP_ACCOUNT id=%u input=%u output=%u steps=%u gpu_ns=%llu submit_ns=%llu submit_queue_wait_ns=%llu scheduler_wait_ns=%llu send_ns=%llu alloc_ns=%llu release_ns=%llu compute_ns=%llu prefill_ns=%llu decode_ns=%llu gpu_prefill_ns=%llu gpu_decode_ns=%llu guest_pf_entries=%llu canaries=32\n",a->id,a->input,a->output,a->steps,a->gpu,a->submit,a->queue,a->ready_wait,a->send,a->alloc,a->free,a->compute,a->prefill,a->decode,a->gpu_prefill,a->gpu_decode,a->faults);}
+ for(unsigned i=0;i<account_count;i++){struct service_account *a=&accounts[i];pr_info("L1_TCP_ACCOUNT id=%u input=%u output=%u steps=%u gpu_ns=%llu submit_ns=%llu submit_queue_wait_ns=%llu scheduler_wait_ns=%llu send_ns=%llu alloc_ns=%llu release_ns=%llu compute_ns=%llu prefill_ns=%llu decode_ns=%llu gpu_prefill_ns=%llu gpu_decode_ns=%llu guest_pf_entries=%llu gpu_frontend_share_ns=%llu gpu_frontend_valid_steps=%llu canaries=32\n",a->id,a->input,a->output,a->steps,a->gpu,a->submit,a->queue,a->ready_wait,a->send,a->alloc,a->free,a->compute,a->prefill,a->decode,a->gpu_prefill,a->gpu_decode,a->faults,a->frontend,a->front_valid);}
 #if L1_LAUNCH_MAX_BATCH > 1
- pr_info("L1_GPU_BATCH_HIST size1=%llu size2=%llu size3=%llu size4=%llu coalesce_us=20 shared_work_charged_once=1\n",batch_histogram[1],batch_histogram[2],batch_histogram[3],batch_histogram[4]);
+ pr_info("L1_GPU_BATCH_HIST size1=%llu size2=%llu size3=%llu size4=%llu coalesce_us=200 shared_work_charged_once=1\n",batch_histogram[1],batch_histogram[2],batch_histogram[3],batch_histogram[4]);
 #endif
  pr_info("L1_GPU_TCP_DRAIN release=1 owners=0 graph=1 no_libcuda=1\n");return modelos_l1_release_held();
 }
