@@ -777,7 +777,9 @@ static void software_node_release(struct kobject *kobj)
 
 static const struct kobj_type software_node_type = {
 	.release = software_node_release,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops = &kobj_sysfs_ops,
+#endif
 };
 
 static struct fwnode_handle *

@@ -971,7 +971,9 @@ static struct attribute *hotplug_profile_attrs[] = {
 ATTRIBUTE_GROUPS(hotplug_profile);
 
 static const struct kobj_type acpi_hotplug_profile_ktype = {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops = &kobj_sysfs_ops,
+#endif
 	.default_groups = hotplug_profile_groups,
 };
 

@@ -3285,7 +3285,9 @@ struct kobj_ns_type_operations *class_dir_child_ns_type(const struct kobject *ko
 
 static const struct kobj_type class_dir_ktype = {
 	.release	= class_dir_release,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops	= &kobj_sysfs_ops,
+#endif
 	.child_ns_type	= class_dir_child_ns_type
 };
 

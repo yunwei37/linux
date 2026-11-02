@@ -747,7 +747,9 @@ static void dynamic_kobj_release(struct kobject *kobj)
 
 static const struct kobj_type dynamic_kobj_ktype = {
 	.release	= dynamic_kobj_release,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops	= &kobj_sysfs_ops,
+#endif
 };
 
 /**
@@ -816,6 +818,7 @@ void kset_init(struct kset *k)
 	spin_lock_init(&k->list_lock);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 /* default kobject attribute operations */
 static ssize_t kobj_attr_show(struct kobject *kobj, struct attribute *attr,
 			      char *buf)
@@ -846,6 +849,7 @@ const struct sysfs_ops kobj_sysfs_ops = {
 	.store	= kobj_attr_store,
 };
 EXPORT_SYMBOL_GPL(kobj_sysfs_ops);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * kset_register() - Initialize and add a kset.
@@ -935,7 +939,9 @@ static void kset_get_ownership(const struct kobject *kobj, kuid_t *uid, kgid_t *
 }
 
 static const struct kobj_type kset_ktype = {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops	= &kobj_sysfs_ops,
+#endif
 	.release	= kset_release,
 	.get_ownership	= kset_get_ownership,
 };
