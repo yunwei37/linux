@@ -74,3 +74,5 @@ obj-$(CONFIG_MODELOS_KEXEC_TEST) += modelos_kho_check.o
 obj-$(CONFIG_MODELOS_KEXEC_RESIDENT) += modelos_resident.o
 
 obj-$(CONFIG_MODELOS_KEXEC_DPS) += modelos_dps.o
+
+obj-$(CONFIG_MODELOS_KEXEC_DPS) += modelos_buddy_arena.o

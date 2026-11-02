@@ -9,6 +9,8 @@
 #include <linux/sched.h>
 #include "modelos_dps_handoff.h"
 #include "modelos_dps_cases.h"
+void modelos_buddy_arena_admit(void);
+int modelos_buddy_arena_release(void);
 static int __init consume(void)
 {
  phys_addr_t start,bytes;struct dps_handoff *h;volatile u32 *q;struct pci_dev *dev=NULL;u16 command;
@@ -20,6 +22,7 @@ static int __init consume(void)
  if(!dev)goto reject;pci_read_config_word(dev,PCI_COMMAND,&command);pci_dev_put(dev);
  if(!(command&PCI_COMMAND_MASTER))goto reject;
  pr_info("KEXEC_DPS_VALIDATED copy=%u serial=%u pci_command=%04x mm=%s\n",h->copy_mode,h->serial,command,current->mm?"present":"none");
+ modelos_buddy_arena_admit();
  for(unsigned repeat=0;repeat<4;repeat++)for(unsigned c=0;c<ARRAY_SIZE(dps_cases);c++){
   const struct dps_case *tc=&dps_cases[c];u64 begin=ktime_get_ns(),deadline,gpu_begin,gpu_end,elapsed;u32 ids[128];
   for(unsigned i=0;i<tc->inputs;i++)WRITE_ONCE(q[128+i],tc->input[i]);
@@ -32,6 +35,7 @@ static int __init consume(void)
   pr_info("KEXEC_DPS_REQUEST os=modelos case=%u repeat=%u count=%u elapsed_ns=%llu gpu_ns=%llu ids=",c,repeat,tc->outputs,elapsed,gpu_end-gpu_begin);
   for(unsigned i=0;i<tc->outputs;i++)pr_cont("%s%u",i?",":"",ids[i]);pr_cont("\n");
  }
+ if(modelos_buddy_arena_release())goto reject;
  pr_info("KEXEC_DPS_PASS requests=24 tokens=1792 no_rm=1 resources=quarantined_until_vm_exit\n");return 0;
 reject:pr_err("KEXEC_DPS_REJECT\n");return -EINVAL;
 }
