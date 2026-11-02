@@ -20,6 +20,12 @@
 #include "launch.h"
 struct l1_launch_node {const char *name;const unsigned char *code,*constant;unsigned code_bytes,constant_bytes,registers,shared_bytes;int next;NvU32 qmd[96];};
 #include "l1-launch.h"
+#ifndef L1_LAUNCH_PREFILL_ROOT
+#define L1_LAUNCH_PREFILL_ROOT 0
+#endif
+#ifndef L1_LAUNCH_IS_ALPIN
+#define L1_LAUNCH_IS_ALPIN 0
+#endif
 #ifndef L1_LAUNCH_MAX_BATCH
 #define L1_LAUNCH_MAX_BATCH 1
 #endif
@@ -315,12 +321,32 @@ static unsigned service_owner[MODELOS_GPU_ARENAS];
 static u64 service_gpu[MODELOS_GPU_ARENAS],service_submit[MODELOS_GPU_ARENAS],service_wait[MODELOS_GPU_ARENAS];
 static u64 service_prefill[MODELOS_GPU_ARENAS],service_decode[MODELOS_GPU_ARENAS],service_fault_start[MODELOS_GPU_ARENAS];
 static unsigned service_steps[MODELOS_GPU_ARENAS];
+#if L1_LAUNCH_IS_ALPIN
+static u64 service_math[MODELOS_GPU_ARENAS],service_layout[MODELOS_GPU_ARENAS],service_gap[MODELOS_GPU_ARENAS],service_copy_bytes[MODELOS_GPU_ARENAS];
+static unsigned service_component_valid[MODELOS_GPU_ARENAS],service_transitions[MODELOS_GPU_ARENAS];
+#endif
 static u64 service_frontend[MODELOS_GPU_ARENAS],service_front_valid[MODELOS_GPU_ARENAS];
 static void account_frontend(unsigned arena,unsigned parts,unsigned member){
  NvU32 *q=queue(service);u64 stamp=counter(q,1090),begin=counter(q,12);
  if(stamp&&begin>=stamp){u64 ns=begin-stamp;service_frontend[arena]+=ns/parts+(member<ns%parts);service_front_valid[arena]++;}
+#if L1_LAUNCH_IS_ALPIN
+ if(parts==1){
+  u64 span=counter(q,14)-counter(q,12),math=span,layout=0;bool valid=true;
+  if(!READ_ONCE(q[7])){
+   u64 a=counter(q,40),b=counter(q,42),c=counter(q,44),d=counter(q,46),e=counter(q,48),f=counter(q,50);
+   valid=a<=b&&b<=c&&c<=d&&d<=e&&e<=f;
+   layout=b-a;math=d-c+f-e;valid=valid&&layout+math<=span;
+  }
+  if(valid){service_math[arena]+=math;service_layout[arena]+=layout;service_gap[arena]+=span-math-layout;service_component_valid[arena]++;
+   if(!READ_ONCE(q[7])){service_copy_bytes[arena]+=READ_ONCE(q[52]);service_transitions[arena]+=READ_ONCE(q[53]);}}
+ }
+#endif
 }
-struct service_account {u32 id,steps,input,output;u64 gpu,submit,queue,ready_wait,send,alloc,free,compute,prefill,decode,gpu_prefill,gpu_decode,faults,frontend,front_valid;};
+struct service_account {u32 id,steps,input,output;u64 gpu,submit,queue,ready_wait,send,alloc,free,compute,prefill,decode,gpu_prefill,gpu_decode,faults,frontend,front_valid;
+#if L1_LAUNCH_IS_ALPIN
+ u64 math,layout,gap,copy_bytes;unsigned component_valid,transitions;
+#endif
+};
 static struct service_account accounts[1024];static unsigned account_count;
 void modelos_gpu_domain_account(u32 id,u32 input,u32 output,u64 wait,u64 send,u64 alloc,u64 free,u64 compute,u64 prefill,u64 decode){
  mutex_lock(&service_lock);for(unsigned i=account_count;i>0;i--)if(accounts[i-1].id==id){struct service_account *a=&accounts[i-1];a->input=input;a->output=output;a->ready_wait=wait;a->send=send;a->alloc=alloc;a->free=free;a->compute=compute;a->prefill=prefill;a->decode=decode;break;}mutex_unlock(&service_lock);
@@ -330,6 +356,9 @@ int modelos_gpu_prepare(void){return modelos_l1_serving()&&!current->mm?0:-ENODE
 int modelos_gpu_arena_acquire(unsigned arena,u32 request){
  if(arena>=MODELOS_GPU_ARENAS||!request||!modelos_l1_serving())return -EINVAL;
  mutex_lock(&service_lock);if(service_owner[arena]){mutex_unlock(&service_lock);return -EBUSY;}
+#if L1_LAUNCH_IS_ALPIN
+ service_math[arena]=service_layout[arena]=service_gap[arena]=service_copy_bytes[arena]=0;service_component_valid[arena]=service_transitions[arena]=0;
+#endif
  service_owner[arena]=request;service_gpu[arena]=service_submit[arena]=service_wait[arena]=0;service_steps[arena]=0;service_prefill[arena]=service_decode[arena]=0;service_fault_start[arena]=modelos_kernel_faults();service_frontend[arena]=service_front_valid[arena]=0;
  memset_io((void __iomem *)service->r->state.cpu+arena*MODELOS_GPU_ARENA_BYTES+0x1d100000,0,82*4);wmb();
  for(unsigned j=0;j<16;j++){writel(0x51a70000U+arena*256+j,(void __iomem *)service->r->state.cpu+arena*MODELOS_GPU_ARENA_BYTES+0x1d000000+j*4);writel(0x93c80000U+arena*256+j,(void __iomem *)service->r->state.cpu+(arena+1)*MODELOS_GPU_ARENA_BYTES-0x1000+j*4);}wmb();
@@ -342,6 +371,9 @@ int modelos_gpu_arena_release(unsigned arena,u32 request){
  service_owner[arena]=0;
  if(account_count>=ARRAY_SIZE(accounts)){mutex_unlock(&service_lock);return -ENOSPC;}
  accounts[account_count++]=(struct service_account){.id=request,.steps=service_steps[arena],.gpu=service_gpu[arena],.submit=service_submit[arena],.queue=service_wait[arena],.gpu_prefill=service_prefill[arena],.gpu_decode=service_decode[arena],.faults=modelos_kernel_faults()-service_fault_start[arena],.frontend=service_frontend[arena],.front_valid=service_front_valid[arena]};
+#if L1_LAUNCH_IS_ALPIN
+ {struct service_account *a=&accounts[account_count-1];a->math=service_math[arena];a->layout=service_layout[arena];a->gap=service_gap[arena];a->copy_bytes=service_copy_bytes[arena];a->component_valid=service_component_valid[arena];a->transitions=service_transitions[arena];}
+#endif
  mutex_unlock(&service_lock);return 0;
 }
 static void bind_arena(struct executor *c,unsigned arena){
@@ -350,7 +382,7 @@ static void bind_arena(struct executor *c,unsigned arena){
   field(c->nodes[node].qmd,1375,1344,(NvU32)(address>>6));field(c->nodes[node].qmd,1394,1376,address>>38);
  }
 }
-#if L1_LAUNCH_MAX_BATCH > 1
+#if L1_LAUNCH_MAX_BATCH > 1 || L1_LAUNCH_IS_ALPIN
 struct decode_job {struct list_head link;struct completion done;unsigned worker,arena;u32 request,token,position,result;int status;u64 enqueued;};
 static LIST_HEAD(decode_jobs);static DEFINE_SPINLOCK(decode_lock);
 static DECLARE_WAIT_QUEUE_HEAD(decode_wait);static atomic_t decode_leader=ATOMIC_INIT(0);
@@ -381,6 +413,19 @@ decode_turn:
  u64 locked=ktime_get_ns(),submitted,gpu;
  for(unsigned i=0;i<n;i++)if(!service||service_owner[jobs[i]->arena]!=jobs[i]->request)status=NV_ERR_INVALID_STATE;
  if(status!=NV_OK)goto complete;
+#if L1_LAUNCH_IS_ALPIN
+ /* Fair rounds batch scheduling, not GPU arithmetic. Each member executes
+  * its unchanged B1 graph, then the next prefill chunk may proceed. */
+ for(unsigned i=0;i<n;i++){
+  unsigned arena=jobs[i]->arena;bind_arena(service,arena);NvU32 *q=queue(service);locked=ktime_get_ns();
+  WRITE_ONCE(q[9],0);WRITE_ONCE(q[7],0);WRITE_ONCE(q[2],jobs[i]->token);WRITE_ONCE(q[3],jobs[i]->position);WRITE_ONCE(q[0],service->completion+1);wmb();
+  NvU32 completion=submit(service,0,true);submitted=ktime_get_ns();status=wait_counter(release_ptr(service),completion);
+  if(status==NV_OK&&READ_ONCE(q[5]))status=NV_ERR_INVALID_DATA;
+  if(status!=NV_OK)break;
+  gpu=counter(q,14)-counter(q,12);jobs[i]->result=READ_ONCE(q[4]);service_gpu[arena]+=gpu;service_decode[arena]+=gpu;service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-jobs[i]->enqueued;service_steps[arena]++;account_frontend(arena,1,0);
+ }
+ batch_histogram[n]++;
+#else
  NvU32 *q=queue(service);bind_arena(service,n==1?jobs[0]->arena:0);
  WRITE_ONCE(q[7],n==1?0:n);WRITE_ONCE(q[9],n==1?0:2);
  if(n==1){WRITE_ONCE(q[2],jobs[0]->token);WRITE_ONCE(q[3],jobs[0]->position);}
@@ -396,6 +441,7 @@ decode_turn:
    u64 share=gpu/n+(i<gpu%n);service_gpu[arena]+=share;service_decode[arena]+=share;service_submit[arena]+=(submitted-locked)/n;service_wait[arena]+=locked-jobs[i]->enqueued;service_steps[arena]++;account_frontend(arena,n,i);
   }
  }
+#endif
 complete:
  for(unsigned i=0;i<n;i++)jobs[i]->status=status==NV_OK?0:-EIO;
  WRITE_ONCE(last_prefill,false);
@@ -433,7 +479,7 @@ int modelos_gpu_prefill(unsigned worker,unsigned arena,u32 request,const u32 *to
  if(worker>=4||arena>=MODELOS_GPU_ARENAS||!count||count>1024)return -EINVAL;
  for(unsigned base=0;base<count;base+=L1_LAUNCH_PREFILL_TILE){
   u64 begin=ktime_get_ns(),locked,submitted;unsigned n=min((unsigned)L1_LAUNCH_PREFILL_TILE,count-base);NV_STATUS status;NvU32 completion;
-#if L1_LAUNCH_MAX_BATCH > 1
+#if L1_LAUNCH_MAX_BATCH > 1 || L1_LAUNCH_IS_ALPIN
   atomic_inc(&prefill_waiters);
 prefill_turn:
   mutex_lock(&service_lock);
@@ -449,14 +495,14 @@ prefill_turn:
   locked=ktime_get_ns();if(!service||service_owner[arena]!=request){mutex_unlock(&service_lock);return -EINVAL;}
   bind_arena(service,arena);
   NvU32 *q=queue(service);WRITE_ONCE(q[9],0);for(unsigned i=0;i<n;i++)WRITE_ONCE(q[2048+i],tokens[base+i]);WRITE_ONCE(q[3],base);WRITE_ONCE(q[7],n);WRITE_ONCE(q[8],base+n==count);WRITE_ONCE(q[0],service->completion+1);wmb();
-  completion=submit(service,0,true);submitted=ktime_get_ns();status=wait_counter(release_ptr(service),completion);
+  completion=submit(service,L1_LAUNCH_PREFILL_ROOT,true);submitted=ktime_get_ns();status=wait_counter(release_ptr(service),completion);
   if(status==NV_OK&&READ_ONCE(q[5]))status=NV_ERR_INVALID_DATA;
   if(status==NV_OK){*result=READ_ONCE(q[4]);service_gpu[arena]+=counter(q,14)-counter(q,12);service_prefill[arena]+=counter(q,14)-counter(q,12);service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;account_frontend(arena,1,0);}
-#if L1_LAUNCH_MAX_BATCH > 1
+#if L1_LAUNCH_MAX_BATCH > 1 || L1_LAUNCH_IS_ALPIN
   WRITE_ONCE(last_prefill,true);
 #endif
   mutex_unlock(&service_lock);
-#if L1_LAUNCH_MAX_BATCH > 1
+#if L1_LAUNCH_MAX_BATCH > 1 || L1_LAUNCH_IS_ALPIN
   wake_up_all(&decode_wait);
 #endif
   if(status!=NV_OK)return -EIO;cond_resched();
@@ -467,7 +513,12 @@ int modelos_gpu_stop(void){
  for(unsigned i=0;i<MODELOS_GPU_ARENAS;i++)if(service_owner[i]){mutex_unlock(&service_lock);return -EBUSY;}
  struct executor *c=service;smp_store_release(&service,NULL);kvfree(c);mutex_unlock(&service_lock);
  for(unsigned i=0;i<account_count;i++){struct service_account *a=&accounts[i];pr_info("L1_TCP_ACCOUNT id=%u input=%u output=%u steps=%u gpu_ns=%llu submit_ns=%llu submit_queue_wait_ns=%llu scheduler_wait_ns=%llu send_ns=%llu alloc_ns=%llu release_ns=%llu compute_ns=%llu prefill_ns=%llu decode_ns=%llu gpu_prefill_ns=%llu gpu_decode_ns=%llu guest_pf_entries=%llu gpu_frontend_share_ns=%llu gpu_frontend_valid_steps=%llu canaries=32\n",a->id,a->input,a->output,a->steps,a->gpu,a->submit,a->queue,a->ready_wait,a->send,a->alloc,a->free,a->compute,a->prefill,a->decode,a->gpu_prefill,a->gpu_decode,a->faults,a->frontend,a->front_valid);}
-#if L1_LAUNCH_MAX_BATCH > 1
+#if L1_LAUNCH_IS_ALPIN
+ pr_info("L1_GPU_SCHEDULER fair_rounds=1 gpu_microbatch=0\n");
+ for(unsigned i=0;i<account_count;i++){struct service_account *a=&accounts[i];pr_info("L1_TCP_COMPONENTS id=%u gpu_math_ns=%llu gpu_layout_ns=%llu gpu_gap_ns=%llu gpu_layout_payload_bytes=%llu layout_transitions=%u timing_valid_steps=%u\n",a->id,a->math,a->layout,a->gap,a->copy_bytes,a->transitions,a->component_valid);}
+#endif
+
+#if L1_LAUNCH_MAX_BATCH > 1 || L1_LAUNCH_IS_ALPIN
  pr_info("L1_GPU_BATCH_HIST size1=%llu size2=%llu size3=%llu size4=%llu coalesce_us=200 shared_work_charged_once=1\n",batch_histogram[1],batch_histogram[2],batch_histogram[3],batch_histogram[4]);
 #endif
  pr_info("L1_GPU_TCP_DRAIN release=1 owners=0 graph=1 no_libcuda=1\n");return modelos_l1_release_held();
