@@ -14,9 +14,10 @@
 extern NV_STATUS modelos_rm_alloc(nvidia_stack_t *,NvHandle,NvHandle,NvHandle *,NvU32,void *,NvU32);
 extern NV_STATUS modelos_rm_control(nvidia_stack_t *,NvHandle,NvHandle,NvU32,void *,NvU32);
 extern NV_STATUS modelos_rm_map_cpu(nvidia_stack_t *,NvHandle,NvHandle,NvHandle,NvU64,NvU64,void **,NvU32);
-extern NV_STATUS modelos_rm_map_dma(nvidia_stack_t *,NVOS46_PARAMETERS *);
+extern NV_STATUS modelos_l2_map_memory(nvidia_stack_t *,NvHandle,NvHandle,NvHandle,NvU64 *,NvU64 *,NvBool);
+extern NV_STATUS modelos_rm_free(nvidia_stack_t *,NvHandle,NvHandle);
 
-struct l1_memory { NvHandle handle; void *cpu; NvU64 gpu,bytes; };
+struct l1_memory { NvHandle handle; void *cpu; NvU64 gpu,bytes,reservation; };
 struct l1_context { nvidia_stack_t *stack; NvHandle client,device,sub,va,virt,group,ctx,channel,compute,usermode; void *doorbell; NvU32 token; };
 #define L1_TRY(label,expr) do { NV_STATUS status=(expr); pr_info("L1_REPLAY_CALL %s status=0x%08x\n",label,status);if(status!=NV_OK)return status; } while(0)
 static NV_STATUS l1_alloc(struct l1_context *c,NvHandle parent,NvHandle *h,NvU32 cls,void *p,NvU32 n)
@@ -24,14 +25,11 @@ static NV_STATUS l1_alloc(struct l1_context *c,NvHandle parent,NvHandle *h,NvU32
 static NV_STATUS l1_memory(struct l1_context *c,struct l1_memory *m,const unsigned char *template,NvU32 cls,NvU64 size,NvU64 gpu,NvU32 cache)
 {
  NV_MEMORY_ALLOCATION_PARAMS p;
- NVOS46_PARAMETERS dma={0};
  memcpy(&p,template,sizeof(p));p.owner=p.type==13?c->device:c->client;p.size=size;
  if(cls==0x40 && cache==2)p.attr=(p.attr&~(7U<<29))|(2U<<29); /* Match VRAM allocation coherence to its WC CPU map. */
  L1_TRY("memory-alloc",l1_alloc(c,c->device,&m->handle,cls,&p,sizeof(p)));
- dma.hClient=c->client;dma.hDevice=c->device;dma.hDma=c->virt;dma.hMemory=m->handle;
- dma.length=size;dma.dmaOffset=gpu;dma.flags=1U<<15;
- L1_TRY("memory-gpu-map",modelos_rm_map_dma(c->stack,&dma));
- m->gpu=dma.dmaOffset;m->bytes=size;
+ L1_TRY("direct-memory-gpu-map",modelos_l2_map_memory(c->stack,c->client,c->va,m->handle,&m->gpu,&m->reservation,NV_FALSE));
+ m->bytes=size;
  L1_TRY("memory-cpu-map",modelos_rm_map_cpu(c->stack,c->client,c->sub,m->handle,0,size,&m->cpu,cache<<23));
  pr_info("L1_REPLAY_MEMORY class=0x%x bytes=%llu gpu=0x%llx cpu=%px\n",cls,size,m->gpu,m->cpu);
  if(size<=0x200000)memset_io((void __iomem *)m->cpu,0,size);
@@ -226,11 +224,20 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
  L1_TRY("work-token",modelos_rm_control(stack,client,c.channel,NVC36F_CTRL_CMD_GPFIFO_GET_WORK_SUBMIT_TOKEN,&token,sizeof(token)));
  c.token=token.workSubmitToken;
  pr_info("L1_REPLAY_RESOURCES_PASS token=0x%x no_submission=1\n",c.token);
+ extern void l2_counts_phase(unsigned);
+ l2_counts_phase(0);
 #ifdef CONFIG_MODELOS_L1_QWEN
  result=l1_qwen(&c,&local,&host);
 #else
  result=l1_execute(&c,&local,&host);
 #endif
- if(result==NV_OK){iounmap((void __iomem *)c.doorbell);pr_info("L2_DIRECT_BAR0_UNMAP status=0x0\n");}
+ l2_counts_phase(1);
+ if(result==NV_OK){
+  L1_TRY("direct-group-release",modelos_rm_free(stack,client,c.group));
+  L1_TRY("direct-error-unmap",modelos_l2_map_memory(stack,client,c.va,error.handle,&error.gpu,&error.reservation,NV_TRUE));
+  L1_TRY("direct-host-unmap",modelos_l2_map_memory(stack,client,c.va,host.handle,&host.gpu,&host.reservation,NV_TRUE));
+  L1_TRY("direct-local-unmap",modelos_l2_map_memory(stack,client,c.va,local.handle,&local.gpu,&local.reservation,NV_TRUE));
+  iounmap((void __iomem *)c.doorbell);pr_info("L2_DIRECT_BAR0_UNMAP status=0x0\n");
+ }
  return result;
 }
