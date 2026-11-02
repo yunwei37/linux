@@ -1350,6 +1350,7 @@ nla_put_failure:
 	return -EMSGSIZE;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int ctrl_dumpfamily(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	int n = 0;
@@ -1378,6 +1379,8 @@ static int ctrl_dumpfamily(struct sk_buff *skb, struct netlink_callback *cb)
 	cb->args[0] = n;
 	return err;
 }
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static struct sk_buff *ctrl_build_family_msg(const struct genl_family *family,
 					     u32 portid, int seq, u8 cmd)
@@ -1420,6 +1423,7 @@ ctrl_build_mcgrp_msg(const struct genl_family *family,
 	return skb;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct nla_policy ctrl_policy_family[] = {
 	[CTRL_ATTR_FAMILY_ID]	= { .type = NLA_U16 },
 	[CTRL_ATTR_FAMILY_NAME]	= { .type = NLA_NUL_STRING,
@@ -1473,6 +1477,8 @@ static int ctrl_getfamily(struct sk_buff *skb, struct genl_info *info)
 	return genlmsg_reply(msg, info);
 }
 
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
+
 static int genl_ctrl_event(int event, const struct genl_family *family,
 			   const struct genl_multicast_group *grp,
 			   int grp_id)
@@ -1510,6 +1516,7 @@ static int genl_ctrl_event(int event, const struct genl_family *family,
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 struct ctrl_dump_policy_ctx {
 	struct netlink_policy_dump_state *state;
 	const struct genl_family *rt;
@@ -1805,14 +1812,18 @@ static const struct genl_split_ops genl_ctrl_ops[] = {
 	},
 };
 
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
+
 static const struct genl_multicast_group genl_ctrl_groups[] = {
 	{ .name = "notify", },
 };
 
 static struct genl_family genl_ctrl __ro_after_init = {
 	.module = THIS_MODULE,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.split_ops = genl_ctrl_ops,
 	.n_split_ops = ARRAY_SIZE(genl_ctrl_ops),
+#endif
 	.resv_start_op = CTRL_CMD_GETPOLICY + 1,
 	.mcgrps = genl_ctrl_groups,
 	.n_mcgrps = ARRAY_SIZE(genl_ctrl_groups),
