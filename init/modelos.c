@@ -19,6 +19,17 @@ int modelos_serve_network(void *unused);
 
 static DEFINE_PER_CPU(struct completion, modelos_started);
 
+#ifdef CONFIG_MODELOS_KEXEC_TCP
+/* GPU serving has no work for the boot-only CPU stress probes. */
+static bool modelos_busy_probe;
+static int __init busy_probe_setup(char *unused)
+{
+ modelos_busy_probe=true;
+ return 1;
+}
+__setup("modelos_kexec_busy_probe",busy_probe_setup);
+#endif
+
 static int modelos_worker(void *data)
 {
 	unsigned int cpu = (unsigned long)data;
@@ -31,6 +42,14 @@ static int modelos_worker(void *data)
 	complete(per_cpu_ptr(&modelos_started, cpu));
 #ifdef CONFIG_MODELOS_SERVE
 	return modelos_serve_worker(cpu);
+#endif
+#ifdef CONFIG_MODELOS_KEXEC_TCP
+ if(!modelos_busy_probe){
+  pr_info("MODELOS_GPU_WORKER_PARK cpu=%u mm=%s\n",cpu,current->mm?"present":"none");
+  while(!kthread_should_stop())schedule_timeout_interruptible(MAX_SCHEDULE_TIMEOUT);
+  return 0;
+ }
+ pr_info("MODELOS_GPU_BUSY_PROBE cpu=%u enabled=1\n",cpu);
 #endif
 	while (!kthread_should_stop()) {
 		unsigned int i;
