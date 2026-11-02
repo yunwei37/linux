@@ -75,3 +75,5 @@ obj-$(CONFIG_MODELOS_SERVE) += modelos_serve/
 obj-$(CONFIG_MODELOS_KEXEC_RESIDENT) += modelos_resident.o
 
 obj-$(CONFIG_MODELOS_KEXEC_DPS) += modelos_dps.o
+
+obj-$(CONFIG_MODELOS_KEXEC_DPS) += modelos_buddy_arena.o

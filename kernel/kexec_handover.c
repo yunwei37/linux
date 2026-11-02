@@ -1348,6 +1348,89 @@ static void __init kho_release_scratch(void)
 	}
 }
 
+
+#ifdef CONFIG_MODELOS_KEXEC_DPS
+#include <linux/kexec_free_snapshot.h>
+#include <linux/bitmap.h>
+#include <linux/modelos_dps_handoff.h>
+static bool modelos_reclaim_buddy;
+static unsigned long *modelos_boot_reserved;
+static unsigned long modelos_boot_pfns,modelos_boot_bytes;
+static int __init reclaim_buddy_setup(char *unused)
+{
+ modelos_reclaim_buddy=true;
+ return 0;
+}
+early_param("modelos_reclaim_buddy",reclaim_buddy_setup);
+static bool __init free_bitmap_overlaps(struct kexec_free_snapshot *h,
+                                       phys_addr_t start,phys_addr_t bytes)
+{
+ unsigned long first=PFN_DOWN(start),end=PFN_UP(start+bytes);
+ return first>=h->max_pfn||end>h->max_pfn||find_next_bit(h->bitmap,end,first)<end;
+}
+static void __init modelos_keep_boot_reservations(void)
+{
+ struct memblock_region *region;
+ if(!modelos_reclaim_buddy)return;
+ modelos_boot_pfns=PFN_UP(memblock_end_of_DRAM());
+ modelos_boot_bytes=PAGE_ALIGN(BITS_TO_LONGS(modelos_boot_pfns)*sizeof(unsigned long));
+ modelos_boot_reserved=memblock_alloc(modelos_boot_bytes,PAGE_SIZE);
+ if(!modelos_boot_reserved)panic("KEXEC_FREE: cannot protect boot reservations");
+ bitmap_zero(modelos_boot_reserved,modelos_boot_pfns);
+ /* Capture after allocating the bitmap, before whole-RAM quarantine merges
+  * reservations. This includes any new trampoline/firmware reservations
+  * outside KHO scratch as well as all ordinary new boot allocations. */
+ for(region=memblock.reserved.regions;region<memblock.reserved.regions+memblock.reserved.cnt;region++){
+  unsigned long first=PFN_DOWN(region->base),end=PFN_UP(region->base+region->size);
+  if(first>=modelos_boot_pfns)continue;
+  end=min(end,modelos_boot_pfns);bitmap_set(modelos_boot_reserved,first,end-first);
+ }
+}
+static void __init modelos_reclaim_source_buddy(void)
+{
+ phys_addr_t start,bytes,dps_start,dps_bytes;struct kexec_free_snapshot *h;
+ struct memblock_region *region;struct dps_handoff *dps;unsigned long pfn,released=0,boot_preserved=0;
+ if(!modelos_reclaim_buddy){pr_info("KEXEC_FREE_POLICY enabled=0\n");return;}
+ if(!reserve_mem_find_by_name(KEXEC_FREE_NAME,&start,&bytes)||bytes<sizeof(*h))goto reject;
+ h=phys_to_virt(start);
+ if(memcmp(h->magic,KEXEC_FREE_MAGIC,8)||h->version!=1||h->header_bytes!=sizeof(*h)||h->status!=1||h->capture_flags!=1||
+    !modelos_boot_reserved||h->max_pfn!=modelos_boot_pfns||!h->max_pfn||h->max_pfn>(bytes-sizeof(*h))*8||h->bitmap_bytes!=(BITS_TO_LONGS(h->max_pfn)*sizeof(unsigned long))||
+    h->bitmap_bytes>bytes-sizeof(*h))goto reject;
+ if(h->checksum!=kexec_free_checksum(h)){pr_err("KEXEC_FREE_REJECT reason=checksum\n");goto out;}
+ if(bitmap_weight(h->bitmap,h->max_pfn)!=h->free_pages||!h->protected_phys||
+    (h->protected_phys&~PAGE_MASK)||h->protected_phys>>PAGE_SHIFT>=h->max_pfn||
+    test_bit(h->protected_phys>>PAGE_SHIFT,h->bitmap)||free_bitmap_overlaps(h,start,bytes))goto reject;
+ if(!reserve_mem_find_by_name("modelos-dps",&dps_start,&dps_bytes)||free_bitmap_overlaps(h,dps_start,dps_bytes))goto reject;
+ dps=phys_to_virt(dps_start);
+ if(dps_bytes<sizeof(*dps)||dps->version!=1||dps->bytes!=sizeof(*dps)||memcmp(dps->magic,DPS_MAGIC,8)||dps->checksum!=dps_checksum(dps)||dps->serial!=26||dps->probe_status!=1||dps->queue_phys!=h->protected_phys)goto reject;
+ /* Validate every candidate before modifying any reservation. KHO scratch
+  * is deliberately excluded below, including the new kernel and page tables. */
+ for_each_set_bit(pfn,h->bitmap,h->max_pfn)
+  if(!memblock_is_map_memory(PFN_PHYS(pfn)))goto reject;
+ for(unsigned long i=0;i<BITS_TO_LONGS(h->max_pfn);i++)
+  boot_preserved+=hweight_long(h->bitmap[i]&modelos_boot_reserved[i]);
+ bitmap_andnot(modelos_boot_reserved,h->bitmap,modelos_boot_reserved,h->max_pfn);
+
+ for_each_mem_region(region){
+  unsigned long end=PFN_DOWN(region->base+region->size),cursor=PFN_UP(region->base);
+  if(memblock_is_kho_scratch(region))continue;
+  while(cursor<end){
+   unsigned long first=find_next_bit(modelos_boot_reserved,min_t(unsigned long,end,h->max_pfn),cursor),last;
+   if(first>=end||first>=h->max_pfn)break;
+   last=find_next_zero_bit(modelos_boot_reserved,min_t(unsigned long,end,h->max_pfn),first);
+   if(memblock_phys_free(PFN_PHYS(first),PFN_PHYS(last-first)))panic("KEXEC_FREE: unreserve failed");
+   released+=last-first;cursor=last;
+  }
+ }
+ pr_info("KEXEC_FREE_RECLAIM source_pages=%llu returned_pages=%lu returned_bytes=%lu protected=%llx\n",h->free_pages,released,released<<PAGE_SHIFT,h->protected_phys);
+ pr_info("KEXEC_FREE_BOOT_PROTECTED source_free_pages=%lu\n",boot_preserved);
+ goto out;
+reject:pr_err("KEXEC_FREE_REJECT reason=metadata\n");
+out:
+ if(modelos_boot_reserved){memblock_phys_free(virt_to_phys(modelos_boot_reserved),modelos_boot_bytes);modelos_boot_reserved=NULL;}
+}
+#endif
+
 void __init kho_memory_init(void)
 {
 	struct folio *folio;
@@ -1355,6 +1438,9 @@ void __init kho_memory_init(void)
 	if (kho_in.scratch_phys) {
 		kho_scratch = phys_to_virt(kho_in.scratch_phys);
 		kho_release_scratch();
+#ifdef CONFIG_MODELOS_KEXEC_DPS
+		modelos_keep_boot_reservations();
+#endif
 
 #if defined(CONFIG_MODELOS_KEXEC_RESIDENT) || defined(CONFIG_MODELOS_KEXEC_DPS)
         /* Early allocation was restricted to KHO scratch. Keep *all* old
@@ -1381,6 +1467,9 @@ void __init kho_memory_init(void)
 		folio = kho_restore_folio(kho_in.fdt_phys);
 		if (!folio)
 			pr_warn("failed to restore folio for KHO fdt\n");
+#ifdef CONFIG_MODELOS_KEXEC_DPS
+		modelos_reclaim_source_buddy();
+#endif
 		return;
 	}
 #ifndef CONFIG_KEXEC_HANDOVER_RECEIVER
