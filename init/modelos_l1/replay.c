@@ -3,7 +3,6 @@
 #include "nv-linux.h"
 #include <linux/pci.h>
 #include "nvos.h"
-#include "class/cl0070.h"
 #include "class/cl90f1.h"
 #include "class/cl9067.h"
 #include "alloc/alloc_channel.h"
@@ -18,7 +17,7 @@ extern NV_STATUS modelos_l2_map_memory(nvidia_stack_t *,NvHandle,NvHandle,NvHand
 extern NV_STATUS modelos_rm_free(nvidia_stack_t *,NvHandle,NvHandle);
 
 struct l1_memory { NvHandle handle; void *cpu; NvU64 gpu,bytes,reservation; };
-struct l1_context { nvidia_stack_t *stack; NvHandle client,device,sub,va,virt,group,ctx,channel,compute,usermode; void *doorbell; NvU32 token; };
+struct l1_context { nvidia_stack_t *stack; NvHandle client,device,sub,va,group,ctx,channel,compute,usermode; void *doorbell; NvU32 token; };
 #define L1_TRY(label,expr) do { NV_STATUS status=(expr); pr_info("L1_REPLAY_CALL %s status=0x%08x\n",label,status);if(status!=NV_OK)return status; } while(0)
 static NV_STATUS l1_alloc(struct l1_context *c,NvHandle parent,NvHandle *h,NvU32 cls,void *p,NvU32 n)
 { return modelos_rm_alloc(c->stack,c->client,parent,h,cls,p,n); }
@@ -195,7 +194,6 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
 {
  struct l1_context c={.stack=stack,.client=client,.device=device,.sub=sub};
  NV_VASPACE_ALLOCATION_PARAMETERS va;
- NV_MEMORY_VIRTUAL_ALLOCATION_PARAMS virt={0};
  NV_CHANNEL_GROUP_ALLOCATION_PARAMETERS grp;
  NV_CTXSHARE_ALLOCATION_PARAMETERS ctx;
  NV_CHANNELGPFIFO_ALLOCATION_PARAMETERS fifo;
@@ -205,9 +203,7 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
  NV_STATUS result;
  memcpy(&va,l1_vaspace,sizeof(va));va.vaSize=(1ULL<<47)-0x1000;va.flags=0; /* RM-owned tables; no UVM/external page directory. */
  L1_TRY("vaspace",l1_alloc(&c,device,&c.va,0x90f1,&va,sizeof(va)));
- virt.hVASpace=c.va;virt.offset=0x1000;virt.limit=(1ULL<<47)-1;
- L1_TRY("virtual",l1_alloc(&c,device,&c.virt,0x70,&virt,sizeof(virt)));
- pr_info("L1_REPLAY_VIRTUAL base=0x%llx limit=0x%llx va_size=0x%llx\n",virt.offset,virt.limit,va.vaSize);
+ pr_info("L2_DIRECT_VASPACE virtual_range_proxy=0 mappings=3 fresh_va=1\n");
  memcpy(&grp,l1_group,sizeof(grp));
  L1_TRY("group",l1_alloc(&c,device,&c.group,0xa06c,&grp,sizeof(grp)));
  memcpy(&ctx,l1_ctxshare,sizeof(ctx));ctx.hVASpace=c.va;
