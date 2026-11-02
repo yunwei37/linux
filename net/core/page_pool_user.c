@@ -33,6 +33,7 @@ DEFINE_MUTEX(page_pools_lock);
  *    - user.list: unhashed, netdev: unknown
  */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 typedef int (*pp_nl_fill_cb)(struct sk_buff *rsp, const struct page_pool *pool,
 			     const struct genl_info *info);
 
@@ -308,6 +309,8 @@ int netdev_nl_page_pool_get_dumpit(struct sk_buff *skb,
 	return netdev_nl_page_pool_get_dump(skb, cb, page_pool_nl_fill);
 }
 
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
+
 int page_pool_list(struct page_pool *pool)
 {
 	static u32 id_alloc_next;
@@ -323,7 +326,9 @@ int page_pool_list(struct page_pool *pool)
 	if (pool->slow.netdev) {
 		hlist_add_head(&pool->user.list,
 			       &pool->slow.netdev->page_pools);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		netdev_nl_page_pool_event(pool, NETDEV_CMD_PAGE_POOL_ADD_NTF);
+#endif
 	}
 
 	mutex_unlock(&page_pools_lock);
@@ -338,14 +343,18 @@ void page_pool_detached(struct page_pool *pool)
 {
 	mutex_lock(&page_pools_lock);
 	pool->user.detach_time = ktime_get_boottime();
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	netdev_nl_page_pool_event(pool, NETDEV_CMD_PAGE_POOL_CHANGE_NTF);
+#endif
 	mutex_unlock(&page_pools_lock);
 }
 
 void page_pool_unlist(struct page_pool *pool)
 {
 	mutex_lock(&page_pools_lock);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	netdev_nl_page_pool_event(pool, NETDEV_CMD_PAGE_POOL_DEL_NTF);
+#endif
 	xa_erase(&page_pools, pool->user.id);
 	if (!hlist_unhashed(&pool->user.list))
 		hlist_del(&pool->user.list);
@@ -400,8 +409,10 @@ static void page_pool_unreg_netdev(struct net_device *netdev)
 	last = NULL;
 	hlist_for_each_entry(pool, &netdev->page_pools, user.list) {
 		pool->slow.netdev = lo;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		netdev_nl_page_pool_event(pool,
 					  NETDEV_CMD_PAGE_POOL_CHANGE_NTF);
+#endif
 		last = pool;
 	}
 	if (last)

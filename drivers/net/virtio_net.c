@@ -5711,6 +5711,7 @@ static const struct ethtool_ops virtnet_ethtool_ops = {
 	.get_rx_ring_count = virtnet_get_rx_ring_count,
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void virtnet_get_queue_stats_rx(struct net_device *dev, int i,
 				       struct netdev_queue_stats_rx *stats)
 {
@@ -5805,6 +5806,8 @@ static const struct netdev_stat_ops virtnet_stat_ops = {
 	.get_queue_stats_tx	= virtnet_get_queue_stats_tx,
 	.get_base_stats		= virtnet_get_base_stats,
 };
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void virtnet_freeze_down(struct virtio_device *vdev)
 {
@@ -6863,7 +6866,9 @@ static int virtnet_probe(struct virtio_device *vdev)
 	dev->priv_flags |= IFF_UNICAST_FLT | IFF_LIVE_ADDR_CHANGE |
 			   IFF_TX_SKB_NO_LINEAR;
 	dev->netdev_ops = &virtnet_netdev;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	dev->stat_ops = &virtnet_stat_ops;
+#endif
 	dev->features = NETIF_F_HIGHDMA;
 
 	dev->ethtool_ops = &virtnet_ethtool_ops;
