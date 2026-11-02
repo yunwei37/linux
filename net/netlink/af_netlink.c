@@ -643,6 +643,7 @@ static int __netlink_create(struct net *net, struct socket *sock,
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_create(struct net *net, struct socket *sock, int protocol,
 			  int kern)
 {
@@ -701,6 +702,7 @@ out_module:
 	module_put(module);
 	goto out;
 }
+#endif
 
 static void deferred_put_nlk_sk(struct rcu_head *head)
 {
@@ -2846,11 +2848,13 @@ static const struct proto_ops netlink_ops = {
 #endif
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct net_proto_family netlink_family_ops = {
 	.family = PF_NETLINK,
 	.create = netlink_create,
 	.owner	= THIS_MODULE,	/* for consistency 8) */
 };
+#endif
 
 static int __net_init netlink_net_init(struct net *net)
 {
@@ -2869,6 +2873,7 @@ static void __net_exit netlink_net_exit(struct net *net)
 #endif
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void __init netlink_add_usersock_entry(void)
 {
 	struct listeners *listeners;
@@ -2888,6 +2893,7 @@ static void __init netlink_add_usersock_entry(void)
 
 	netlink_table_ungrab();
 }
+#endif
 
 static struct pernet_operations __net_initdata netlink_net_ops = {
 	.init = netlink_net_init,
@@ -2964,9 +2970,11 @@ static int __init netlink_proto_init(void)
 			goto panic;
 	}
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	netlink_add_usersock_entry();
 
 	sock_register(&netlink_family_ops);
+#endif
 	register_pernet_subsys(&netlink_net_ops);
 	register_pernet_subsys(&netlink_tap_net_ops);
 	/* The netlink device handler may be needed early. */

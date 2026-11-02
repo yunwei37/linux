@@ -19,7 +19,7 @@ if THERMAL
 
 config THERMAL_NETLINK
 	bool "Thermal netlink management"
-	depends on NET
+	depends on NET && !MODELOS_KERNEL_ONLY
 	help
 	  The thermal framework has a netlink interface to do thermal
 	  zones discovery, temperature readings and events such as
