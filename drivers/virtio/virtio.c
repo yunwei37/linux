@@ -95,6 +95,7 @@ static int virtio_dev_match(struct device *_dv, const struct device_driver *_dr)
 	return 0;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int virtio_uevent(const struct device *_dv, struct kobj_uevent_env *env)
 {
 	const struct virtio_device *dev = dev_to_virtio(_dv);
@@ -102,6 +103,7 @@ static int virtio_uevent(const struct device *_dv, struct kobj_uevent_env *env)
 	return add_uevent_var(env, "MODALIAS=virtio:d%08Xv%08X",
 			      dev->id.device, dev->id.vendor);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 void virtio_check_driver_offered_feature(const struct virtio_device *vdev,
 					 unsigned int fbit)
@@ -452,7 +454,9 @@ static const struct bus_type virtio_bus = {
 	.name  = "virtio",
 	.match = virtio_dev_match,
 	.dev_groups = virtio_dev_groups,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.uevent = virtio_uevent,
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	.probe = virtio_dev_probe,
 	.remove = virtio_dev_remove,
 	.irq_get_affinity = virtio_irq_get_affinity,

@@ -474,10 +474,14 @@ EXPORT_SYMBOL_GPL(kobject_init_and_add);
 int kobject_rename(struct kobject *kobj, const char *new_name)
 {
 	int error = 0;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	const char *devpath = NULL;
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	const char *dup_name = NULL, *name;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	char *devpath_string = NULL;
 	char *envp[2];
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	kobj = kobject_get(kobj);
 	if (!kobj)
@@ -487,6 +491,7 @@ int kobject_rename(struct kobject *kobj, const char *new_name)
 		return -EINVAL;
 	}
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	devpath = kobject_get_path(kobj, GFP_KERNEL);
 	if (!devpath) {
 		error = -ENOMEM;
@@ -500,6 +505,7 @@ int kobject_rename(struct kobject *kobj, const char *new_name)
 	sprintf(devpath_string, "DEVPATH_OLD=%s", devpath);
 	envp[0] = devpath_string;
 	envp[1] = NULL;
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	name = dup_name = kstrdup_const(new_name, GFP_KERNEL);
 	if (!name) {
@@ -518,12 +524,16 @@ int kobject_rename(struct kobject *kobj, const char *new_name)
 	/* This function is mostly/only used for network interface.
 	 * Some hotplug package track interfaces by their name and
 	 * therefore want to know when the name is changed by the user. */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent_env(kobj, KOBJ_MOVE, envp);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 out:
 	kfree_const(dup_name);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kfree(devpath_string);
 	kfree(devpath);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	kobject_put(kobj);
 
 	return error;
@@ -539,9 +549,11 @@ int kobject_move(struct kobject *kobj, struct kobject *new_parent)
 {
 	int error;
 	struct kobject *old_parent;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	const char *devpath = NULL;
 	char *devpath_string = NULL;
 	char *envp[2];
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	kobj = kobject_get(kobj);
 	if (!kobj)
@@ -553,6 +565,7 @@ int kobject_move(struct kobject *kobj, struct kobject *new_parent)
 	}
 
 	/* old object path */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	devpath = kobject_get_path(kobj, GFP_KERNEL);
 	if (!devpath) {
 		error = -ENOMEM;
@@ -566,6 +579,7 @@ int kobject_move(struct kobject *kobj, struct kobject *new_parent)
 	sprintf(devpath_string, "DEVPATH_OLD=%s", devpath);
 	envp[0] = devpath_string;
 	envp[1] = NULL;
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	error = sysfs_move_dir_ns(kobj, new_parent, kobject_namespace(kobj));
 	if (error)
 		goto out;
@@ -573,12 +587,16 @@ int kobject_move(struct kobject *kobj, struct kobject *new_parent)
 	kobj->parent = new_parent;
 	new_parent = NULL;
 	kobject_put(old_parent);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent_env(kobj, KOBJ_MOVE, envp);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 out:
 	kobject_put(new_parent);
 	kobject_put(kobj);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kfree(devpath_string);
 	kfree(devpath);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	return error;
 }
 EXPORT_SYMBOL_GPL(kobject_move);
@@ -594,12 +612,14 @@ static void __kobject_del(struct kobject *kobj)
 	if (ktype)
 		sysfs_remove_groups(kobj, ktype->default_groups);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	/* send "remove" if the caller did not do it but sent "add" */
 	if (kobj->state_add_uevent_sent && !kobj->state_remove_uevent_sent) {
 		pr_debug("'%s' (%p): auto cleanup 'remove' event\n",
 			 kobject_name(kobj), kobj);
 		kobject_uevent(kobj, KOBJ_REMOVE);
 	}
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	sysfs_remove_dir(kobj);
 	sysfs_put(sd);
@@ -878,7 +898,9 @@ int kset_register(struct kset *k)
 		k->kobj.name = NULL;
 		return err;
 	}
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&k->kobj, KOBJ_ADD);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	return 0;
 }
 EXPORT_SYMBOL(kset_register);

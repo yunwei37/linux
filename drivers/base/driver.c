@@ -254,7 +254,9 @@ int driver_register(struct device_driver *drv)
 		bus_remove_driver(drv);
 		return ret;
 	}
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&drv->p->kobj, KOBJ_ADD);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	deferred_probe_extend_timeout();
 
 	return ret;

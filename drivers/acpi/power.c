@@ -987,7 +987,9 @@ struct acpi_device *acpi_add_power_resource(acpi_handle handle)
 		device->remove = acpi_power_sysfs_remove;
 
 	acpi_power_add_resource_to_list(resource);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_device_add_finalize(device);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	return device;
 
  err:

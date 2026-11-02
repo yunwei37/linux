@@ -228,6 +228,7 @@ static const struct kobj_type bus_ktype = {
 	.release	= bus_release,
 };
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int bus_uevent_filter(const struct kobject *kobj)
 {
 	const struct kobj_type *ktype = get_ktype(kobj);
@@ -240,6 +241,7 @@ static int bus_uevent_filter(const struct kobject *kobj)
 static const struct kset_uevent_ops bus_uevent_ops = {
 	.filter = bus_uevent_filter,
 };
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 /* Manually detach a device from its associated driver. */
@@ -1476,7 +1478,11 @@ EXPORT_SYMBOL_GPL(bus_get_dev_root);
 
 int __init buses_init(void)
 {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	bus_kset = kset_create_and_add("bus", NULL, NULL);
+#else
 	bus_kset = kset_create_and_add("bus", &bus_uevent_ops, NULL);
+#endif
 	if (!bus_kset)
 		return -ENOMEM;
 

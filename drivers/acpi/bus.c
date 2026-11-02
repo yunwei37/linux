@@ -1148,10 +1148,12 @@ static int acpi_bus_match(struct device *dev, const struct device_driver *drv)
 		&& !acpi_match_device_ids(acpi_dev, acpi_drv->ids);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int acpi_device_uevent(const struct device *dev, struct kobj_uevent_env *env)
 {
 	return __acpi_device_uevent_modalias(to_acpi_device(dev), env);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int acpi_device_probe(struct device *dev)
 {
@@ -1213,7 +1215,9 @@ const struct bus_type acpi_bus_type = {
 	.match		= acpi_bus_match,
 	.probe		= acpi_device_probe,
 	.remove		= acpi_device_remove,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.uevent		= acpi_device_uevent,
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 };
 
 int acpi_bus_for_each_dev(int (*fn)(struct device *, void *), void *data)

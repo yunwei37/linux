@@ -237,6 +237,7 @@ static int create_of_modalias(const struct acpi_device *acpi_dev, char *modalias
 	return len;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int __acpi_device_uevent_modalias(const struct acpi_device *adev,
 				  struct kobj_uevent_env *env)
 {
@@ -264,6 +265,7 @@ int __acpi_device_uevent_modalias(const struct acpi_device *adev,
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * acpi_device_uevent_modalias - uevent modalias for ACPI-enumerated devices.
@@ -275,11 +277,13 @@ int __acpi_device_uevent_modalias(const struct acpi_device *adev,
  * Because other buses do not support ACPI HIDs & CIDs, e.g. for a device with
  * hid:IBM0001 and cid:ACPI0001 you get: "acpi:IBM0001:ACPI0001".
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int acpi_device_uevent_modalias(const struct device *dev, struct kobj_uevent_env *env)
 {
 	return __acpi_device_uevent_modalias(acpi_companion_match(dev), env);
 }
 EXPORT_SYMBOL_GPL(acpi_device_uevent_modalias);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int __acpi_device_modalias(const struct acpi_device *adev, char *buf, int size)
 {

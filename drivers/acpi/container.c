@@ -80,12 +80,14 @@ static void container_device_detach(struct acpi_device *adev)
 		device_unregister(dev);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void container_device_online(struct acpi_device *adev)
 {
 	struct device *dev = acpi_driver_data(adev);
 
 	kobject_uevent(&dev->kobj, KOBJ_ONLINE);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static struct acpi_scan_handler container_handler = {
 	.ids = container_device_ids,
@@ -94,7 +96,9 @@ static struct acpi_scan_handler container_handler = {
 	.hotplug = {
 		.enabled = true,
 		.demand_offline = true,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		.notify_online = container_device_online,
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	},
 };
 

@@ -1601,6 +1601,7 @@ void pci_dev_put(struct pci_dev *dev)
 }
 EXPORT_SYMBOL(pci_dev_put);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int pci_uevent(const struct device *dev, struct kobj_uevent_env *env)
 {
 	const struct pci_dev *pdev;
@@ -1632,6 +1633,7 @@ static int pci_uevent(const struct device *dev, struct kobj_uevent_env *env)
 
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #if defined(CONFIG_PCIEAER) || defined(CONFIG_EEH) || defined(CONFIG_S390)
 /**
@@ -1639,6 +1641,7 @@ static int pci_uevent(const struct device *dev, struct kobj_uevent_env *env)
  * @pdev: PCI device undergoing error recovery
  * @err_type: type of error event
  */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void pci_uevent_ers(struct pci_dev *pdev, enum pci_ers_result err_type)
 {
 	int idx = 0;
@@ -1668,6 +1671,7 @@ void pci_uevent_ers(struct pci_dev *pdev, enum pci_ers_result err_type)
 		kobject_uevent_env(&pdev->dev.kobj, KOBJ_CHANGE, envp);
 	}
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 #endif
 
 static int pci_bus_num_vf(struct device *dev)
@@ -1744,7 +1748,9 @@ const struct bus_type pci_bus_type = {
 	.name		= "pci",
 	.driver_override = true,
 	.match		= pci_bus_match,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.uevent		= pci_uevent,
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	.probe		= pci_device_probe,
 	.remove		= pci_device_remove,
 	.shutdown	= pci_device_shutdown,

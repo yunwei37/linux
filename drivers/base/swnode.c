@@ -832,7 +832,9 @@ swnode_register(const struct software_node *node, struct swnode *parent,
 	if (parent)
 		list_add_tail(&swnode->entry, &parent->children);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&swnode->kobj, KOBJ_ADD);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	return &swnode->fwnode;
 }
 

@@ -1329,6 +1329,7 @@ static int platform_match(struct device *dev, const struct device_driver *drv)
 	return (strcmp(pdev->name, drv->name) == 0);
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int platform_uevent(const struct device *dev, struct kobj_uevent_env *env)
 {
 	const struct platform_device *pdev = to_platform_device(dev);
@@ -1347,6 +1348,7 @@ static int platform_uevent(const struct device *dev, struct kobj_uevent_env *env
 			pdev->name);
 	return 0;
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int platform_probe(struct device *_dev)
 {
@@ -1449,7 +1451,9 @@ const struct bus_type platform_bus_type = {
 	.dev_groups	= platform_dev_groups,
 	.driver_override = true,
 	.match		= platform_match,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.uevent		= platform_uevent,
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	.probe		= platform_probe,
 	.remove		= platform_remove,
 	.shutdown	= platform_shutdown,

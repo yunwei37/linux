@@ -2654,7 +2654,9 @@ static void cpuhp_offline_cpu_device(unsigned int cpu)
 
 	dev->offline = true;
 	/* Tell user space about the state change */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->kobj, KOBJ_OFFLINE);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 }
 
 static void cpuhp_online_cpu_device(unsigned int cpu)
@@ -2663,7 +2665,9 @@ static void cpuhp_online_cpu_device(unsigned int cpu)
 
 	dev->offline = false;
 	/* Tell user space about the state change */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->kobj, KOBJ_ONLINE);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 }
 
 int cpuhp_smt_disable(enum cpuhp_smt_control ctrlval)

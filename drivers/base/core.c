@@ -2668,6 +2668,7 @@ static const struct kobj_type device_ktype = {
 };
 
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int dev_uevent_filter(const struct kobject *kobj)
 {
 	const struct kobj_type *ktype = get_ktype(kobj);
@@ -2793,6 +2794,7 @@ static const struct kset_uevent_ops device_uevent_ops = {
 	.name =		dev_uevent_name,
 	.uevent =	dev_uevent,
 };
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t uevent_show(struct device *dev, struct device_attribute *attr,
@@ -3746,7 +3748,9 @@ int device_add(struct device *dev)
 	 * after dpm_sysfs_add() and before kobject_uevent().
 	 */
 	bus_notify(dev, BUS_NOTIFY_ADD_DEVICE);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->kobj, KOBJ_ADD);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	/*
 	 * Check if any of the other devices (consumers) have been waiting for
@@ -3829,7 +3833,9 @@ done:
  attrError:
 #endif
 	device_platform_notify_remove(dev);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->kobj, KOBJ_REMOVE);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	glue_dir = get_glue_dir(dev);
 	kobject_del(&dev->kobj);
  Error:
@@ -3991,7 +3997,9 @@ void device_del(struct device *dev)
 	devres_release_all(dev);
 
 	bus_notify(dev, BUS_NOTIFY_REMOVED_DEVICE);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->kobj, KOBJ_REMOVE);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	glue_dir = get_glue_dir(dev);
 	kobject_del(&dev->kobj);
 	cleanup_glue_dir(dev, glue_dir);
@@ -4224,7 +4232,11 @@ EXPORT_SYMBOL_GPL(device_find_child);
 
 int __init devices_init(void)
 {
+#ifdef CONFIG_MODELOS_KERNEL_ONLY
+	devices_kset = kset_create_and_add("devices", NULL, NULL);
+#else
 	devices_kset = kset_create_and_add("devices", &device_uevent_ops, NULL);
+#endif
 	if (!devices_kset)
 		return -ENOMEM;
 	dev_kobj = kobject_create_and_add("dev", NULL);
@@ -4293,7 +4305,9 @@ int device_offline(struct device *dev)
 		} else {
 			ret = dev->bus->offline(dev);
 			if (!ret) {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 				kobject_uevent(&dev->kobj, KOBJ_OFFLINE);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 				dev->offline = true;
 			}
 		}
@@ -4322,7 +4336,9 @@ int device_online(struct device *dev)
 		if (dev->offline) {
 			ret = dev->bus->online(dev);
 			if (!ret) {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 				kobject_uevent(&dev->kobj, KOBJ_ONLINE);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 				dev->offline = false;
 			}
 		} else {

@@ -7526,7 +7526,9 @@ int workqueue_sysfs_register(struct workqueue_struct *wq)
 	 * unbound_attrs are created separately.  Suppress uevent until
 	 * everything is ready.
 	 */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	dev_set_uevent_suppress(&wq_dev->dev, true);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	ret = device_register(&wq_dev->dev);
 	if (ret) {
@@ -7548,8 +7550,10 @@ int workqueue_sysfs_register(struct workqueue_struct *wq)
 		}
 	}
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	dev_set_uevent_suppress(&wq_dev->dev, false);
 	kobject_uevent(&wq_dev->dev.kobj, KOBJ_ADD);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	return 0;
 }
 

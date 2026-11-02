@@ -111,7 +111,9 @@ bool acpi_scan_is_offline(struct acpi_device *adev, bool uevent)
 {
 	struct acpi_device_physical_node *pn;
 	bool offline = true;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	char *envp[] = { "EVENT=offline", NULL };
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	/*
 	 * acpi_container_offline() calls this for all of the container's
@@ -121,8 +123,10 @@ bool acpi_scan_is_offline(struct acpi_device *adev, bool uevent)
 
 	list_for_each_entry(pn, &adev->physical_node_list, node)
 		if (device_supports_offline(pn->dev) && !pn->dev->offline) {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 			if (uevent)
 				kobject_uevent_env(&pn->dev->kobj, KOBJ_CHANGE, envp);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 			offline = false;
 			break;
@@ -1831,7 +1835,9 @@ void acpi_init_device_object(struct acpi_device *device, acpi_handle handle,
 		acpi_device_enumeration_by_parent(device);
 	acpi_device_clear_enumerated(device);
 	device_initialize(&device->dev);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	dev_set_uevent_suppress(&device->dev, true);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	acpi_init_coherency(device);
 }
 
@@ -1850,11 +1856,13 @@ static void acpi_scan_dep_init(struct acpi_device *adev)
 	}
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void acpi_device_add_finalize(struct acpi_device *device)
 {
 	dev_set_uevent_suppress(&device->dev, false);
 	kobject_uevent(&device->dev.kobj, KOBJ_ADD);
 }
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void acpi_scan_init_status(struct acpi_device *adev)
 {
@@ -1911,7 +1919,9 @@ static int acpi_add_single_object(struct acpi_device **child,
 	}
 
 	acpi_power_add_remove_device(device, true);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_device_add_finalize(device);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	acpi_handle_debug(handle, "Added as %s, parent %s\n",
 			  dev_name(&device->dev), device->dev.parent ?
