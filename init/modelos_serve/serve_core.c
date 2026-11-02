@@ -28,7 +28,13 @@ static bool service_stopping;
 #define MODEL_PHYS 0x40000000ULL
 #define MODEL_RESERVED (1280ULL << 20)
 #define DOMAIN_MAX 8
+#ifdef CONFIG_MODELOS_L1_LAUNCH
+#undef Q_MAX_SEQ
+#define Q_MAX_SEQ 2048
+#define PROMPT_MAX 1024
+#else
 #define PROMPT_MAX 128
+#endif
 #define BUDGET_MAX 128
 #define WIRE_MAGIC 0x31534f4d
 #define OP_SUBMIT 1
@@ -46,6 +52,7 @@ struct domain {
 	struct completion finished;
 	struct q_state *arena;
 	u64 bytes;
+	u64 ready_ns,wait_ns,send_ns,alloc_ns,compute_ns,prefill_ns,decode_ns;
 	u32 id, prompt_len, budget, pos, generated, token, slot;
 	u32 prompt[PROMPT_MAX];
 	enum domain_state state;
@@ -197,6 +204,7 @@ static struct domain *claim_domain(void)
 		u32 slot = (cursor + i) % DOMAIN_MAX;
 		if (domains[slot] && domains[slot]->state == READY) {
 			d = domains[slot];
+			d->wait_ns+=ktime_get_ns()-d->ready_ns;
 			d->state = BUSY;
 			cursor = (slot + 1) % DOMAIN_MAX;
 			atomic_dec(&ready_count);
@@ -223,8 +231,11 @@ static void finish_domain(struct domain *d, u32 reason)
 	released++;
 	d->state = DONE;
 	spin_unlock_irqrestore(&queue_lock, flags);
-	pr_info("DOMAIN_RELEASE id=%u generated=%u reason=%u bytes=%llu\n",
+	if(!IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))pr_info("DOMAIN_RELEASE id=%u generated=%u reason=%u bytes=%llu\n",
 		d->id, d->generated, reason, d->bytes);
+#ifdef CONFIG_MODELOS_L1_LAUNCH
+ modelos_gpu_domain_account(d->id,d->prompt_len,d->generated,d->wait_ns,d->send_ns,d->alloc_ns,d->compute_ns,d->prefill_ns,d->decode_ns);
+#endif
 	frame(sock, OUT_DONE, d->id, reason);
 	kernel_sock_shutdown(sock, SHUT_RD);
 	/* The connection owner may free d as soon as this completion is visible. */
@@ -246,6 +257,7 @@ int modelos_serve_worker(unsigned int cpu)
 		u32 layer;
 #endif
 		bool emit;
+		u64 compute_start,compute_elapsed,send_start=0;
 		wait_event_interruptible(work_wait, atomic_read(&ready_count) || kthread_should_stop());
 		d = claim_domain();
 		if (!d)
@@ -257,8 +269,13 @@ int modelos_serve_worker(unsigned int cpu)
 
 #ifdef CONFIG_MODELOS_L1_TCP
 		/* Completion is the fence before cancellation can release this arena. */
-		if(modelos_gpu_step(cpu,d->slot,d->id,d->pos<d->prompt_len?d->prompt[d->pos]:d->token,d->pos,&next))
-			panic("persistent GPU decode failed");
+		compute_start=ktime_get_ns();
+#ifdef CONFIG_MODELOS_L1_LAUNCH
+  if(!d->pos){if(modelos_gpu_prefill(cpu,d->slot,d->id,d->prompt,d->prompt_len,&next))panic("GPU prefill failed");d->pos=d->prompt_len-1;}else
+#endif
+  if(modelos_gpu_step(cpu,d->slot,d->id,d->pos<d->prompt_len?d->prompt[d->pos]:d->token,d->pos,&next))panic("GPU decode failed");
+		compute_elapsed=ktime_get_ns()-compute_start;d->compute_ns+=compute_elapsed;
+		if(d->pos<d->prompt_len)d->prefill_ns+=compute_elapsed;else d->decode_ns+=compute_elapsed;
 #else
 		kernel_fpu_begin();
 		q_begin(&model, d->arena, d->pos < d->prompt_len ? d->prompt[d->pos] : d->token);
@@ -287,11 +304,13 @@ int modelos_serve_worker(unsigned int cpu)
 			}
 			d->token = next;
 			d->generated++;
+			send_start=ktime_get_ns();
 			if (frame(d->sock, OUT_TOKEN, d->id, next)) {
 				finish_domain(d, 2);
 				continue;
 			}
 		}
+		if(emit)d->send_ns+=ktime_get_ns()-send_start;
 		d->pos++;
 		spin_lock_irqsave(&queue_lock, flags);
 		worker_steps[cpu]++;
@@ -301,6 +320,7 @@ int modelos_serve_worker(unsigned int cpu)
 			continue;
 		}
 		spin_lock_irqsave(&queue_lock, flags);
+		d->ready_ns=ktime_get_ns();
 		d->state = READY;
 		atomic_inc(&ready_count);
 		spin_unlock_irqrestore(&queue_lock, flags);
@@ -313,6 +333,7 @@ int modelos_serve_worker(unsigned int cpu)
 static int connection_main(void *arg)
 {
 	struct socket *sock = arg;
+	if(IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))tcp_sock_set_nodelay(sock->sk);
 	struct domain *d = NULL;
 	struct wire_header h;
 	__le32 budget;
@@ -343,7 +364,7 @@ static int connection_main(void *arg)
 	if (!le32_to_cpu(budget) || le32_to_cpu(budget) > BUDGET_MAX ||
 	    count + le32_to_cpu(budget) > Q_MAX_SEQ)
 		goto bad;
-	d = kzalloc(sizeof(*d), GFP_KERNEL);
+	{u64 start=ktime_get_ns();d=kzalloc(sizeof(*d),GFP_KERNEL);if(d)d->alloc_ns=ktime_get_ns()-start;}
 	if (!d) {
 		error = ENOMEM;
 		goto bad;
@@ -405,6 +426,7 @@ static int connection_main(void *arg)
 	d->arena->capacity = count + d->budget;
 #endif
 	spin_lock_irqsave(&queue_lock, flags);
+	d->ready_ns=ktime_get_ns();
 	d->state = READY;
 	active++;
 	admitted++;
@@ -413,7 +435,7 @@ static int connection_main(void *arg)
 		peak_active = active;
 	atomic_inc(&ready_count);
 	spin_unlock_irqrestore(&queue_lock, flags);
-	pr_info("DOMAIN_ADMIT id=%u prompt=%u budget=%u bytes=%llu\n", id, count, d->budget, d->bytes);
+	if(!IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))pr_info("DOMAIN_ADMIT id=%u prompt=%u budget=%u bytes=%llu\n", id, count, d->budget, d->bytes);
 	wake_up_all(&work_wait);
 	while (!completion_done(&d->finished)) {
 		if (recv_bytes(sock, &h, sizeof(h)))

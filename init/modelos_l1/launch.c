@@ -6,6 +6,11 @@
 #include <linux/string.h>
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
+#include <linux/mutex.h>
+#include <linux/sched.h>
+#ifdef CONFIG_MODELOS_L1_TCP
+#include <linux/modelos_gpu.h>
+#endif
 #include "nvtypes.h"
 #include "nvstatus.h"
 #include "launch.h"
@@ -51,9 +56,19 @@ static NV_STATUS prepare(struct executor *c)
   cb[0x370/4]=node->qmd[39];cb[0x374/4]=node->qmd[40]&0xffff;cb[0x378/4]=node->qmd[41]&0xffff;
   *(NvU64 *)((char *)cb+0x380)=c->r->host.gpu;
 #if L1_LAUNCH_IS_QWEN
-  *(NvU64 *)((char *)cb+0x388)=c->r->weights.gpu;*(NvU64 *)((char *)cb+0x390)=c->r->state.gpu;*(NvU64 *)((char *)cb+0x398)=c->r->state.gpu+0x3c00000;
+  *(NvU64 *)((char *)cb+0x388)=c->r->weights.gpu;*(NvU64 *)((char *)cb+0x390)=c->r->state.gpu;*(NvU64 *)((char *)cb+0x398)=c->r->state.gpu+(IS_ENABLED(CONFIG_MODELOS_L1_TCP)?0x1e000000:0x3c00000);
+  if(!strcmp(node->name,"modelos_upload"))*(NvU64 *)((char *)cb+0x390)=c->r->staging.gpu;
 #endif
   cb[188]=0;cb[189]=0x7294;cb[190]=0;cb[191]=0x7293;cb[223]=0xfffdc0;store(c,ca-command_gpu(c),cb,sizeof(cb));
+#ifdef CONFIG_MODELOS_L1_TCP
+  if(n>16)return NV_ERR_INVALID_ARGUMENT;
+  /* Immutable parameter banks per arena avoid modifying a cached CB0. */
+  for(unsigned arena=1;arena<MODELOS_GPU_ARENAS;arena++){
+   *(NvU64 *)((char *)cb+0x390)=c->r->state.gpu+arena*MODELOS_GPU_ARENA_BYTES;
+   *(NvU64 *)((char *)cb+0x398)=c->r->state.gpu+arena*MODELOS_GPU_ARENA_BYTES+0x1e000000;
+   store(c,ca-command_gpu(c)+arena*n*0x400,cb,sizeof(cb));
+  }
+#endif
   memcpy(q,node->qmd,sizeof(c->nodes[i].qmd));memset(q,0,16);
   field(q,1199,1184,0);field(q,1215,1200,0);
   field(q,1055,1024,(NvU32)(c->nodes[i].code>>4));field(q,1076,1056,c->nodes[i].code>>36);
@@ -142,10 +157,27 @@ done:kvfree(peer);return s;
 #if L1_LAUNCH_IS_QWEN
 static NV_STATUS upload_model(struct executor *c)
 {
- void *source=memremap(c->r->weights_phys,c->r->model_bytes,MEMREMAP_WB);if(!source)return NV_ERR_NO_MEMORY;
- if(memcmp(source,"MOSQ3B1",7)||*(NvU64 *)((char *)source+48)!=c->r->model_bytes){memunmap(source);return NV_ERR_INVALID_DATA;}
- for(NvU64 off=0;off<c->r->model_bytes;off+=0x10000){memcpy_toio((void __iomem *)c->r->weights.cpu+off,(char *)source+off,min_t(NvU64,0x10000,c->r->model_bytes-off));cond_resched();}
- wmb();memunmap(source);pr_info("L1_GRAPH_QWEN_WEIGHTS bytes=%llu gpu=0x%llx\n",c->r->model_bytes,c->r->weights.gpu);return NV_OK;
+ NvU64 upload_start=ktime_get_ns();void *source=memremap(c->r->weights_phys,c->r->model_bytes,MEMREMAP_WB);if(!source)return NV_ERR_NO_MEMORY;
+ if(memcmp(source,"MOSQ3B1",7)||(*(NvU64 *)((char *)source+48)!=c->r->model_bytes&&!(IS_ENABLED(CONFIG_MODELOS_L1_TCP)&&*(NvU64 *)((char *)source+48)==1192235008ULL))){memunmap(source);return NV_ERR_INVALID_DATA;}
+ int upload=-1;NvU64 gpu_copy_ns=0,submit_ns=0;unsigned submissions=0;
+ for(unsigned i=0;i<ARRAY_SIZE(graph_nodes);i++)if(!strcmp(graph_nodes[i].name,"modelos_upload"))upload=i;
+ if(upload>=0&&c->r->staging.bytes){
+  if(c->r->weights.bytes<c->r->model_bytes+4||c->r->model_bytes>U32_MAX||c->r->model_bytes%16){memunmap(source);return NV_ERR_INVALID_ARGUMENT;}
+  writel(0,(void __iomem *)c->r->weights.cpu+c->r->model_bytes);if(readl((void __iomem *)c->r->weights.cpu+c->r->model_bytes)){memunmap(source);return NV_ERR_INVALID_DATA;}
+  for(NvU64 off=0;off<c->r->model_bytes;off+=c->r->staging.bytes){
+   unsigned bytes=min_t(NvU64,c->r->staging.bytes,c->r->model_bytes-off);memcpy(c->r->staging.cpu,(char *)source+off,bytes);
+   NvU32 *q=queue(c);WRITE_ONCE(q[2],off);WRITE_ONCE(q[3],bytes);WRITE_ONCE(q[6],c->r->model_bytes);wmb();NvU64 start=ktime_get_ns();NvU32 completion=submit(c,upload,true);submit_ns+=ktime_get_ns()-start;
+   NV_STATUS status=wait_counter(release_ptr(c),completion);if(status!=NV_OK){memunmap(source);return status;}gpu_copy_ns+=counter(q,14)-counter(q,12);submissions++;cond_resched();
+  }
+ }else for(NvU64 off=0;off<c->r->model_bytes;off+=0x10000){memcpy_toio((void __iomem *)c->r->weights.cpu+off,(char *)source+off,min_t(NvU64,0x10000,c->r->model_bytes-off));cond_resched();}
+ pr_info("L1_MODEL_COPY mode=%s bytes=%llu staging_bytes=%llu submissions=%u gpu_ns=%llu submit_ns=%llu\n",upload>=0&&c->r->staging.bytes?"gpu-dma":"cpu-bar",c->r->model_bytes,c->r->staging.bytes,submissions,gpu_copy_ns,submit_ns);
+ if(IS_ENABLED(CONFIG_MODELOS_L1_TCP)){
+  NvU32 sequence=2048;NvU64 total=c->r->model_bytes,cosine=1192235008ULL,sine=1192759296ULL;
+  memcpy_toio((void __iomem *)c->r->weights.cpu+40,&sequence,4);memcpy_toio((void __iomem *)c->r->weights.cpu+48,&total,8);
+  memcpy_toio((void __iomem *)c->r->weights.cpu+72,&cosine,8);memcpy_toio((void __iomem *)c->r->weights.cpu+80,&sine,8);
+  wmb();if(readl((void __iomem *)c->r->weights.cpu+40)!=2048){memunmap(source);return NV_ERR_INVALID_DATA;}
+ }
+ wmb();memunmap(source);pr_info("L1_GRAPH_QWEN_WEIGHTS bytes=%llu gpu=0x%llx upload_ns=%llu extended_header=%u\n",c->r->model_bytes,c->r->weights.gpu,ktime_get_ns()-upload_start,IS_ENABLED(CONFIG_MODELOS_L1_TCP));return NV_OK;
 }
 static NV_STATUS graph_step(struct executor *c,NvU32 serial,NvU32 token,NvU32 position,unsigned root,NvU32 *result)
 {
@@ -253,12 +285,91 @@ static NV_STATUS benchmark(struct executor *c)
  pr_info("L1_LAUNCH_BENCH_PASS modes=4 samples=120 position=32 identical_arithmetic=1 cpl=0 mm=none\n");return NV_OK;
 }
 #endif
+#ifdef CONFIG_MODELOS_L1_TCP
+/* One full-grid decoder per step; four CPU request workers interleave at the
+ * step boundary. Each admitted request owns a separate VRAM KV arena. */
+static DEFINE_MUTEX(service_lock);
+static struct executor *service;
+static struct l1_launch_resources service_resources;
+static unsigned service_owner[MODELOS_GPU_ARENAS];
+static u64 service_gpu[MODELOS_GPU_ARENAS],service_submit[MODELOS_GPU_ARENAS],service_wait[MODELOS_GPU_ARENAS];
+static unsigned service_steps[MODELOS_GPU_ARENAS];
+struct service_account {u32 id,steps,input,output;u64 gpu,submit,queue,ready_wait,send,alloc,compute,prefill,decode;};
+static struct service_account accounts[1024];static unsigned account_count;
+void modelos_gpu_domain_account(u32 id,u32 input,u32 output,u64 wait,u64 send,u64 alloc,u64 compute,u64 prefill,u64 decode){
+ mutex_lock(&service_lock);for(unsigned i=account_count;i>0;i--)if(accounts[i-1].id==id){struct service_account *a=&accounts[i-1];a->input=input;a->output=output;a->ready_wait=wait;a->send=send;a->alloc=alloc;a->compute=compute;a->prefill=prefill;a->decode=decode;break;}mutex_unlock(&service_lock);
+}
+bool modelos_l1_serving(void){return smp_load_acquire(&service)!=NULL;}
+int modelos_gpu_prepare(void){return modelos_l1_serving()&&!current->mm?0:-ENODEV;}
+int modelos_gpu_arena_acquire(unsigned arena,u32 request){
+ if(arena>=MODELOS_GPU_ARENAS||!request||!modelos_l1_serving())return -EINVAL;
+ mutex_lock(&service_lock);if(service_owner[arena]){mutex_unlock(&service_lock);return -EBUSY;}
+ service_owner[arena]=request;service_gpu[arena]=service_submit[arena]=service_wait[arena]=0;service_steps[arena]=0;
+ memset_io((void __iomem *)service->r->state.cpu+arena*MODELOS_GPU_ARENA_BYTES+0x1d100000,0,82*4);wmb();
+ for(unsigned j=0;j<16;j++){writel(0x51a70000U+arena*256+j,(void __iomem *)service->r->state.cpu+arena*MODELOS_GPU_ARENA_BYTES+0x1d000000+j*4);writel(0x93c80000U+arena*256+j,(void __iomem *)service->r->state.cpu+(arena+1)*MODELOS_GPU_ARENA_BYTES-0x1000+j*4);}wmb();
+ mutex_unlock(&service_lock);return 0;
+}
+int modelos_gpu_arena_release(unsigned arena,u32 request){
+ if(arena>=MODELOS_GPU_ARENAS)return -EINVAL;
+ mutex_lock(&service_lock);if(service_owner[arena]!=request){mutex_unlock(&service_lock);return -EINVAL;}
+ for(unsigned j=0;j<16;j++)if(readl((void __iomem *)service->r->state.cpu+arena*MODELOS_GPU_ARENA_BYTES+0x1d000000+j*4)!=0x51a70000U+arena*256+j||readl((void __iomem *)service->r->state.cpu+(arena+1)*MODELOS_GPU_ARENA_BYTES-0x1000+j*4)!=0x93c80000U+arena*256+j){mutex_unlock(&service_lock);return -EIO;}
+ service_owner[arena]=0;
+ if(account_count>=ARRAY_SIZE(accounts)){mutex_unlock(&service_lock);return -ENOSPC;}
+ accounts[account_count++]=(struct service_account){.id=request,.steps=service_steps[arena],.gpu=service_gpu[arena],.submit=service_submit[arena],.queue=service_wait[arena]};
+ mutex_unlock(&service_lock);return 0;
+}
+static void bind_arena(struct executor *c,unsigned arena){
+ for(unsigned node=0;node<ARRAY_SIZE(graph_nodes);node++){
+  NvU64 address=cb_address(c,node)+arena*ARRAY_SIZE(graph_nodes)*0x400;
+  field(c->nodes[node].qmd,1375,1344,(NvU32)(address>>6));field(c->nodes[node].qmd,1394,1376,address>>38);
+ }
+}
+int modelos_gpu_step(unsigned worker,unsigned arena,u32 request,u32 token,u32 position,u32 *result){
+ u64 begin=ktime_get_ns(),locked,submitted;NV_STATUS status;NvU32 completion;
+ if(worker>=4||arena>=MODELOS_GPU_ARENAS)return -EINVAL;
+ mutex_lock(&service_lock);locked=ktime_get_ns();if(!service||service_owner[arena]!=request){mutex_unlock(&service_lock);return -EINVAL;}
+ bind_arena(service,arena);
+ NvU32 *q=queue(service);WRITE_ONCE(q[7],0);WRITE_ONCE(q[2],token);WRITE_ONCE(q[3],position);WRITE_ONCE(q[0],service->completion+1);wmb();
+ completion=submit(service,0,true);submitted=ktime_get_ns();status=wait_counter(release_ptr(service),completion);
+ if(status==NV_OK&&READ_ONCE(q[5]))status=NV_ERR_INVALID_DATA;
+ if(status==NV_OK){*result=READ_ONCE(q[4]);service_gpu[arena]+=counter(q,14)-counter(q,12);service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;}
+ mutex_unlock(&service_lock);return status==NV_OK?0:-EIO;
+}
+int modelos_gpu_prefill(unsigned worker,unsigned arena,u32 request,const u32 *tokens,unsigned count,u32 *result){
+ if(worker>=4||arena>=MODELOS_GPU_ARENAS||!count||count>1024)return -EINVAL;
+ for(unsigned base=0;base<count;base+=16){
+  u64 begin=ktime_get_ns(),locked,submitted;unsigned n=min(16U,count-base);NV_STATUS status;NvU32 completion;
+  mutex_lock(&service_lock);locked=ktime_get_ns();if(!service||service_owner[arena]!=request){mutex_unlock(&service_lock);return -EINVAL;}
+  bind_arena(service,arena);
+  NvU32 *q=queue(service);for(unsigned i=0;i<n;i++)WRITE_ONCE(q[2048+i],tokens[base+i]);WRITE_ONCE(q[3],base);WRITE_ONCE(q[7],n);WRITE_ONCE(q[8],base+n==count);WRITE_ONCE(q[0],service->completion+1);wmb();
+  completion=submit(service,0,true);submitted=ktime_get_ns();status=wait_counter(release_ptr(service),completion);
+  if(status==NV_OK&&READ_ONCE(q[5]))status=NV_ERR_INVALID_DATA;
+  if(status==NV_OK){*result=READ_ONCE(q[4]);service_gpu[arena]+=counter(q,14)-counter(q,12);service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;}
+  mutex_unlock(&service_lock);if(status!=NV_OK)return -EIO;cond_resched();
+ }return 0;
+}
+int modelos_gpu_stop(void){
+ mutex_lock(&service_lock);if(!service){mutex_unlock(&service_lock);return -ENODEV;}
+ for(unsigned i=0;i<MODELOS_GPU_ARENAS;i++)if(service_owner[i]){mutex_unlock(&service_lock);return -EBUSY;}
+ struct executor *c=service;smp_store_release(&service,NULL);kvfree(c);mutex_unlock(&service_lock);
+ for(unsigned i=0;i<account_count;i++){struct service_account *a=&accounts[i];pr_info("L1_TCP_ACCOUNT id=%u input=%u output=%u steps=%u gpu_ns=%llu submit_ns=%llu submit_queue_wait_ns=%llu scheduler_wait_ns=%llu send_ns=%llu alloc_ns=%llu compute_ns=%llu prefill_ns=%llu decode_ns=%llu canaries=32\n",a->id,a->input,a->output,a->steps,a->gpu,a->submit,a->queue,a->ready_wait,a->send,a->alloc,a->compute,a->prefill,a->decode);}
+ pr_info("L1_GPU_TCP_DRAIN release=1 owners=0 graph=1 no_libcuda=1\n");return modelos_l1_release_held();
+}
+#endif
 NV_STATUS modelos_l1_launch(struct l1_launch_resources *r)
 {
  struct executor *c=kvzalloc(struct_size(c,nodes,ARRAY_SIZE(graph_nodes)),GFP_KERNEL);NV_STATUS s;if(!c)return NV_ERR_NO_MEMORY;
- c->r=r;c->system=system_commands&&r->host.bytes>=0x100000;s=prepare(c);if(s!=NV_OK)goto out;
+ #ifdef CONFIG_MODELOS_L1_TCP
+ service_resources=*r;c->r=&service_resources;
+#else
+ c->r=r;
+#endif
+ c->system=system_commands&&r->host.bytes>=0x100000;s=prepare(c);if(s!=NV_OK)goto out;
 #if L1_LAUNCH_IS_QWEN
  s=upload_model(c);
+#ifdef CONFIG_MODELOS_L1_TCP
+ if(s==NV_OK){smp_store_release(&service,c);pr_info("L1_GPU_TCP_GRAPH_READY nodes=%zu ctas=170 arenas=8 no_libcuda=1 cpl=0 mm=none\n",ARRAY_SIZE(graph_nodes));return NV_OK;}
+#endif
 #if L1_LAUNCH_IS_PARALLEL
  if(s==NV_OK)s=parallel_qwen(c);
 #else

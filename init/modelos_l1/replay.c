@@ -104,9 +104,13 @@ static NV_STATUS l1_replay(struct l1_context *c,struct l1_context *shared)
  c->resources[L1_CLIENT].value=c->client;c->resources[L1_DEVICE].value=c->device;c->resources[L1_SUB].value=c->sub;
  if(l1_boot_weights_phys)c->resources[L1_WEIGHTS_PHYS].value=l1_boot_weights_phys;
  c->resources[L1_GPU_BIAS].value+=l1_boot_gpu_bias;
+#ifdef L1_STATE_GPU
+ c->resources[L1_STATE_GPU].value=c->resources[L1_GPU_BIAS].value+(IS_ENABLED(CONFIG_MODELOS_L1_TCP)&&IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH)?0x400000000ULL:0x60000000ULL);
+#endif
  if(IS_ENABLED(CONFIG_MODELOS_L1_TCP))l1_streams=4;
  if(IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))c->resources[L1_HOST_BYTES].value=0x100000;
- c->resources[L1_STATE_BYTES].value=0x4000000ULL*(IS_ENABLED(CONFIG_MODELOS_L1_TCP)?MODELOS_GPU_ARENAS:l1_streams);
+ c->resources[L1_STATE_BYTES].value=IS_ENABLED(CONFIG_MODELOS_L1_TCP)?MODELOS_GPU_ARENA_BYTES*MODELOS_GPU_ARENAS:0x4000000ULL*l1_streams;
+ if(IS_ENABLED(CONFIG_MODELOS_L1_TCP)&&IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))c->resources[L1_MODEL_BYTES].value=1193283584ULL;
  if(shared){memcpy(c->resources,shared->resources,sizeof(c->resources));c->virt=shared->virt;c->resources[L1_GPU_BIAS].value+=0x400000;
   static const unsigned fresh[]={L1_CTX,L1_LOCAL,L1_HOST,L1_ERROR,L1_CHANNEL,L1_COMPUTE,L1_TOKEN};for(unsigned f=0;f<ARRAY_SIZE(fresh);f++)memset(&c->resources[fresh[f]],0,sizeof(c->resources[0]));}
  for(i=0;i<ARRAY_SIZE(l1_operations);i++) {
@@ -115,6 +119,9 @@ static NV_STATUS l1_replay(struct l1_context *c,struct l1_context *shared)
   NvHandle handle=0;
   if(shared&&op->out!=L1_CTX&&op->out!=L1_LOCAL&&op->out!=L1_HOST&&op->out!=L1_ERROR&&op->out!=L1_CHANNEL&&op->out!=L1_COMPUTE&&op->out!=L1_TOKEN&&op->kind!=L1_OP_CONTROL)continue;
   if(op->qwen_only&&!IS_ENABLED(CONFIG_MODELOS_L1_QWEN))continue;
+#ifdef L1_STAGING
+  if(op->out==L1_STAGING&&!IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))continue;
+#endif
   if(op->out>=L1_RESOURCE_COUNT||op->params_size>sizeof(params))return NV_ERR_INVALID_ARGUMENT;
   memset(params,0,sizeof(params));if(op->params_size)memcpy(params,op->params,op->params_size);
   for(j=0;j<op->patch_count;j++) {
@@ -233,7 +240,7 @@ static bool l1_canary_ok(struct l1_memory *state,unsigned a)
  }return true;
 }
 
-#ifdef CONFIG_MODELOS_L1_TCP
+#if defined(CONFIG_MODELOS_L1_TCP) && !defined(CONFIG_MODELOS_L1_LAUNCH)
 static struct {
  struct l1_memory state;
  NvU32 *queue,*released,serial[4],owner[MODELOS_GPU_ARENAS];
@@ -447,7 +454,7 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
 #ifdef CONFIG_MODELOS_KEXEC_TEST
  if(kexec_request_mode){status=kexec_request_execute(queue,&serial,&matched);goto stop;}
 #endif
-#ifdef CONFIG_MODELOS_L1_TCP
+#if defined(CONFIG_MODELOS_L1_TCP) && !defined(CONFIG_MODELOS_L1_LAUNCH)
  l1_service.state=state;l1_service.queue=queue;l1_service.released=released;
  smp_store_release(&l1_service.ready,true);
  pr_info("L1_GPU_TCP_PERSISTENT_READY ctas=4 arenas=8 arena_bytes=%llu no_libcuda=1 launches=1\n",L1_ARENA_BYTES);
@@ -496,6 +503,9 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
  {
   struct l1_launch_resources resources={.doorbell=c.doorbell,.token=c.token,.weights_phys=c.resources[L1_WEIGHTS_PHYS].value,.model_bytes=c.resources[L1_MODEL_BYTES].value};
 #define COPY_MEMORY(dst,role) resources.dst=(struct l1_launch_memory){c.resources[role].memory.cpu,c.resources[role].memory.gpu,c.resources[role].memory.bytes}
+#ifdef L1_STAGING
+  COPY_MEMORY(staging,L1_STAGING);
+#endif
   COPY_MEMORY(local,L1_LOCAL);COPY_MEMORY(host,L1_HOST);COPY_MEMORY(weights,L1_WEIGHTS);COPY_MEMORY(state,L1_STATE);
 #undef COPY_MEMORY
   if(l1_streams==2){
