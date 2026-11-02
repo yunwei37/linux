@@ -13,12 +13,30 @@
 #include <net/sock.h>
 #include <net/tcp.h>
 #include <net/net_namespace.h>
+#include <asm/tsc.h>
 #include <linux/modelos_dps_handoff.h>
 #include <linux/modelos_kexec_tcp_request.h>
 #include <linux/modelos_kexec_wire.h>
 static struct dps_request_handoff *requests;
 static volatile u32 *queue;
 static u32 serial;
+enum state_policy { HOT, EAGER, EAGER_VERBOSE };
+static enum state_policy policy;
+static struct dps_request_handoff active_requests,*retained_requests;
+struct ktcp_timing {
+ u32 valid,id,seq,serial,polls,reschedules;
+ u64 elapsed_ns,submit_ns,wait_ns,publish_ns,crc_ns,gpu_ns,ack_ns;
+};
+static struct ktcp_timing timing[DPS_REQUEST_COUNT*128];
+static int __init policy_setup(char *value)
+{
+ if(!strcmp(value,"hot"))policy=HOT;
+ else if(!strcmp(value,"eager"))policy=EAGER;
+ else if(!strcmp(value,"eager-verbose"))policy=EAGER_VERBOSE;
+ else return 0;
+ return 1;
+}
+__setup("modelos_tcp_policy=",policy_setup);
 static bool failed;
 static int io(struct socket *sock,void *data,size_t n,bool send_data)
 {
@@ -28,18 +46,39 @@ static int frame(struct socket *sock,u32 op,u32 id,u32 value)
 {struct ktcp_frame f={KTCP_MAGIC,op,id,value};return io(sock,&f,sizeof(f),true);}
 static int receive(struct socket *sock,struct ktcp_frame *f)
 {return io(sock,f,sizeof(*f),false)||f->magic!=KTCP_MAGIC?-EPROTO:0;}
-static void commit(void)
-{requests->checksum=dps_request_checksum(requests);wmb();}
+static u64 commit(void)
+{
+ u64 begin;
+ if(policy==HOT)return 0;
+ begin=ktime_get_ns();requests->checksum=dps_request_checksum(requests);wmb();
+ return ktime_get_ns()-begin;
+}
+static int save_checkpoint(u32 id)
+{
+ u64 begin=ktime_get_ns();
+ requests->checksum=dps_request_checksum(requests);
+ if(policy==HOT)memcpy(retained_requests,requests,sizeof(*requests));
+ wmb();
+ if(retained_requests->checksum!=dps_request_checksum(retained_requests)||memcmp(retained_requests,requests,sizeof(*requests))){failed=true;return -EIO;}
+ pr_info("KEXEC_TCP_CHECKPOINT id=%u elapsed_ns=%llu checksum=%u valid=1\n",id,ktime_get_ns()-begin,retained_requests->checksum);
+ return 0;
+}
 static int next_token(struct dps_request_cursor *r)
 {
- u64 begin=ktime_get_ns(),deadline;u32 result;
+ u64 begin=ktime_get_ns(),submitted,completed,ended,crc,gpu_begin,gpu_end,deadline;u32 result,polls=0,reschedules=0,seq=r->emitted;
+ struct ktcp_timing *record=&timing[r->slot*128+seq];
  WRITE_ONCE(queue[128],r->last_token);WRITE_ONCE(queue[512],0xffffffffU);
  WRITE_ONCE(queue[2],1);WRITE_ONCE(queue[3],1);WRITE_ONCE(queue[4],r->next_pos);WRITE_ONCE(queue[6],0);WRITE_ONCE(queue[7],r->slot);wmb();WRITE_ONCE(queue[0],++serial);wmb();
- deadline=ktime_get_ns()+10000000000ULL;
- while(READ_ONCE(queue[1])!=serial){if(ktime_get_ns()>deadline){failed=true;return -ETIMEDOUT;}udelay(10);cond_resched();}
- rmb();result=READ_ONCE(queue[512]);if(READ_ONCE(queue[5])||result>=151936){failed=true;return -EIO;}
- r->output[r->emitted++]=result;r->last_token=result;r->next_pos++;r->budget--;commit();
- pr_info("KEXEC_TCP_GPU id=%u seq=%u serial=%u elapsed_ns=%llu\n",r->id,r->emitted-1,serial,ktime_get_ns()-begin);return 0;
+ submitted=ktime_get_ns();deadline=submitted+10000000000ULL;
+ while(READ_ONCE(queue[1])!=serial){if(ktime_get_ns()>deadline){failed=true;return -ETIMEDOUT;}polls++;udelay(10);reschedules+=cond_resched()!=0;}
+ completed=ktime_get_ns();rmb();result=READ_ONCE(queue[512]);if(READ_ONCE(queue[5])||result>=151936){failed=true;return -EIO;}
+ gpu_begin=READ_ONCE(*(u64 *)(queue+12));gpu_end=READ_ONCE(*(u64 *)(queue+14));
+ r->output[r->emitted++]=result;r->last_token=result;r->next_pos++;r->budget--;crc=commit();ended=ktime_get_ns();
+ record->id=r->id;record->seq=seq;record->serial=serial;record->polls=polls;record->reschedules=reschedules;
+ record->elapsed_ns=ended-begin;record->submit_ns=submitted-begin;record->wait_ns=completed-submitted;record->publish_ns=ended-completed;record->crc_ns=crc;record->gpu_ns=gpu_end-gpu_begin;
+ smp_store_release(&record->valid,1);
+ if(policy==EAGER_VERBOSE)pr_info("KEXEC_TCP_GPU id=%u seq=%u serial=%u elapsed_ns=%llu\n",r->id,r->emitted-1,serial,record->elapsed_ns);
+ return 0;
 }
 static void connection(struct socket *sock)
 {
@@ -57,8 +96,10 @@ static void connection(struct socket *sock)
   token=r->output[seq];
   if(frame(sock,KTCP_TOKEN_SEQ,r->id,seq)||io(sock,&token,4,true))return;
   if(receive(sock,&f)||f.op!=KTCP_ACK||f.id!=r->id||f.value!=seq+1)return;
-  r->acked=seq+1;commit();
+  r->acked=seq+1;
+  {u64 crc=commit();struct ktcp_timing *record=&timing[r->slot*128+seq];if(record->valid)record->ack_ns=crc;}
  }
+ if(save_checkpoint(r->id)){frame(sock,KTCP_ERROR,r->id,EIO);return;}
  frame(sock,KTCP_DONE,r->id,0);pr_info("KEXEC_TCP_COMPLETE id=%u emitted=%u acked=%u budget=%u\n",r->id,r->emitted,r->acked,r->budget);return;
 bad:frame(sock,KTCP_ERROR,0,EINVAL);
 }
@@ -68,7 +109,10 @@ static int server(void *unused)
  ret=sock_create_kern(&init_net,AF_INET,SOCK_STREAM,IPPROTO_TCP,&listener);if(ret)return ret;
  ret=kernel_bind(listener,(struct sockaddr_unsized *)&addr,sizeof(addr));if(!ret)ret=kernel_listen(listener,8);
  if(ret){sock_release(listener);pr_err("KEXEC_TCP_LISTEN_FAIL error=%d\n",ret);return ret;}
- pr_info("KEXEC_TCP_READY mode=%s port=7373 mm=%s serial=%u\n",IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY)?"modelos":"linux",current->mm?"present":"none",serial);
+ {
+ phys_addr_t timing_phys=__pa_symbol(timing),state_phys=virt_to_phys(retained_requests);
+ pr_info("KEXEC_TCP_READY mode=%s port=7373 mm=%s serial=%u policy=%s timing_phys=%pa timing_bytes=%zu timing_stride=%zu state_phys=%pa state_bytes=%zu cpu_khz=%u tsc_khz=%u lpj=%lu\n",IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY)?"modelos":"linux",current->mm?"present":"none",serial,policy==HOT?"hot":policy==EAGER?"eager":"eager-verbose",&timing_phys,sizeof(timing),sizeof(timing[0]),&state_phys,sizeof(*requests),cpu_khz,tsc_khz,loops_per_jiffy);
+ }
  for(;;){struct socket *sock;ret=kernel_accept(listener,&sock,0);if(ret){msleep(10);continue;}sock->sk->sk_rcvtimeo=10*HZ;sock->sk->sk_sndtimeo=10*HZ;tcp_sock_set_nodelay(sock->sk);connection(sock);sock_release(sock);}
 }
 static int __init consume(void)
@@ -87,6 +131,8 @@ static int __init consume(void)
  if(!dev)goto reject;
  pci_read_config_word(dev,PCI_COMMAND,&command);pci_dev_put(dev);
  if(!(command&PCI_COMMAND_MASTER))goto reject;
+ retained_requests=requests;
+ if(policy==HOT){memcpy(&active_requests,requests,sizeof(*requests));requests=&active_requests;}
  if(IS_ERR(kthread_run(server,NULL,"modelos/kexec-tcp")))goto reject;
  return 0;
 reject:pr_err("KEXEC_TCP_REJECT\n");return -EINVAL;
