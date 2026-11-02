@@ -73,7 +73,7 @@ Those object domains do not exist in the kernel-only image. Physical page and
 GFP flag diagnostics remain, as do the ordinary Linux formatting branches.
 
 
-The series has 23 core commits, or 24 with the incoming-only KHO support.
+The series has 26 core commits, or 27 with the incoming-only KHO support.
 The event-input cuts exclude synthetic-uevent sysfs attributes and parsing,
 uevent Netlink receive/forward callbacks, and Netlink bind/connect/getname
 and automatic-address helpers. The public AF_NETLINK family creation and
@@ -136,3 +136,25 @@ Raw kernel notification sockets, TCP and hardware lifetime remain.
 Normal Linux keeps the original units and interfaces. Detailed before/after
 six-profile metrics, object controls, cold/service/warm-KHO acceptance and
 source provenance are in ModelOS docs/kernel-trim/genl.md.
+
+
+The generic kobject cut removes its sysfs dispatch functions/table and six
+reference-profile initializer roots, preserving release/refcount/namespace
+lifetime. The uevent cut removes the producer unit, device/bus callback roots,
+selected bus/class formatters and event-only rename/move allocations and calls.
+The existing kset API receives NULL event ops; no replacement event stub is
+introduced. Automatic driver binding, bus/power notifiers and recovery actions
+remain. Other optional drivers need a source consumer port.
+
+The thermal cut omits thermal_sysfs.o and thermal_thresholds.o, their setup,
+teardown and binding-attribute callbacks. SYSFS, THERMAL_NETLINK/STATISTICS/
+HWMON/DEBUGFS are off in the reference profiles. The removed user-threshold
+list has no producer once Thermal Netlink management is gone. Hardware trip
+handling/programming, the step-wise governor and real cooling actions remain.
+A matched kernel-only fake-sensor test exercises 0 -> 1 -> 0 cooling, critical
+callback dispatch and the exact 38999/90000 trip window before and after the
+cut. The probe is an explicit separate test image, not a shipped kernel hook.
+All three cuts pass six builds, cold four-worker KVM/service/warm-KHO checks.
+Detailed source roots, matrices and probe receipts are in ModelOS
+ docs/kernel-trim/notifications.md. Raw route notifications and other attribute
+metadata are still inventoried; complete interface closure is not claimed.
