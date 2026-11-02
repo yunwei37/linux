@@ -9,6 +9,9 @@
 #include "ctrl/ctrla06c.h"
 #include "ctrl/ctrlc36f.h"
 #include "l1-image.h"
+#ifdef CONFIG_MODELOS_L1_DPS
+#include "launch.h"
+#endif
 
 extern NV_STATUS modelos_rm_alloc(nvidia_stack_t *,NvHandle,NvHandle,NvHandle *,NvU32,void *,NvU32);
 extern NV_STATUS modelos_rm_control(nvidia_stack_t *,NvHandle,NvHandle,NvU32,void *,NvU32);
@@ -200,6 +203,10 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
  NVA06C_CTRL_GPFIFO_SCHEDULE_PARAMS schedule={.bEnable=NV_TRUE};
  NVC36F_CTRL_CMD_GPFIFO_GET_WORK_SUBMIT_TOKEN_PARAMS token={0};
  struct l1_memory local={0},host={0},error={0};
+#ifdef CONFIG_MODELOS_L1_DPS
+ struct l1_memory weights={0},state={0};
+ const NvU64 model_bytes=1192235008ULL;
+#endif
  NV_STATUS result;
  memcpy(&va,l1_vaspace,sizeof(va));va.vaSize=(1ULL<<47)-0x1000;va.flags=0; /* RM-owned tables; no UVM/external page directory. */
  L1_TRY("vaspace",l1_alloc(&c,device,&c.va,0x90f1,&va,sizeof(va)));
@@ -209,7 +216,7 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
  memcpy(&ctx,l1_ctxshare,sizeof(ctx));ctx.hVASpace=c.va;
  L1_TRY("ctxshare",l1_alloc(&c,c.group,&c.ctx,0x9067,&ctx,sizeof(ctx)));
  L1_TRY("local",l1_memory(&c,&local,l1_local_memory,0x40,0x200000,0x02000000,2));
- L1_TRY("host",l1_memory(&c,&host,l1_system_memory,0x3e,0x10000,0x01000000,0));
+ L1_TRY("host",l1_memory(&c,&host,l1_system_memory,0x3e,IS_ENABLED(CONFIG_MODELOS_L1_DPS)?0x100000:0x10000,0x01000000,0));
  L1_TRY("error",l1_memory(&c,&error,l1_error_memory,0x3e,0x1000,0x01100000,1));
  L1_TRY("direct-bar0-doorbell",l2_map_doorbell(&c));
  memcpy(&fifo,l1_fifo,sizeof(fifo));fifo.hObjectError=error.handle;fifo.hObjectBuffer=local.handle;
@@ -219,10 +226,21 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
  L1_TRY("schedule",modelos_rm_control(stack,client,c.group,NVA06C_CTRL_CMD_GPFIFO_SCHEDULE,&schedule,sizeof(schedule)));
  L1_TRY("work-token",modelos_rm_control(stack,client,c.channel,NVC36F_CTRL_CMD_GPFIFO_GET_WORK_SUBMIT_TOKEN,&token,sizeof(token)));
  c.token=token.workSubmitToken;
+#ifdef CONFIG_MODELOS_L1_DPS
+ L1_TRY("dps-weights",l1_memory(&c,&weights,l1_local_memory,0x40,ALIGN(model_bytes,0x2000),0x10000000ULL,2));
+ L1_TRY("dps-state",l1_memory(&c,&state,l1_local_memory,0x40,0x4000000,0x60000000ULL,2));
+#endif
  pr_info("L1_REPLAY_RESOURCES_PASS token=0x%x no_submission=1\n",c.token);
  extern void l2_counts_phase(unsigned);
  l2_counts_phase(0);
-#ifdef CONFIG_MODELOS_L1_QWEN
+#ifdef CONFIG_MODELOS_L1_DPS
+ struct l1_launch_resources dps={
+  .local={local.cpu,local.gpu,local.bytes},.host={host.cpu,host.gpu,host.bytes},
+  .weights={weights.cpu,weights.gpu,weights.bytes},.state={state.cpu,state.gpu,state.bytes},
+  .doorbell=c.doorbell,.token=c.token,.weights_phys=0x100000000ULL,.model_bytes=model_bytes,
+ };
+ result=modelos_l1_launch(&dps);
+#elif defined(CONFIG_MODELOS_L1_QWEN)
  result=l1_qwen(&c,&local,&host);
 #else
  result=l1_execute(&c,&local,&host);
@@ -230,6 +248,10 @@ NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle de
  l2_counts_phase(1);
  if(result==NV_OK){
   L1_TRY("direct-group-release",modelos_rm_free(stack,client,c.group));
+#ifdef CONFIG_MODELOS_L1_DPS
+  L1_TRY("direct-state-unmap",modelos_l2_map_memory(stack,client,c.va,state.handle,&state.gpu,&state.reservation,NV_TRUE));
+  L1_TRY("direct-weights-unmap",modelos_l2_map_memory(stack,client,c.va,weights.handle,&weights.gpu,&weights.reservation,NV_TRUE));
+#endif
   L1_TRY("direct-error-unmap",modelos_l2_map_memory(stack,client,c.va,error.handle,&error.gpu,&error.reservation,NV_TRUE));
   L1_TRY("direct-host-unmap",modelos_l2_map_memory(stack,client,c.va,host.handle,&host.gpu,&host.reservation,NV_TRUE));
   L1_TRY("direct-local-unmap",modelos_l2_map_memory(stack,client,c.va,local.handle,&local.gpu,&local.reservation,NV_TRUE));
