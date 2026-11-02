@@ -73,7 +73,7 @@ Those object domains do not exist in the kernel-only image. Physical page and
 GFP flag diagnostics remain, as do the ordinary Linux formatting branches.
 
 
-The series has 26 core commits, or 27 with the incoming-only KHO support.
+The series has 27 core commits, or 28 with the incoming-only KHO support.
 The event-input cuts exclude synthetic-uevent sysfs attributes and parsing,
 uevent Netlink receive/forward callbacks, and Netlink bind/connect/getname
 and automatic-address helpers. The public AF_NETLINK family creation and
@@ -158,3 +158,16 @@ All three cuts pass six builds, cold four-worker KVM/service/warm-KHO checks.
 Detailed source roots, matrices and probe receipts are in ModelOS
  docs/kernel-trim/notifications.md. Raw route notifications and other attribute
 metadata are still inventoried; complete interface closure is not claimed.
+
+
+The next cut removes PCI new_id/remove_id driver attributes, platform
+modalias/numa_node device attributes and the common bus driver_override
+sysfs group. Their callback/attribute/group definitions and initializer or
+registration references are excluded together. PCI static/dynamic matching,
+the kernel dynamic-ID/override APIs, platform matching and driver probing,
+removal, references and DMA operations remain. Other attribute groups are
+not implicitly classified as hardware requirements. Six independently cached
+reference profiles pass builds; CPU/Rust/RM and KHO cold boots, actual
+320-token CPU service, concurrency/cancel/lifetime and warm KHO pass.
+Exact ELF data-pointer holders, section/symbol/source accounting and normal
+Linux object controls are in ModelOS docs/kernel-trim/bus-attributes.md.
