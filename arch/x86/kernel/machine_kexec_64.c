@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <linux/kexec_free_snapshot.h>
 /*
  * handle transition of Linux booting another kernel
  * Copyright (C) 2002-2005 Eric Biederman  <ebiederm@xmission.com>
@@ -416,6 +417,12 @@ void __nocfi machine_kexec(struct kimage *image)
 	local_irq_disable();
 	hw_breakpoint_disable();
 	cet_disable();
+
+#ifdef CONFIG_MODELOS_KEXEC_FREE_SNAPSHOT
+	if (!image->preserve_context && image->type != KEXEC_TYPE_CRASH)
+		modelos_kexec_snapshot_free();
+#endif
+
 
 	if (image->preserve_context) {
 #ifdef CONFIG_X86_IO_APIC

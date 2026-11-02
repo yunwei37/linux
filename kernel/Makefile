@@ -220,3 +220,4 @@ endif
 ifdef CONFIG_MODELOS_KERNEL_ONLY
 obj-y := $(filter-out umh.o,$(obj-y))
 endif
+obj-$(CONFIG_MODELOS_KEXEC_FREE_SNAPSHOT) += kexec_free_snapshot.o
