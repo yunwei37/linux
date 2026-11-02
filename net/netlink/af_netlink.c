@@ -606,8 +606,10 @@ static void netlink_remove(struct sock *sk)
 		__sk_del_bind_node(sk);
 		netlink_update_listeners(sk);
 	}
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (sk->sk_protocol == NETLINK_GENERIC)
 		atomic_inc(&genl_sk_destructing_cnt);
+#endif
 	netlink_table_ungrab();
 }
 
@@ -747,9 +749,11 @@ static int netlink_release(struct socket *sock)
 			if (test_bit(i, nlk->groups))
 				nlk->netlink_unbind(sock_net(sk), i + 1);
 	}
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (sk->sk_protocol == NETLINK_GENERIC &&
 	    atomic_dec_return(&genl_sk_destructing_cnt) == 0)
 		wake_up(&genl_sk_destructing_waitq);
+#endif
 
 	sock->sk = NULL;
 	wake_up_interruptible_all(&nlk->wait);
@@ -2180,6 +2184,7 @@ __nlmsg_put(struct sk_buff *skb, u32 portid, u32 seq, int type, int len, int fla
 }
 EXPORT_SYMBOL(__nlmsg_put);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static size_t
 netlink_ack_tlv_len(struct netlink_sock *nlk, int err,
 		    const struct netlink_ext_ack *extack)
@@ -2592,6 +2597,7 @@ skip:
 	return 0;
 }
 EXPORT_SYMBOL(netlink_rcv_skb);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * nlmsg_notify - send a notification netlink message
