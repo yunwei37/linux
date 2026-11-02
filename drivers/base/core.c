@@ -2476,6 +2476,7 @@ EXPORT_SYMBOL(dev_driver_string);
 
 #define to_dev_attr(_attr) container_of(_attr, struct device_attribute, attr)
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t dev_attr_show(struct kobject *kobj, struct attribute *attr,
 			     char *buf)
 {
@@ -2508,6 +2509,8 @@ static const struct sysfs_ops dev_sysfs_ops = {
 	.show	= dev_attr_show,
 	.store	= dev_attr_store,
 };
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #define to_ext_attr(x) container_of(x, struct dev_ext_attribute, attr)
 
@@ -2657,7 +2660,9 @@ static void device_get_ownership(const struct kobject *kobj, kuid_t *uid, kgid_t
 
 static const struct kobj_type device_ktype = {
 	.release	= device_release,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops	= &dev_sysfs_ops,
+#endif
 	.namespace	= device_namespace,
 	.get_ownership	= device_get_ownership,
 };
