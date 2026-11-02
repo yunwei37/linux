@@ -1356,6 +1356,27 @@ void __init kho_memory_init(void)
 		kho_scratch = phys_to_virt(kho_in.scratch_phys);
 		kho_release_scratch();
 
+#ifdef CONFIG_MODELOS_KEXEC_RESIDENT
+        /* Early allocation was restricted to KHO scratch. Keep *all* old
+         * non-scratch pages, including DMA, unavailable to the new buddy.
+         * Do not deserialize stale struct page metadata for these pages. */
+        {
+                struct memblock_region *region;
+                u64 quarantined = 0, scratch = 0;
+                for_each_mem_region(region) {
+                        if (memblock_is_kho_scratch(region)) {
+                                scratch += region->size;
+                                continue;
+                        }
+                        if (memblock_reserve(region->base, region->size))
+                                panic("KEXEC_LIVE: cannot quarantine DMA RAM");
+                        quarantined += region->size;
+                }
+                pr_info("KEXEC_LIVE_QUARANTINE bytes=%llu scratch=%llu\n",
+                        quarantined, scratch);
+        }
+#endif
+
 		kho_mem_deserialize(kho_get_fdt());
 		folio = kho_restore_folio(kho_in.fdt_phys);
 		if (!folio)

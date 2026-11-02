@@ -2257,3 +2257,12 @@ config MODELOS_KEXEC_TEST
    Validate named RAM and, with the L1 Qwen consumer, check one token
    for cold/kexec timing and try recorded old RM handles.
    Default L1 replay and decoding remain unchanged when disabled.
+
+config MODELOS_KEXEC_RESIDENT
+ bool "Experimental live GPU kexec receiver with DMA RAM quarantine"
+ depends on MODELOS_KERNEL_ONLY && KEXEC_HANDOVER_RECEIVER && PCI
+ help
+   Keep all pre-kexec non-scratch RAM out of the new allocator, validate
+   a named handoff and continue an existing GPU polling queue. This does
+   not construct RM or reclaim the old GPU context; memory is retained
+   until the VM exits. Experimental, opt-in, one-way handoff only.
