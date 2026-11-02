@@ -49,6 +49,7 @@ int unregister_acpi_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL(unregister_acpi_notifier);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 #ifdef CONFIG_NET
 static unsigned int acpi_event_seqnum;
 struct acpi_genl_event {
@@ -181,3 +182,5 @@ static int __init acpi_event_init(void)
 }
 
 fs_initcall(acpi_event_init);
+
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */

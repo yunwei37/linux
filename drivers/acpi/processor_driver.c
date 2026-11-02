@@ -68,24 +68,32 @@ static void acpi_processor_notify(acpi_handle handle, u32 event, void *data)
 		acpi_processor_ppc_has_changed(pr, 1);
 		if (saved == pr->performance_platform_limit)
 			break;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		acpi_bus_generate_netlink_event(device->pnp.device_class,
 						  dev_name(&device->dev), event,
 						  pr->performance_platform_limit);
+#endif
 		break;
 	case ACPI_PROCESSOR_NOTIFY_POWER:
 		acpi_processor_power_state_has_changed(pr);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		acpi_bus_generate_netlink_event(device->pnp.device_class,
 						  dev_name(&device->dev), event, 0);
+#endif
 		break;
 	case ACPI_PROCESSOR_NOTIFY_THROTTLING:
 		acpi_processor_tstate_has_changed(pr);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		acpi_bus_generate_netlink_event(device->pnp.device_class,
 						  dev_name(&device->dev), event, 0);
+#endif
 		break;
 	case ACPI_PROCESSOR_NOTIFY_HIGEST_PERF_CHANGED:
 		cpufreq_update_limits(pr->id);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		acpi_bus_generate_netlink_event(device->pnp.device_class,
 						  dev_name(&device->dev), event, 0);
+#endif
 		break;
 	default:
 		acpi_handle_debug(handle, "Unsupported event [0x%x]\n", event);

@@ -1236,7 +1236,9 @@ static int wmi_notify_device(struct device *dev, void *data)
 
 	kfree(obj);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_bus_generate_netlink_event("wmi", acpi_dev_name(wblock->acpi_device), *event, 0);
+#endif
 
 	return -EBUSY;
 }

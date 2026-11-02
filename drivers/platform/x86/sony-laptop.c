@@ -1265,8 +1265,10 @@ static void sony_nc_notify(struct acpi_device *device, u32 event)
 		ev_type = HOTKEY;
 		sony_laptop_report_input_event(real_ev);
 	}
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_bus_generate_netlink_event(sony_nc_acpi_device->pnp.device_class,
 			dev_name(&sony_nc_acpi_device->dev), ev_type, real_ev);
+#endif
 }
 
 static acpi_status sony_walk_callback(acpi_handle handle, u32 level,

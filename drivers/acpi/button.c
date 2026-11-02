@@ -174,7 +174,9 @@ struct acpi_button {
 	unsigned int type;
 	struct input_dev *input;
 	char phys[32];			/* for input device */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	unsigned long pushed;
+#endif
 	int last_state;
 	ktime_t last_time;
 	bool suspended;
@@ -468,9 +470,11 @@ static void acpi_button_notify(acpi_handle handle, u32 event, void *data)
 	input_report_key(input, keycode, 0);
 	input_sync(input);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_bus_generate_netlink_event(device->pnp.device_class,
 					dev_name(&device->dev),
 					event, ++button->pushed);
+#endif
 }
 
 static void acpi_button_notify_run(void *data)

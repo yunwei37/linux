@@ -1093,9 +1093,11 @@ static void acpi_battery_notify(acpi_handle handle, u32 event, void *data)
 	if (event == ACPI_BATTERY_NOTIFY_INFO)
 		acpi_battery_refresh(battery);
 	acpi_battery_update(battery, false);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_bus_generate_netlink_event(device->pnp.device_class,
 					dev_name(&device->dev), event,
 					acpi_battery_present(battery));
+#endif
 	acpi_notifier_call_chain(device, event, acpi_battery_present(battery));
 	/* acpi_battery_update could remove power_supply object */
 	if (old && battery->bat)

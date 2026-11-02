@@ -881,8 +881,10 @@ static void acpi_power_meter_notify(struct acpi_device *device, u32 event)
 		break;
 	}
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_bus_generate_netlink_event(ACPI_POWER_METER_CLASS,
 					dev_name(&device->dev), event, 0);
+#endif
 }
 
 static int acpi_power_meter_add(struct acpi_device *device)

@@ -340,8 +340,10 @@ static void acpi_thermal_trips_update(struct acpi_thermal *tz, u32 event)
 	thermal_zone_for_each_trip(tz->thermal_zone,
 				   acpi_thermal_adjust_trip, &atd);
 	acpi_queue_thermal_check(tz);
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_bus_generate_netlink_event(adev->pnp.device_class,
 					dev_name(&adev->dev), event, 0);
+#endif
 }
 
 static int acpi_thermal_get_critical_trip(struct acpi_thermal *tz)
@@ -538,6 +540,7 @@ static int thermal_get_trend(struct thermal_zone_device *thermal,
 	return -EINVAL;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void acpi_thermal_zone_device_hot(struct thermal_zone_device *thermal)
 {
 	struct acpi_thermal *tz = thermal_zone_device_priv(thermal);
@@ -547,13 +550,19 @@ static void acpi_thermal_zone_device_hot(struct thermal_zone_device *thermal)
 					ACPI_THERMAL_NOTIFY_HOT, 1);
 }
 
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
+
 static void acpi_thermal_zone_device_critical(struct thermal_zone_device *thermal)
 {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	struct acpi_thermal *tz = thermal_zone_device_priv(thermal);
+#endif
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_bus_generate_netlink_event(tz->device->pnp.device_class,
 					dev_name(&tz->device->dev),
 					ACPI_THERMAL_NOTIFY_CRITICAL, 1);
+#endif
 
 	thermal_zone_device_critical(thermal);
 }
@@ -585,7 +594,10 @@ static const struct thermal_zone_device_ops acpi_thermal_zone_ops = {
 	.should_bind = acpi_thermal_should_bind_cdev,
 	.get_temp = thermal_get_temp,
 	.get_trend = thermal_get_trend,
+
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.hot = acpi_thermal_zone_device_hot,
+#endif
 	.critical = acpi_thermal_zone_device_critical,
 };
 

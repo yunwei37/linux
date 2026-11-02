@@ -1265,8 +1265,10 @@ static void galaxybook_acpi_notify(acpi_handle handle, u32 event, void *data)
 			 "unknown ACPI notification event: 0x%x\n", event);
 	}
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_bus_generate_netlink_event(DRIVER_NAME, dev_name(&galaxybook->platform->dev),
 					event, 1);
+#endif
 }
 
 static int galaxybook_enable_acpi_notify(struct samsung_galaxybook *galaxybook)

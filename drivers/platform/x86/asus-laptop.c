@@ -1524,9 +1524,11 @@ static void asus_acpi_notify(struct acpi_device *device, u32 event)
 
 	/* TODO Find a better way to handle events count. */
 	count = asus->event_count[event % 128]++;
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_bus_generate_netlink_event(asus->device->pnp.device_class,
 					dev_name(&asus->device->dev), event,
 					count);
+#endif
 
 	if (event >= ATKD_BRNUP_MIN && event <= ATKD_BRNUP_MAX)
 		event = ATKD_BRNUP;

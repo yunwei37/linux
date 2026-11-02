@@ -3881,10 +3881,12 @@ static void hotkey_notify(struct ibm_struct *ibm, u32 event)
 	if (event != 0x80) {
 		pr_err("unknown HKEY notification event %d\n", event);
 		/* forward it to userspace, maybe it knows how to handle it */
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		acpi_bus_generate_netlink_event(
 					ibm->acpi->device->pnp.device_class,
 					dev_name(&ibm->acpi->device->dev),
 					event, 0);
+#endif
 		return;
 	}
 
@@ -3961,10 +3963,12 @@ static void hotkey_notify(struct ibm_struct *ibm, u32 event)
 
 		/* netlink events */
 		if (send_acpi_ev) {
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 			acpi_bus_generate_netlink_event(
 					ibm->acpi->device->pnp.device_class,
 					dev_name(&ibm->acpi->device->dev),
 					event, hkey);
+#endif
 		}
 	}
 }
