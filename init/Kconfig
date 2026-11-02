@@ -2285,7 +2285,7 @@ config MODELOS_KEXEC_RESIDENT
 
 config MODELOS_KEXEC_DPS
  bool "Live DPS Model Instance kexec receiver"
- depends on MODELOS_KERNEL_ONLY && KEXEC_HANDOVER_RECEIVER && PCI
+ depends on X86_64 && KEXEC_HANDOVER && PCI
  help
    Resume a previously launched whole-request DPS GPU executor using a
    named KHO handoff and DMA RAM quarantine. Does not import the RM
@@ -2298,3 +2298,11 @@ config MODELOS_KEXEC_DPS_REQUEST
    Validate six independently parked request cursors and resume the existing
    DPS executor against their retained KV slots. Experimental one-way transfer;
    no RM control-plane adoption or old GPU-resource reclamation.
+
+config MODELOS_KEXEC_TCP
+ bool "Retained DPS request TCP reconnect service"
+ depends on MODELOS_KEXEC_DPS_REQUEST && INET
+ help
+   Rebuild the kernel TCP listener and resume retained request sequences.
+   The identical application can be built in a full Linux receiver for a
+   same-core handoff control. Old GPU resources stay retained until VM exit.

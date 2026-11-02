@@ -74,10 +74,14 @@ obj-$(CONFIG_MODELOS_SERVE) += modelos_serve/
 
 obj-$(CONFIG_MODELOS_KEXEC_RESIDENT) += modelos_resident.o
 
+ifdef CONFIG_MODELOS_KEXEC_TCP
+obj-y += modelos_kexec_tcp.o
+else
 ifdef CONFIG_MODELOS_KEXEC_DPS_REQUEST
 obj-y += modelos_dps_request.o
 else
 obj-$(CONFIG_MODELOS_KEXEC_DPS) += modelos_dps.o
+endif
 endif
 
 obj-$(CONFIG_MODELOS_KEXEC_DPS) += modelos_buddy_arena.o
