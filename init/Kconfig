@@ -2266,3 +2266,11 @@ config MODELOS_KEXEC_RESIDENT
    a named handoff and continue an existing GPU polling queue. This does
    not construct RM or reclaim the old GPU context; memory is retained
    until the VM exits. Experimental, opt-in, one-way handoff only.
+
+config MODELOS_KEXEC_DPS
+ bool "Live DPS Model Instance kexec receiver"
+ depends on MODELOS_KERNEL_ONLY && KEXEC_HANDOVER_RECEIVER && PCI
+ help
+   Resume a previously launched whole-request DPS GPU executor using a
+   named KHO handoff and DMA RAM quarantine. Does not import the RM
+   control plane or reclaim old device resources before VM exit.
