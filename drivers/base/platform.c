@@ -1233,6 +1233,7 @@ int platform_pm_restore(struct device *dev)
 
 #endif /* CONFIG_HIBERNATE_CALLBACKS */
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 /* modalias support enables more hands-off userspace setup:
  * (a) environment variable lets new-style hotplug events work once system is
  *     fully running:  "modprobe $MODALIAS"
@@ -1287,6 +1288,7 @@ static const struct attribute_group platform_dev_group = {
 	.is_visible = platform_dev_attrs_visible,
 };
 __ATTRIBUTE_GROUPS(platform_dev);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 
 /**
@@ -1448,7 +1450,9 @@ static const struct dev_pm_ops platform_dev_pm_ops = {
 
 const struct bus_type platform_bus_type = {
 	.name		= "platform",
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.dev_groups	= platform_dev_groups,
+#endif
 	.driver_override = true,
 	.match		= platform_match,
 #ifndef CONFIG_MODELOS_KERNEL_ONLY

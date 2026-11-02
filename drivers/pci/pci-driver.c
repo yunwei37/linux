@@ -223,6 +223,7 @@ static const struct pci_device_id *pci_match_device(struct pci_driver *drv,
 	return NULL;
 }
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 /**
  * new_id_store - sysfs frontend to pci_add_dynid()
  * @driver: target device driver
@@ -326,6 +327,7 @@ static struct attribute *pci_drv_attrs[] = {
 	NULL,
 };
 ATTRIBUTE_GROUPS(pci_drv);
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 struct drv_dev_and_id {
 	struct pci_driver *drv;
@@ -1757,7 +1759,9 @@ const struct bus_type pci_bus_type = {
 	.irq_get_affinity = pci_device_irq_get_affinity,
 	.dev_groups	= pci_dev_groups,
 	.bus_groups	= pci_bus_groups,
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.drv_groups	= pci_drv_groups,
+#endif
 	.pm		= PCI_PM_OPS_PTR,
 	.num_vf		= pci_bus_num_vf,
 	.dma_configure	= pci_dma_configure,

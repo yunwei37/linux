@@ -481,6 +481,7 @@ int bus_for_each_drv(const struct bus_type *bus, struct device_driver *start,
 }
 EXPORT_SYMBOL_GPL(bus_for_each_drv);
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t driver_override_store(struct device *dev,
 				     struct device_attribute *attr,
 				     const char *buf, size_t count)
@@ -510,6 +511,7 @@ static struct attribute *driver_override_dev_attrs[] = {
 static const struct attribute_group driver_override_dev_group = {
 	.attrs = driver_override_dev_attrs,
 };
+#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * bus_add_device - add device to bus
@@ -551,11 +553,13 @@ int bus_add_device(struct device *dev)
 	if (error)
 		goto out_put;
 
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (dev->bus->driver_override) {
 		error = device_add_group(dev, &driver_override_dev_group);
 		if (error)
 			goto out_groups;
 	}
+#endif
 
 	error = sysfs_create_link(&sp->devices_kset->kobj, &dev->kobj, dev_name(dev));
 	if (error)
@@ -571,9 +575,13 @@ int bus_add_device(struct device *dev)
 out_subsys:
 	sysfs_remove_link(&sp->devices_kset->kobj, dev_name(dev));
 out_override:
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (dev->bus->driver_override)
 		device_remove_group(dev, &driver_override_dev_group);
+#endif
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 out_groups:
+#endif
 	device_remove_groups(dev, sp->bus->dev_groups);
 out_put:
 	subsys_put(sp);
@@ -631,8 +639,10 @@ void bus_remove_device(struct device *dev)
 
 	sysfs_remove_link(&dev->kobj, "subsystem");
 	sysfs_remove_link(&sp->devices_kset->kobj, dev_name(dev));
+#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (dev->bus->driver_override)
 		device_remove_group(dev, &driver_override_dev_group);
+#endif
 	device_remove_groups(dev, dev->bus->dev_groups);
 	if (klist_node_attached(&dev->p->knode_bus))
 		klist_del(&dev->p->knode_bus);
