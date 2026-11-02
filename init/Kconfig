@@ -2290,3 +2290,11 @@ config MODELOS_KEXEC_DPS
    Resume a previously launched whole-request DPS GPU executor using a
    named KHO handoff and DMA RAM quarantine. Does not import the RM
    control plane or reclaim old device resources before VM exit.
+
+config MODELOS_KEXEC_DPS_REQUEST
+ bool "Resume parked DPS requests at native KV/cursor boundaries"
+ depends on MODELOS_KEXEC_DPS
+ help
+   Validate six independently parked request cursors and resume the existing
+   DPS executor against their retained KV slots. Experimental one-way transfer;
+   no RM control-plane adoption or old GPU-resource reclamation.

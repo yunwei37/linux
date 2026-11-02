@@ -1402,7 +1402,13 @@ static void __init modelos_reclaim_source_buddy(void)
     test_bit(h->protected_phys>>PAGE_SHIFT,h->bitmap)||free_bitmap_overlaps(h,start,bytes))goto reject;
  if(!reserve_mem_find_by_name("modelos-dps",&dps_start,&dps_bytes)||free_bitmap_overlaps(h,dps_start,dps_bytes))goto reject;
  dps=phys_to_virt(dps_start);
- if(dps_bytes<sizeof(*dps)||dps->version!=1||dps->bytes!=sizeof(*dps)||memcmp(dps->magic,DPS_MAGIC,8)||dps->checksum!=dps_checksum(dps)||dps->serial!=26||dps->probe_status!=1||dps->queue_phys!=h->protected_phys)goto reject;
+ if(dps_bytes<sizeof(*dps)||dps->version!=1||dps->bytes!=sizeof(*dps)||memcmp(dps->magic,DPS_MAGIC,8)||dps->checksum!=dps_checksum(dps)||dps->serial!=
+#ifdef CONFIG_MODELOS_KEXEC_DPS_REQUEST
+50
+#else
+26
+#endif
+||dps->probe_status!=1||dps->queue_phys!=h->protected_phys)goto reject;
  /* Validate every candidate before modifying any reservation. KHO scratch
   * is deliberately excluded below, including the new kernel and page tables. */
  for_each_set_bit(pfn,h->bitmap,h->max_pfn)
