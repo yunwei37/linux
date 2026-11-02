@@ -1356,7 +1356,7 @@ void __init kho_memory_init(void)
 		kho_scratch = phys_to_virt(kho_in.scratch_phys);
 		kho_release_scratch();
 
-#ifdef CONFIG_MODELOS_KEXEC_RESIDENT
+#if defined(CONFIG_MODELOS_KEXEC_RESIDENT) || defined(CONFIG_MODELOS_KEXEC_DPS)
         /* Early allocation was restricted to KHO scratch. Keep *all* old
          * non-scratch pages, including DMA, unavailable to the new buddy.
          * Do not deserialize stale struct page metadata for these pages. */
