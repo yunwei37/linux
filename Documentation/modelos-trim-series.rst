@@ -73,7 +73,7 @@ Those object domains do not exist in the kernel-only image. Physical page and
 GFP flag diagnostics remain, as do the ordinary Linux formatting branches.
 
 
-The series has 17 core commits, or 18 with the incoming-only KHO support.
+The series has 20 core commits, or 21 with the incoming-only KHO support.
 The event-input cuts exclude synthetic-uevent sysfs attributes and parsing,
 uevent Netlink receive/forward callbacks, and Netlink bind/connect/getname
 and automatic-address helpers. The public AF_NETLINK family creation and
@@ -97,3 +97,19 @@ callbacks when CONFIG_MODELOS_KERNEL_ONLY is disabled. No panic or additional
 configuration switch is introduced. The ModelOS report contains per-cut
 six-profile size/symbol/input counts, KVM worker/service and warm KHO evidence.
 These cuts do not claim removal of all rtnetlink or other sysfs control code.
+
+The device/class cut excludes their sysfs read/write dispatch bodies and type
+pointers while preserving object release. The Generic Netlink receive cut
+excludes request parsing/dumps and socket group/private hooks; notification
+registration APIs remain. The rtnetlink cut excludes seven core/IPv4 command
+tables and registrations plus incoming/bind/link command entry bodies.
+Compiler-unused closure excludes 168 further static definitions in those
+seven files. Normal Linux keeps the original code. Kernel TCP/IP routing,
+neighbour maintenance and object lifetime are validated by actual serving.
+This closure is validated with the shipped reference configs; a new networking
+consumer/config still needs source, link and real payload validation.
+
+The public branch also includes the serving owner's application commits.
+The source-only export excludes them. A concurrent application update was
+retained and the combined CPU service revalidated; detailed provenance and
+before/after size data live in ModelOS docs/kernel-trim/dispatch.md.
