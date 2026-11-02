@@ -73,7 +73,7 @@ Those object domains do not exist in the kernel-only image. Physical page and
 GFP flag diagnostics remain, as do the ordinary Linux formatting branches.
 
 
-The series has 15 core commits, or 16 with the incoming-only KHO support.
+The series has 17 core commits, or 18 with the incoming-only KHO support.
 The event-input cuts exclude synthetic-uevent sysfs attributes and parsing,
 uevent Netlink receive/forward callbacks, and Netlink bind/connect/getname
 and automatic-address helpers. The public AF_NETLINK family creation and
@@ -85,3 +85,15 @@ under MODELOS_KERNEL_ONLY. Thermal core, the configured governor and package
 temperature driver remain. Run olddefconfig after applying this series;
 do not restore the userspace management interface merely to retain a sensor.
 Ordinary Linux keeps the original interfaces and reverse selections.
+
+
+The final controller cut excludes Generic Netlink family/policy user queries,
+their operation table and policy dump helpers, while retaining family
+registration and duplicate-name checks and outgoing event construction.
+The bus/driver cut excludes sysfs attribute dispatch, manual bind/unbind and
+probe/autoprobe callbacks and their registration/removal roots. Automatic
+hardware probing and object release remain. Ordinary Linux keeps all original
+callbacks when CONFIG_MODELOS_KERNEL_ONLY is disabled. No panic or additional
+configuration switch is introduced. The ModelOS report contains per-cut
+six-profile size/symbol/input counts, KVM worker/service and warm KHO evidence.
+These cuts do not claim removal of all rtnetlink or other sysfs control code.
