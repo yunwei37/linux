@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 obj-y += core_transport.o core_rust.o
 quiet_cmd_object_core = RUSTC   $@
-      cmd_object_core = RUSTC_BOOTSTRAP=1 CARGO_TARGET_DIR=$(obj)/core-target RUSTFLAGS="-Zunstable-options -Zplt=yes -Cforce-unwind-tables=no -Cpanic=immediate-abort -Crelocation-model=static -Ccode-model=kernel -Cno-redzone=yes -Cjump-tables=no -Cforce-frame-pointers=yes" cargo build --quiet --release --target=x86_64-unknown-none -Zbuild-std=core --manifest-path=$(src)/core/freestanding/Cargo.toml || exit $$?; ld.lld -r --gc-sections $(addprefix -u ,mos_init mos_admit mos_advance mos_cancel mos_ack mos_stats mos_stop) $(obj)/core-target/x86_64-unknown-none/release/libmodelos_kernel_core.a -o $@
+      cmd_object_core = RUSTC_BOOTSTRAP=1 CARGO_TARGET_DIR=$(obj)/core-target RUSTFLAGS="-Zunstable-options -Zplt=yes -Cforce-unwind-tables=no -Cpanic=immediate-abort -Crelocation-model=static -Ccode-model=kernel -Cno-redzone=yes -Cjump-tables=no -Cforce-frame-pointers=yes" cargo build --quiet --release --target=x86_64-unknown-none -Zbuild-std=core --manifest-path=$(src)/core/freestanding/Cargo.toml || exit $$?; ld.lld -r --gc-sections $(addprefix -u ,mos_init mos_admit mos_advance mos_cancel mos_ack mos_stats mos_stop mos_prefix_configure mos_prefix_stats) $(obj)/core-target/x86_64-unknown-none/release/libmodelos_kernel_core.a -o $@
 $(obj)/core_rust.o: $(src)/core/kernel.rs $(src)/core/freestanding/Cargo.toml $(src)/core/src/objects.rs $(src)/core/image.rs FORCE
 	$(call if_changed,object_core)
 targets += core_rust.o

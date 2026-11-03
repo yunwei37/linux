@@ -24,6 +24,10 @@ int modelos_serve_prepare(void);
 int modelos_serve_worker(unsigned int cpu);
 int modelos_serve_network(void *unused);
 #endif
+struct mos_prefix_stats {u64 hits,publishes,skipped_tokens;};
+int mos_prefix_configure(u32 enabled);
+void mos_prefix_stats(struct mos_prefix_stats *out);
+int mos_engine_prefix(u32 op,const struct mos_work *w);
 int mos_init(u32 round_robin);
 int mos_admit(u64 session,u32 id,const u32 *prompt,u32 count,u32 budget,u64 now,struct mos_handle *h);
 int mos_advance(struct mos_event *event);

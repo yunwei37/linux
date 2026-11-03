@@ -1,6 +1,33 @@
 // SPDX-License-Identifier: MIT
 //! Allocation-free model ownership; the caller serializes core entry.
 pub const SLOTS: usize = 8;
+pub const PREFIX_TOKENS: usize = 64;
+#[derive(Clone, Copy, Debug)]
+#[repr(u32)]
+pub enum PrefixOp {
+    Reserve,
+    Publish,
+    Restore,
+    Release,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct PrefixKey {
+    scope: u64,
+    tokens: [u32; PREFIX_TOKENS],
+}
+struct PrefixCache {
+    enabled: bool,
+    key: Option<PrefixKey>,
+    hits: u64,
+    publishes: u64,
+}
+#[derive(Clone, Copy, Debug, Default)]
+#[repr(C)]
+pub struct PrefixStats {
+    pub hits: u64,
+    pub publishes: u64,
+    pub skipped_tokens: u64,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
     Invalid,
@@ -127,6 +154,7 @@ pub struct Handle {
 #[derive(Clone, Copy, Debug)]
 pub struct Admission {
     pub session: u64,
+    pub sharing_scope: u64,
     pub request: u32,
     pub output: u32,
     pub first_deadline: u64,
@@ -161,9 +189,13 @@ pub trait Engine {
     fn run_batch(&mut self, phase: Phase, work: &[Work], output: &mut [u32]) -> Result<()>;
     fn release(&mut self, work: Work) -> Result<()>;
     fn unload(&mut self) -> Result<()>;
+    /// Fenced, typed KV transfer. Prefix storage is private to this Instance.
+    /// Reserve must roll back on failure; uncertain copies are quarantined.
+    fn prefix(&mut self, op: PrefixOp, work: Work) -> Result<()>;
 }
 #[derive(Clone, Copy)]
 struct Request {
+    prefix: Option<PrefixKey>,
     admission: Admission,
     handle: Handle,
     state: RequestState,
@@ -205,6 +237,7 @@ pub struct Instance<E: Engine> {
     generations: [u32; SLOTS],
     cursor: usize,
     accounting: Accounting,
+    prefix: Option<PrefixCache>,
 }
 impl<E: Engine> Instance<E> {
     pub fn load(mut image: Image, mut engine: E, policy: Policy) -> Result<Self> {
@@ -227,7 +260,65 @@ impl<E: Engine> Instance<E> {
             generations: [0; SLOTS],
             cursor: 0,
             accounting,
+            prefix: None,
         })
+    }
+    /// A reserved cache slot is charged even for the disabled-policy control.
+    /// This keeps the admission/capacity envelope identical in the ablation.
+    pub fn configure_prefix(&mut self, enabled: bool) -> Result<()> {
+        if self.state != InstanceState::Ready
+            || self.accounting.live != 0
+            || self.prefix.is_some()
+            || self.image.bounds.prefill_quantum != PREFIX_TOKENS as u32
+        {
+            return Err(Error::State);
+        }
+        let b = self.image.bounds;
+        let host = self
+            .accounting
+            .host
+            .checked_add(b.request_host)
+            .ok_or(Error::Capacity)?;
+        let device = self
+            .accounting
+            .device
+            .checked_add(b.request_device)
+            .ok_or(Error::Capacity)?;
+        if host > b.host || device > b.device {
+            return Err(Error::Capacity);
+        }
+        self.engine.prefix(PrefixOp::Reserve, Self::cache_work())?;
+        self.accounting.host = host;
+        self.accounting.device = device;
+        self.prefix = Some(PrefixCache {
+            enabled,
+            key: None,
+            hits: 0,
+            publishes: 0,
+        });
+        Ok(())
+    }
+    fn cache_work() -> Work {
+        Work {
+            handle: Handle {
+                slot: (SLOTS - 1) as u32,
+                generation: 1,
+            },
+            request: u32::MAX,
+            position: 0,
+            token: 0,
+            count: PREFIX_TOKENS as u32,
+        }
+    }
+    pub fn prefix_stats(&self) -> PrefixStats {
+        match &self.prefix {
+            Some(c) => PrefixStats {
+                hits: c.hits,
+                publishes: c.publishes,
+                skipped_tokens: c.hits * PREFIX_TOKENS as u64,
+            },
+            None => PrefixStats::default(),
+        }
     }
     pub fn state(&self) -> InstanceState {
         self.state
@@ -275,7 +366,11 @@ impl<E: Engine> Instance<E> {
         if host > b.host || device > b.device {
             return Err(Error::Capacity);
         }
-        let slot = (0..SLOTS)
+        let slot = (0..if self.prefix.is_some() {
+            SLOTS - 1
+        } else {
+            SLOTS
+        })
             .find(|i| self.requests[*i].is_none() && self.generations[*i] < u32::MAX)
             .ok_or(Error::Capacity)?;
         self.generations[slot] += 1; // never wrap a stale capability back into validity
@@ -283,7 +378,18 @@ impl<E: Engine> Instance<E> {
             slot: slot as u32,
             generation: self.generations[slot],
         };
+        let prefix = if a.sharing_scope != 0 && prompt.len() > PREFIX_TOKENS {
+            let mut tokens = [0; PREFIX_TOKENS];
+            tokens.copy_from_slice(&prompt[..PREFIX_TOKENS]);
+            Some(PrefixKey {
+                scope: a.sharing_scope,
+                tokens,
+            })
+        } else {
+            None
+        };
         let r = Request {
+            prefix,
             admission: a,
             handle,
             state: RequestState::Admitted,
@@ -300,6 +406,22 @@ impl<E: Engine> Instance<E> {
         self.accounting.peak = self.accounting.peak.max(self.accounting.live);
         self.accounting.host = host;
         self.accounting.device = device;
+        if prefix.is_some()
+            && self
+                .prefix
+                .as_ref()
+                .is_some_and(|c| c.enabled && c.key == prefix)
+        {
+            if self.engine.prefix(PrefixOp::Restore, r.work()).is_err() {
+                self.requests[slot].as_mut().unwrap().state = RequestState::Quarantined;
+                self.state = InstanceState::Failed;
+                return Err(Error::Quarantined);
+            }
+            let r = self.requests[slot].as_mut().unwrap();
+            r.position = PREFIX_TOKENS as u32;
+            r.state = RequestState::Prefill;
+            self.prefix.as_mut().unwrap().hits += 1;
+        }
         Ok(handle)
     }
     fn request(&self, session: u64, h: Handle) -> Result<&Request> {
@@ -464,6 +586,24 @@ impl<E: Engine> Instance<E> {
             } else {
                 r.position + 1
             };
+            if phase == Phase::Prefill
+                && r.position == PREFIX_TOKENS as u32
+                && r.position < r.prompt
+                && r.prefix.is_some()
+                && self.prefix.as_ref().is_some_and(|c| c.enabled)
+            {
+                // Publish only a fenced, token-major prefix before decode can
+                // transpose the arena. No request writes the cached extent.
+                self.prefix.as_mut().unwrap().key = None;
+                if self.engine.prefix(PrefixOp::Publish, *w).is_err() {
+                    r.state = RequestState::Quarantined;
+                    self.state = InstanceState::Failed;
+                    return Err(Error::Quarantined);
+                }
+                let c = self.prefix.as_mut().unwrap();
+                c.key = r.prefix;
+                c.publishes += 1;
+            }
             if r.position < r.prompt {
                 r.state = RequestState::Prefill;
                 continue;
@@ -500,6 +640,19 @@ impl<E: Engine> Instance<E> {
     pub fn retire(&mut self) -> Result<()> {
         if self.state != InstanceState::Drained {
             return Err(Error::State);
+        }
+        if self.prefix.is_some() {
+            if self
+                .engine
+                .prefix(PrefixOp::Release, Self::cache_work())
+                .is_err()
+            {
+                self.state = InstanceState::Failed;
+                return Err(Error::Quarantined);
+            }
+            self.prefix = None;
+            self.accounting.host -= self.image.bounds.request_host;
+            self.accounting.device -= self.image.bounds.request_device;
         }
         if self.engine.unload().is_err() {
             self.state = InstanceState::Failed;

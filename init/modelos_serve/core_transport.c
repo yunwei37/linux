@@ -33,6 +33,9 @@ static struct connection *connections[8];
 static atomic_t sockets=ATOMIC_INIT(0),pending=ATOMIC_INIT(0);
 static u64 next_session;
 static bool rr;
+static int prefix_mode=-1;
+static int __init prefix_arg(char *s){prefix_mode=!strcmp(s,"device");return 1;}
+__setup("modelos_core_prefix=",prefix_arg);
 static int __init core_policy(char *s) {rr=!strcmp(s,"round-robin");return 1;}
 __setup("modelos_core_policy=",core_policy);
 
@@ -50,6 +53,7 @@ int mos_engine_batch(u32 phase,const struct mos_work *w,u32 *out) {
      phase?NULL:prompts[w->handle.slot]+w->position,n,!phase&&w->position+n==w->count,out);
 }
 int mos_engine_release(const struct mos_work *w) {return modelos_gpu_arena_release(w->handle.slot,w->request);}
+int mos_engine_prefix(u32 op,const struct mos_work *w){return modelos_gpu_prefix(op,w->handle.slot,w->request);}
 int mos_engine_unload(void) {return modelos_gpu_stop();}
 void __noreturn mos_panic(void) {panic("model object core invariant");}
 
@@ -69,17 +73,17 @@ static u64 user_tasks(void) {
  struct task_struct *g,*t;u64 n=0;rcu_read_lock();for_each_process_thread(g,t)if(READ_ONCE(t->mm))n++;rcu_read_unlock();return n;
 }
 int modelos_serve_prepare(void) {
- int ret;mutex_lock(&core_lock);ret=mos_init(rr);mutex_unlock(&core_lock);
+ int ret;mutex_lock(&core_lock);ret=mos_init(rr);if(!ret&&prefix_mode>=0)ret=mos_prefix_configure(prefix_mode);mutex_unlock(&core_lock);
  if(ret||user_tasks())return -ENODEV;
  pr_info("MODEL_OBJECTS ready=1 rust=1 image=alpin-hybrid max_batch=1 policy=%s\n",rr?"round-robin":"deadline");
  pr_info("SERVE_USER_ENTRY compiled_out=1 no_initramfs=1\n");return 0;
 }
 static void send_stats(struct socket *sock,u32 id) {
- struct mos_accounting a;__le64 data[10];
- mutex_lock(&core_lock);mos_stats(&a);mutex_unlock(&core_lock);
+ struct mos_accounting a;struct mos_prefix_stats p;__le64 data[10];
+ mutex_lock(&core_lock);mos_stats(&a);mos_prefix_stats(&p);mutex_unlock(&core_lock);
  data[0]=cpu_to_le64(a.live);data[1]=cpu_to_le64(a.live*MODELOS_GPU_ARENA_BYTES);
  data[2]=cpu_to_le64(a.admitted);data[3]=cpu_to_le64(a.released);data[4]=cpu_to_le64(a.peak);data[5]=cpu_to_le64(user_tasks());
- data[6]=cpu_to_le64(a.steps);data[7]=data[8]=data[9]=0;
+ data[6]=cpu_to_le64(a.steps);data[7]=cpu_to_le64(p.hits);data[8]=cpu_to_le64(p.publishes);data[9]=cpu_to_le64(p.skipped_tokens);
  if(!frame(sock,18,id,a.live))send_bytes(sock,data,sizeof(data));
 }
 static void finished(struct connection *c,u32 reason) {

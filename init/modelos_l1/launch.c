@@ -107,11 +107,9 @@ static NV_STATUS prepare(struct executor *c)
  }
  wmb();pr_info("L1_GRAPH_UPLOAD nodes=%u code_bytes=%llu command_memory=%s typed_edges=1\n",n,cursor-c->r->local.gpu-0x100000,c->system?"system":"vram");return NV_OK;
 }
-static NvU32 submit(struct executor *c,unsigned root,bool timestamp)
-{
- NvU32 push[32],completion=++c->completion;NvU64 entry;unsigned words=0,slot=c->put&1023;
+static NvU32 kick(struct executor *c,NvU64 root,NvU32 completion,bool timestamp){
+ NvU32 push[32];NvU64 entry;unsigned words=0,slot=c->put&1023;
  WRITE_ONCE(*release_ptr(c),0);WRITE_ONCE(*(NvU64 *)((char *)c->r->host.cpu+0x1108),0);
- for(int node=root;node>=0;node=graph_nodes[node].next){field(c->nodes[node].qmd,575,544,completion);field(c->nodes[node].qmd,607,576,0);store(c,qmd_address(c,node)-command_gpu(c),c->nodes[node].qmd,sizeof(c->nodes[node].qmd));}
  push[words++]=0x20012000;push[words++]=0xcec0;
  push[words++]=0x20022000|(0x7b0/4);push[words++]=0x7293;push[words++]=0;
  push[words++]=0x20022000|(0x2a0/4);push[words++]=0x7294;push[words++]=0;
@@ -120,13 +118,18 @@ static NvU32 submit(struct executor *c,unsigned root,bool timestamp)
   push[words++]=0x20050000|(0x5c/4);push[words++]=(NvU32)addr;push[words++]=addr>>32;push[words++]=0;push[words++]=0;
   push[words++]=1U|(1U<<20)|(1U<<24)|(1U<<25);
  }
- push[words++]=0x20012000|(0x2b4/4);push[words++]=qmd_address(c,root)>>8;
+ push[words++]=0x20012000|(0x2b4/4);push[words++]=root>>8;
  push[words++]=0x20012000|(0x2c0/4);push[words++]=9;
  store(c,0xe0000+slot*128,push,words*4);
  entry=cpu_to_le64((command_gpu(c)+0xe0000+slot*128)|((NvU64)words<<42)|(1ULL<<41));
  memcpy_toio((void __iomem *)c->r->local.cpu+slot*8,&entry,8);wmb();
  writel((++c->put)&1023,(void __iomem *)c->r->local.cpu+0x208c);wmb();writel(c->r->token,(void __iomem *)c->r->doorbell+0x90);
  return completion;
+}
+static NvU32 submit(struct executor *c,unsigned root,bool timestamp){
+ NvU32 completion=++c->completion;
+ for(int node=root;node>=0;node=graph_nodes[node].next){field(c->nodes[node].qmd,575,544,completion);field(c->nodes[node].qmd,607,576,0);store(c,qmd_address(c,node)-command_gpu(c),c->nodes[node].qmd,sizeof(c->nodes[node].qmd));}
+ return kick(c,qmd_address(c,root),completion,timestamp);
 }
 static NV_STATUS smoke(struct executor *c,unsigned root,unsigned launches)
 {
@@ -507,6 +510,53 @@ prefill_turn:
 #endif
   if(status!=NV_OK)return -EIO;cond_resched();
  }return 0;
+}
+/* Typed immutable-prefix copies reuse modelos_upload, never new GPU code.
+ * Static parameter banks prevent stale CB0 cache entries when owners change. */
+static int prefix_upload=-1;
+int modelos_gpu_prefix(unsigned op,unsigned arena,u32 request){
+ const u64 bytes=64ULL*1024*4,stride=2048ULL*1024*4;
+ const u64 offset=offsetof(struct q_state,kv)+(2048-Q_MAX_SEQ)*4;
+ struct executor *c=service;NV_STATUS status=NV_OK;
+ if(!c)return -ENODEV;
+ if(op==3){prefix_upload=-1;return modelos_gpu_arena_release(7,U32_MAX);}
+ if(op==0){
+  int upload=-1;for(unsigned i=0;i<ARRAY_SIZE(graph_nodes);i++)if(!strcmp(graph_nodes[i].name,"modelos_upload"))upload=i;
+  if(upload<0||c->r->staging.bytes<0x200000)return -EOPNOTSUPP;
+  int ret=modelos_gpu_arena_acquire(7,U32_MAX);if(ret)return ret;
+  mutex_lock(&service_lock);
+  for(unsigned a=0;a<7;a++)for(unsigned direction=0;direction<2;direction++)for(unsigned plane=0;plane<56;plane++){
+   unsigned bank=(a*2+direction)*56+plane;NvU32 cb[256]={0},params[64]={0};
+   NvU64 queue_addr=c->r->staging.gpu+bank*256;
+   NvU64 source=c->r->state.gpu+(direction?7:a)*MODELOS_GPU_ARENA_BYTES+offset+plane*stride;
+   NvU64 target=c->r->state.gpu+(direction?a:7)*MODELOS_GPU_ARENA_BYTES+offset+plane*stride;
+   memcpy(cb,graph_nodes[upload].constant,graph_nodes[upload].constant_bytes);
+   cb[0x360/4]=graph_nodes[upload].qmd[34]&0xffff;cb[0x364/4]=graph_nodes[upload].qmd[34]>>16;cb[0x368/4]=graph_nodes[upload].qmd[35]&255;
+   cb[0x370/4]=graph_nodes[upload].qmd[39];cb[0x374/4]=graph_nodes[upload].qmd[40]&0xffff;cb[0x378/4]=graph_nodes[upload].qmd[41]&0xffff;
+   *(NvU64 *)((char *)cb+0x380)=queue_addr;*(NvU64 *)((char *)cb+0x388)=target;*(NvU64 *)((char *)cb+0x390)=source;
+   cb[188]=0;cb[189]=0x7294;cb[190]=0;cb[191]=0x7293;cb[223]=0xfffdc0;
+   params[3]=bytes;params[6]=bytes;
+   memcpy((char *)c->r->staging.cpu+bank*256,params,sizeof(params));
+   memcpy((char *)c->r->staging.cpu+0x40000+bank*1024,cb,sizeof(cb));
+  }
+  wmb();prefix_upload=upload;mutex_unlock(&service_lock);return 0;
+ }
+ if(op>2||arena>=7||prefix_upload<0)return -EINVAL;
+ mutex_lock(&service_lock);
+ if(service_owner[arena]!=request||service_owner[7]!=U32_MAX){mutex_unlock(&service_lock);return -EINVAL;}
+ NvU32 completion=++c->completion;
+ for(unsigned plane=0;plane<56;plane++){
+  NvU32 qmd[96];unsigned bank=(arena*2+(op==2))*56+plane;
+  NvU64 ca=c->r->staging.gpu+0x40000+bank*1024;
+  memcpy(qmd,c->nodes[prefix_upload].qmd,sizeof(qmd));
+  field(qmd,1375,1344,(NvU32)(ca>>6));field(qmd,1394,1376,ca>>38);
+  field(qmd,575,544,completion);field(qmd,607,576,0);
+  field(qmd,351,336,0);field(qmd,447,352,0);field(qmd,288,288,plane==55);
+  if(plane<55){field(qmd,336,336,1);field(qmd,339,337,1);field(qmd,415,384,(command_gpu(c)+0x20000+(plane+1)*0x200)>>8);field(qmd,350,350,1);}
+  store(c,0x20000+plane*0x200,qmd,sizeof(qmd));
+ }
+ wmb();kick(c,command_gpu(c)+0x20000,completion,false);status=wait_counter(release_ptr(c),completion);
+ mutex_unlock(&service_lock);return status==NV_OK?0:-EIO;
 }
 /* Object-core primitive: no backend admission, queue or phase-selection policy.
  * This uses the unchanged AlpinDale decode graph and existing 64-token prefill. */
