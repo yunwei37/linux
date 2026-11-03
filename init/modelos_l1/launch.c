@@ -9,6 +9,9 @@
 #include "nvtypes.h"
 #include "nvstatus.h"
 #include "launch.h"
+extern void l2_counts_snapshot(NvU64 values[4]);
+extern void l2_counts_report(const char *name,const NvU64 before[4],NvU64 elapsed_ns);
+
 struct l1_launch_node {const char *name;const unsigned char *code,*constant,*constant2;unsigned code_bytes,constant_bytes,constant2_bytes,registers,shared_bytes;int next;NvU32 qmd[96];};
 #include "l1-launch.h"
 #if L1_LAUNCH_IS_QWEN
@@ -186,8 +189,10 @@ static NV_STATUS dps_qwen(struct executor *c)
  struct dps_sample {NvU64 cpu,gpu;NvU32 ids[128];};
  struct dps_sample *samples=kvcalloc(24,sizeof(*samples),GFP_KERNEL);
  NvU32 *q=queue(c);unsigned serial=0,matched=0;NV_STATUS status=NV_OK;char line[1536];
+ NvU64 requests_before[4],requests_begin;
  if(!samples)return NV_ERR_NO_MEMORY;
  memset_io((void __iomem *)c->r->state.cpu+0x3b10000,0,82*4);wmb();
+ l2_counts_snapshot(requests_before);requests_begin=ktime_get_ns();
  for(unsigned repeat=0;repeat<4;repeat++)for(unsigned id=0;id<6;id++){
   unsigned inputs=id<5?l1_cases[id].inputs:l1_perf_cases[0].inputs;
   unsigned outputs=id<5?l1_cases[id].outputs:l1_perf_cases[0].outputs;
@@ -208,6 +213,7 @@ static NV_STATUS dps_qwen(struct executor *c)
    matched++;
   }
  }
+ l2_counts_report("requests",requests_before,ktime_get_ns()-requests_begin);
  for(unsigned repeat=0;repeat<4;repeat++)for(unsigned id=0;id<6;id++){
   unsigned inputs=id<5?l1_cases[id].inputs:l1_perf_cases[0].inputs;
   unsigned outputs=id<5?l1_cases[id].outputs:l1_perf_cases[0].outputs;
@@ -312,9 +318,13 @@ static NV_STATUS benchmark(struct executor *c)
 NV_STATUS modelos_l1_launch(struct l1_launch_resources *r)
 {
  struct executor *c=kvzalloc(struct_size(c,nodes,ARRAY_SIZE(graph_nodes)),GFP_KERNEL);NV_STATUS s;if(!c)return NV_ERR_NO_MEMORY;
- c->r=r;c->system=system_commands&&r->host.bytes>=0x100000;s=prepare(c);if(s!=NV_OK)goto out;
+ NvU64 before[4],begin;
+ c->r=r;c->system=system_commands&&r->host.bytes>=0x100000;
+ l2_counts_snapshot(before);begin=ktime_get_ns();s=prepare(c);
+ l2_counts_report("prepare",before,ktime_get_ns()-begin);if(s!=NV_OK)goto out;
 #if L1_LAUNCH_IS_QWEN
- s=upload_model(c);
+ l2_counts_snapshot(before);begin=ktime_get_ns();s=upload_model(c);
+ l2_counts_report("upload",before,ktime_get_ns()-begin);
 #if L1_LAUNCH_IS_DPS
  if(s==NV_OK)s=dps_qwen(c);
 #elif L1_LAUNCH_IS_PARALLEL
