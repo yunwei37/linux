@@ -517,6 +517,7 @@ static int prefix_upload=-1;
 int modelos_gpu_prefix(unsigned op,unsigned arena,u32 request){
  const u64 bytes=64ULL*1024*4,stride=2048ULL*1024*4;
  const u64 offset=offsetof(struct q_state,kv)+(2048-Q_MAX_SEQ)*4;
+ static_assert((offsetof(struct q_state,kv)+(2048-Q_MAX_SEQ)*4)%16==8);
  struct executor *c=service;NV_STATUS status=NV_OK;
  if(!c)return -ENODEV;
  if(op==3){prefix_upload=-1;return modelos_gpu_arena_release(7,U32_MAX);}
@@ -528,14 +529,14 @@ int modelos_gpu_prefix(unsigned op,unsigned arena,u32 request){
   for(unsigned a=0;a<7;a++)for(unsigned direction=0;direction<2;direction++)for(unsigned plane=0;plane<56;plane++){
    unsigned bank=(a*2+direction)*56+plane;NvU32 cb[256]={0},params[64]={0};
    NvU64 queue_addr=c->r->staging.gpu+bank*256;
-   NvU64 source=c->r->state.gpu+(direction?7:a)*MODELOS_GPU_ARENA_BYTES+offset+plane*stride;
-   NvU64 target=c->r->state.gpu+(direction?a:7)*MODELOS_GPU_ARENA_BYTES+offset+plane*stride;
+   NvU64 source=c->r->state.gpu+(direction?7:a)*MODELOS_GPU_ARENA_BYTES+offset+plane*stride+8;
+   NvU64 target=c->r->state.gpu+(direction?a:7)*MODELOS_GPU_ARENA_BYTES+offset+plane*stride+8;
    memcpy(cb,graph_nodes[upload].constant,graph_nodes[upload].constant_bytes);
    cb[0x360/4]=graph_nodes[upload].qmd[34]&0xffff;cb[0x364/4]=graph_nodes[upload].qmd[34]>>16;cb[0x368/4]=graph_nodes[upload].qmd[35]&255;
    cb[0x370/4]=graph_nodes[upload].qmd[39];cb[0x374/4]=graph_nodes[upload].qmd[40]&0xffff;cb[0x378/4]=graph_nodes[upload].qmd[41]&0xffff;
    *(NvU64 *)((char *)cb+0x380)=queue_addr;*(NvU64 *)((char *)cb+0x388)=target;*(NvU64 *)((char *)cb+0x390)=source;
    cb[188]=0;cb[189]=0x7294;cb[190]=0;cb[191]=0x7293;cb[223]=0xfffdc0;
-   params[3]=bytes;params[6]=bytes;
+   params[3]=bytes-16;params[6]=bytes-8;
    memcpy((char *)c->r->staging.cpu+bank*256,params,sizeof(params));
    memcpy((char *)c->r->staging.cpu+0x40000+bank*1024,cb,sizeof(cb));
   }
@@ -544,6 +545,14 @@ int modelos_gpu_prefix(unsigned op,unsigned arena,u32 request){
  if(op>2||arena>=7||prefix_upload<0)return -EINVAL;
  mutex_lock(&service_lock);
  if(service_owner[arena]!=request||service_owner[7]!=U32_MAX){mutex_unlock(&service_lock);return -EINVAL;}
+ // The layout's KV starts at 8 mod 16. Copy only the two 8-byte
+ // edges through BAR; vector-copy the aligned interior with the old cubin.
+ for(unsigned plane=0;plane<56;plane++){
+  u64 source=(op==2?7:arena)*MODELOS_GPU_ARENA_BYTES+offset+plane*stride;
+  u64 target=(op==2?arena:7)*MODELOS_GPU_ARENA_BYTES+offset+plane*stride;
+  writeq(readq((void __iomem *)c->r->state.cpu+source),(void __iomem *)c->r->state.cpu+target);
+  writeq(readq((void __iomem *)c->r->state.cpu+source+bytes-8),(void __iomem *)c->r->state.cpu+target+bytes-8);
+ }
  NvU32 completion=++c->completion;
  for(unsigned plane=0;plane<56;plane++){
   NvU32 qmd[96];unsigned bank=(arena*2+(op==2))*56+plane;
