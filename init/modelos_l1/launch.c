@@ -508,6 +508,29 @@ prefill_turn:
   if(status!=NV_OK)return -EIO;cond_resched();
  }return 0;
 }
+/* Object-core primitive: no backend admission, queue or phase-selection policy.
+ * This uses the unchanged AlpinDale decode graph and existing 64-token prefill. */
+int modelos_gpu_run_phase(unsigned arena,u32 request,u32 position,u32 token,
+ const u32 *prompt,unsigned count,bool final,u32 *result){
+ u64 begin=ktime_get_ns(),locked,submitted,gpu;NV_STATUS status;NvU32 completion;
+ if(arena>=MODELOS_GPU_ARENAS||count>L1_LAUNCH_PREFILL_TILE||(count&&!prompt))return -EINVAL;
+ mutex_lock(&service_lock);locked=ktime_get_ns();
+ if(!service||service_owner[arena]!=request){mutex_unlock(&service_lock);return -EINVAL;}
+ bind_arena(service,arena);NvU32 *q=queue(service);
+ WRITE_ONCE(q[9],0);WRITE_ONCE(q[7],count);WRITE_ONCE(q[8],final);
+ WRITE_ONCE(q[2],token);WRITE_ONCE(q[3],position);
+ for(unsigned i=0;i<count;i++)WRITE_ONCE(q[2048+i],prompt[i]);
+ WRITE_ONCE(q[0],service->completion+1);wmb();
+ completion=submit(service,count?L1_LAUNCH_PREFILL_ROOT:0,true);submitted=ktime_get_ns();
+ status=wait_counter(release_ptr(service),completion);
+ if(status==NV_OK&&READ_ONCE(q[5]))status=NV_ERR_INVALID_DATA;
+ if(status==NV_OK){
+  *result=count&&!final?0:READ_ONCE(q[4]);gpu=counter(q,14)-counter(q,12);
+  service_gpu[arena]+=gpu;if(count)service_prefill[arena]+=gpu;else service_decode[arena]+=gpu;
+  service_submit[arena]+=submitted-locked;service_wait[arena]+=locked-begin;service_steps[arena]++;account_frontend(arena,1,0);
+ }
+ mutex_unlock(&service_lock);return status==NV_OK?0:-EIO;
+}
 int modelos_gpu_stop(void){
  mutex_lock(&service_lock);if(!service){mutex_unlock(&service_lock);return -ENODEV;}
  for(unsigned i=0;i<MODELOS_GPU_ARENAS;i++)if(service_owner[i]){mutex_unlock(&service_lock);return -EBUSY;}

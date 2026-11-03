@@ -1,0 +1,11 @@
+[package]
+name = "modelos-kernel-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+[lib]
+path = "../kernel.rs"
+crate-type = ["staticlib"]
+[profile.release]
+opt-level = 2
+panic = "abort"

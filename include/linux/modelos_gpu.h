@@ -9,6 +9,9 @@
 #define MODELOS_GPU_ARENA_BYTES (64ULL << 20)
 #endif
 int modelos_gpu_prepare(void);
+/* One fenced engine quantum; scheduling and ownership belong to the core. */
+int modelos_gpu_run_phase(unsigned arena,u32 request,u32 position,u32 token,
+ const u32 *prompt,unsigned count,bool final,u32 *result);
 int modelos_gpu_arena_acquire(unsigned arena, u32 request);
 int modelos_gpu_arena_release(unsigned arena, u32 request);
 int modelos_gpu_step(unsigned worker, unsigned arena, u32 request,
