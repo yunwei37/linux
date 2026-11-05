@@ -81,7 +81,7 @@ static void profile(unsigned op,unsigned long long out[6])
  if(op==1){profiling=true;request_cpu=0;}else if(op==0)profiling=false;
  mos_text_profile(op,out);out[4]=request_cpu;out[5]=0; /* COM2 has no TCP CPU time. */
 }
-static void complete(unsigned long long begin){if(profiling)request_cpu+=clock_ns()-begin;}
+static void complete(unsigned long long begin){if(profiling)request_cpu+=clock_ns()-begin;role_step_boundary();}
 static const struct mos_http_ops operations={NULL,NULL,transport_read,transport_write,fixture_connect,fixture_close,mos_text_http_open,mos_text_http_event,mos_text_http_drop,profile,clock_ns,complete};
 void __attribute__((noreturn)) role_service(void)
 {

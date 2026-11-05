@@ -14,6 +14,12 @@ static struct gate idt[256] __attribute__((aligned(16)));
 extern char role_fault_stubs[],role_ap_begin[],role_ap_end[];
 extern void role_wake_isr(void);
 static volatile unsigned ap_online,roles_released;
+struct role_mailbox {
+ u64 posted,done,boundary;u32 operation,role;
+ u64 source,destination,bytes;
+} __attribute__((aligned(64)));
+static struct role_mailbox mailboxes[ROLE_MAX_CPUS];
+static u8 apic_ids[ROLE_MAX_CPUS];
 static u32 apic_read(unsigned reg){return *(volatile u32 *)role_va(0xfee00000+reg);}
 static void apic_write(unsigned reg,u32 value){*(volatile u32 *)role_va(0xfee00000+reg)=value;}
 void role_puts(const char *s){while(*s){while(!(role_in(0x3fd)&32))role_pause();role_out(0x3f8,*s++);}}
@@ -23,7 +29,7 @@ void __attribute__((noreturn)) role_fault(u64 *frame){while(__atomic_exchange_n(
 static void gate(unsigned n,u64 target,unsigned ist){idt[n]=(struct gate){target,8,ist,0x8e,target>>16,target>>32,0};}
 void role_core_init(unsigned slot)
 {
- u64 cr0,cr4,base=(u64)&tss[slot];
+ u64 base=(u64)&tss[slot];
  struct descriptor gd={sizeof(gdt[slot])-1,(u64)gdt[slot]},id={sizeof(idt)-1,(u64)idt};
  gdt[slot][1]=0x00af9a000000ffffUL;gdt[slot][2]=0x00cf92000000ffffUL;
  tss[slot].ist[0]=(u64)&fault_stacks[slot][sizeof(fault_stacks[slot])];tss[slot].iomap=sizeof(tss[slot]);
@@ -33,9 +39,7 @@ void role_core_init(unsigned slot)
  asm volatile("mov $16,%%ax; mov %%ax,%%ds; mov %%ax,%%es; mov %%ax,%%ss; mov $24,%%ax; ltr %%ax":::"rax","memory");
  if(!slot){unsigned i;for(i=0;i<256;i++)gate(i,(u64)role_fault_stubs+13*16,1);for(i=0;i<32;i++)gate(i,(u64)role_fault_stubs+i*16,1);gate(0x23,(u64)role_wake_isr,0);gate(0xf1,(u64)role_wake_isr,0);}
  asm volatile("lidt %0"::"m"(id):"memory");
- asm volatile("mov %%cr0,%0":"=r"(cr0));cr0=(cr0&~12UL)|2;asm volatile("mov %0,%%cr0"::"r"(cr0));
- asm volatile("mov %%cr4,%0":"=r"(cr4));cr4|=0x600;asm volatile("mov %0,%%cr4; fninit"::"r"(cr4));
- {u32 mxcsr=0x1f80;asm volatile("ldmxcsr %0"::"m"(mxcsr));}
+ if(mos_role_enable_fpu())role_runtime_fault();
  apic_write(0xf0,0x1ff);apic_write(0x320,0x10000);apic_write(0x350,slot?0x10000:0x700);apic_write(0x360,0x400);
 }
 /* Read firmware topology, not Linux CPU/task discovery. */
@@ -66,7 +70,18 @@ void __attribute__((noreturn)) role_ap_entry(unsigned slot)
  __atomic_store_n(&ap_online,slot,__ATOMIC_RELEASE);
  while(!__atomic_load_n(&roles_released,__ATOMIC_ACQUIRE))role_pause();
  asm volatile("mov %0,%%cr3"::"r"(role_pa(role_pml4)):"memory");
- for(;;)asm volatile("sti; hlt":::"memory");
+ struct role_mailbox *m=&mailboxes[slot];
+ for(;;){
+  asm volatile("cli":::"memory");
+  u64 posted=__atomic_load_n(&m->posted,__ATOMIC_ACQUIRE);
+  if(posted!=__atomic_load_n(&m->done,__ATOMIC_RELAXED)){
+   if(m->operation==1)m->role=m->bytes;
+   else if(m->operation==2&&m->role==ROLE_CPU)memcpy(role_va(m->destination),role_va(m->source),m->bytes);
+   else role_runtime_fault();
+   __atomic_store_n(&m->done,posted,__ATOMIC_RELEASE);
+  }else asm volatile("sti; hlt":::"memory");
+ }
+
 }
 void role_start_aps(void)
 {
@@ -78,7 +93,7 @@ void role_start_aps(void)
  for(i=44;i+2<=madt->len;){
   u8 *e=(u8 *)madt+i;if(e[1]<2||i+e[1]>madt->len)break;
   if(e[0]==0&&e[1]>=8&&(*(u32 *)(e+4)&1)&&e[3]!=bsp&&role_cpus<ROLE_MAX_CPUS){
-   unsigned slot=role_cpus;
+   unsigned slot=role_cpus;apic_ids[slot]=e[3];
    *(u64 *)role_va(0x8f00)=role_pa(role_pml4);*(u64 *)role_va(0x8f08)=(u64)&ap_stacks[slot][32768];*(u64 *)role_va(0x8f10)=(u64)role_ap_entry;*(u32 *)role_va(0x8f18)=slot;
    asm volatile("mfence":::"memory");
    apic_write(0x310,(u32)e[3]<<24);apic_write(0x300,0xc500);delay_us(10000);
@@ -101,3 +116,39 @@ void role_start_aps(void)
 void *memcpy(void *d,const void *s,size_t n){u8 *p=d;const u8 *q=s;while(n--)*p++=*q++;return d;}
 void *memset(void *d,int c,size_t n){u8 *p=d;while(n--)*p++=c;return d;}
 int memcmp(const void *a,const void *b,size_t n){const u8 *p=a,*q=b;while(n--){if(*p!=*q)return *p-*q;p++;q++;}return 0;}
+
+void __attribute__((noreturn)) role_runtime_fault(void){role_puts("ROLE_RUNTIME_ERROR\n");role_halt();}
+static int role_command(unsigned cpu,unsigned operation,u64 source,u64 destination,u64 bytes,u64 boundary)
+{
+ if(!cpu||cpu>=role_cpus)return -22;
+ struct role_mailbox *m=&mailboxes[cpu];
+ u64 seq=__atomic_load_n(&m->posted,__ATOMIC_RELAXED);
+ if(seq!=__atomic_load_n(&m->done,__ATOMIC_ACQUIRE)||boundary<m->boundary||seq==~0UL)return -16;
+ if(operation==2&&m->role!=ROLE_CPU)return -22;
+ m->operation=operation;m->source=source;m->destination=destination;m->bytes=bytes;m->boundary=boundary;
+ __atomic_store_n(&m->posted,seq+1,__ATOMIC_RELEASE);
+ while(apic_read(0x300)&(1<<12))role_pause();
+ apic_write(0x310,(u32)apic_ids[cpu]<<24);apic_write(0x300,0xf1);
+ u64 deadline=role_tsc()+role_tsc_hz;
+ while(__atomic_load_n(&m->done,__ATOMIC_ACQUIRE)!=seq+1){if(role_tsc()>deadline)return -5;role_pause();}
+ return 0;
+}
+int role_reconfigure(unsigned cpu,enum role_kind role,u64 boundary)
+{
+ if(role!=ROLE_IDLE&&role!=ROLE_CPU)return -22;
+ int ret=role_command(cpu,1,0,0,role,boundary);
+ if(!ret){role_puts("ROLE_CHANGE cpu=");role_hex(cpu);role_puts(" role=");role_hex(role);role_puts(" boundary=");role_hex(boundary);role_puts("\n");}return ret;
+}
+int role_cpu_copy(unsigned cpu,u64 source,u64 destination,u64 bytes,u64 boundary)
+{
+ if(!role_ram_contains(source,bytes)||!role_ram_contains(destination,bytes))return -22;
+ return role_command(cpu,2,source,destination,bytes,boundary);
+}
+void role_step_boundary(void)
+{
+ static u64 boundary;u64 move[3],free_before=mos_role_memory_free_bytes();boundary++;unsigned cpu=1+(boundary-1)%(role_cpus-1);
+ if(mos_role_move_begin(move)||role_reconfigure(cpu,ROLE_CPU,boundary)||
+    role_cpu_copy(cpu,move[0],move[1],move[2],boundary)||mos_role_move_finish()||
+    role_reconfigure(cpu,ROLE_IDLE,boundary)||mos_role_memory_free_bytes()!=free_before)role_runtime_fault();
+ role_puts("ROLE_OBJECT_MOVE_PASS bytes=137 freed=1 cpu_op=1\n");
+}

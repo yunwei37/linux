@@ -14,6 +14,18 @@ static inline __attribute__((noreturn)) void role_halt(void) { asm volatile("cli
 void start_kernel(void *) __attribute__((noreturn));
 void role_fault(u64 *) __attribute__((noreturn));
 void role_ap_entry(unsigned) __attribute__((noreturn));
+enum role_kind { ROLE_IDLE, ROLE_CPU };
+int role_reconfigure(unsigned cpu,enum role_kind role,u64 boundary);
+int role_cpu_copy(unsigned cpu,u64 source,u64 destination,u64 bytes,u64 boundary);
+void role_step_boundary(void);
+int mos_role_enable_fpu(void);
+int mos_role_memory_add_ram(u64,u64);
+int mos_role_memory_import(u64,u64,unsigned);
+u64 mos_role_memory_free_bytes(void);
+int mos_role_move_begin(u64 *);
+int mos_role_move_finish(void);
+void role_runtime_fault(void) __attribute__((noreturn));
+void role_memory_init(void);
 void role_puts(const char *s);
 void role_hex(u64 n);
 int role_ram_contains(u64 start,u64 bytes);

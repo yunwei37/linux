@@ -31,10 +31,12 @@ int role_image_load(void)
  crc=image.crc32;image.crc32=0;
  if(memcmp(image.magic,"MOSROLE1",8)||image.version!=1||image.segments!=2||image.arenas!=2||
     image.cpus!=role_cpus||image.reserved||image_crc(&image,sizeof(image))!=crc){ret=-22;goto out;}
+ role_memory_init();
  /* Validate every destination before permitting any Image DMA. */
  for(i=0;i<image.arenas;i++){
   struct role_image_arena *a=&image.arena[i];
   if(a->reserved||a->physical&0x1fffff||claim_range(a->physical,a->bytes)){ret=-22;goto out;}
+  if(mos_role_memory_import(a->physical,a->bytes,4)){ret=-22;goto out;}
   if(a->kind==1&&a->bytes==(512UL<<20)&&!role_linear_phys)role_linear_phys=a->physical;
   else if(a->kind==2&&a->bytes==(4UL<<20)&&!role_table_phys)role_table_phys=a->physical;
   else{ret=-22;goto out;}
@@ -43,6 +45,7 @@ int role_image_load(void)
   struct role_image_segment *s=&image.segment[i];
   if(!s->bytes||s->bytes>(16UL<<20)||!s->sector||s->physical&511||
      claim_range(s->physical,(s->bytes+511)&~511UL)){ret=-22;goto out;}
+  if(mos_role_memory_import(s->physical,(s->bytes+511)&~511UL,4)){ret=-22;goto out;}
   if(s->kind==1&&!role_tokenizer_phys){role_tokenizer_phys=s->physical;role_tokenizer_bytes=s->bytes;}
   else if(s->kind==2&&!role_fixture_input)role_fixture_input=role_va(s->physical);
   else{ret=-22;goto out;}
@@ -59,7 +62,7 @@ int role_image_load(void)
  }
  struct mos_strata_io_stats stats;mos_strata_disk_stats(disk,&stats);
  role_puts("ROLE_IMAGE disk=virtio-blk CRC32=pass bytes=");role_hex(stats.read_bytes);role_puts(" reads=");role_hex(stats.read_requests);role_puts("\n");
- role_puts("ROLE_LAYOUT E820 validated; Image arenas; direct map 2MiB pages; no runtime allocator\n");
+ role_puts("ROLE_LAYOUT E820 validated; Image initial placement; object allocator over E820; no Linux allocator\n");
 out:
  mos_strata_disk_close(disk);return ret;
 }
