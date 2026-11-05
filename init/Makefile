@@ -89,3 +89,5 @@ obj-$(CONFIG_MODELOS_KEXEC_DPS) += modelos_buddy_arena.o
 ifeq ($(CONFIG_MODELOS_ROLE_BOOT),y)
 obj-y := main.o modelos_role/
 endif
+
+obj-$(CONFIG_MODELOS_NET_FIXTURE) += modelos_net_fixture/

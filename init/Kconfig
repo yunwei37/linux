@@ -2314,3 +2314,10 @@ config MODELOS_ROLE_BOOT
    Linux boot protocol and decompressor, then fixed per-core roles.
    No generic initcalls, tasks, runtime allocator, IRQ/timer services.
    CPU-only qualification profile; not an RM compatibility profile.
+
+config MODELOS_NET_FIXTURE
+ bool "CPU-only ModelOS HTTP/SSE transport fixture"
+ depends on MODELOS_KERNEL_ONLY && (MODELOS_POLL_NET || (INET && VIRTIO_NET))
+ help
+   Link the external production text component and fixed-token fixture.
+   Used to compare owner-polled TCP with Linux TCP without GPU passthrough.

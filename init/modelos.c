@@ -76,8 +76,14 @@ static int modelos_lifecycle_probe(void *unused)
 	return 37;
 }
 
+#ifdef CONFIG_MODELOS_NET_FIXTURE
+void __noreturn modelos_net_fixture_enter(void);
+#endif
 void __noreturn modelos_enter(void)
 {
+#ifdef CONFIG_MODELOS_NET_FIXTURE
+ modelos_net_fixture_enter();
+#endif
 	unsigned int cpu, workers = 0;
 	unsigned short cs;
 
