@@ -1,3 +1,6 @@
+#ifdef CONFIG_MODELOS_ROLE_BOOT
+#include "modelos_role/boot.c"
+#else
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  *  linux/init/main.c
@@ -1624,3 +1627,5 @@ static noinline void __init kernel_init_freeable(void)
 
 	integrity_load_keys();
 }
+
+#endif /* !CONFIG_MODELOS_ROLE_BOOT */

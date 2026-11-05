@@ -2306,3 +2306,11 @@ config MODELOS_KEXEC_TCP
    Rebuild the kernel TCP listener and resume retained request sequences.
    The identical application can be built in a full Linux receiver for a
    same-core handoff control. Old GPU resources stay retained until VM exit.
+
+config MODELOS_ROLE_BOOT
+ bool "ModelOS fixed-role CPU-only boot"
+ depends on X86_64 && !SMP && !RELOCATABLE && !EFI && !PARAVIRT
+ help
+   Linux boot protocol and decompressor, then fixed per-core roles.
+   No generic initcalls, tasks, runtime allocator, IRQ/timer services.
+   CPU-only qualification profile; not an RM compatibility profile.

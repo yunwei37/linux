@@ -109,3 +109,13 @@ obj-$(CONFIG_NET)	+= net/
 obj-y			+= virt/
 obj-y			+= $(ARCH_DRIVERS)
 obj-$(CONFIG_DRM_HEADER_TEST)	+= include/
+
+# The role profile has no consumers of the generic kernel service archives.
+ifeq ($(CONFIG_MODELOS_ROLE_BOOT),y)
+obj-y := init/
+subdir-y += arch/x86/boot/startup
+PHONY += role-capflags
+prepare: role-capflags
+role-capflags:
+	$(Q)$(MAKE) $(build)=arch/x86/kernel/cpu arch/x86/kernel/cpu/capflags.c
+endif

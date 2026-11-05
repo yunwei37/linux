@@ -1230,6 +1230,12 @@ KBUILD_VMLINUX_LIBS := $(filter-out %/, $(libs-y))
 
 export KBUILD_VMLINUX_LIBS
 export KBUILD_LDS          := arch/$(SRCARCH)/kernel/vmlinux.lds
+ifeq ($(CONFIG_MODELOS_ROLE_BOOT),y)
+export KBUILD_LDS := init/modelos_role/vmlinux.lds
+KBUILD_VMLINUX_OBJS := built-in.a
+KBUILD_VMLINUX_LIBS :=
+LDFLAGS_vmlinux += --gc-sections
+endif
 
 ifdef CONFIG_TRIM_UNUSED_KSYMS
 # For the kernel to actually contain only the needed exported symbols,

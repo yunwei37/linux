@@ -24,7 +24,9 @@ quiet_cmd_gen_initcalls_lds = GEN     $@
 targets := .tmp_initcalls.lds
 
 ifdef CONFIG_LTO_CLANG
+ifneq ($(CONFIG_MODELOS_ROLE_BOOT),y)
 initcalls-lds := .tmp_initcalls.lds
+endif
 endif
 
 # objtool for vmlinux.o

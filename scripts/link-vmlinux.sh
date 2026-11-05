@@ -293,7 +293,7 @@ fi
 
 mksysmap "${VMLINUX}" System.map
 
-if is_enabled CONFIG_BUILDTIME_TABLE_SORT; then
+if is_enabled CONFIG_BUILDTIME_TABLE_SORT && ! is_enabled CONFIG_MODELOS_ROLE_BOOT; then
 	info SORTTAB "${VMLINUX}"
 	if ! sorttable "${VMLINUX}"; then
 		echo >&2 Failed to sort kernel tables
