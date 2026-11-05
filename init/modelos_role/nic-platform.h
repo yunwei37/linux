@@ -67,7 +67,11 @@ static u64 pci_resource_len(struct pci_dev *p,unsigned bar){return p->length[bar
 #define pci_iomap_range role_pci_iomap_range
 static void *role_pci_iomap_range(struct pci_dev *p,unsigned bar,u64 offset,u64 bytes)
 {
- if(bar>=6||!bytes||offset>p->length[bar]||bytes>p->length[bar]-offset||p->bar[bar]+offset+bytes>0x100000000UL)return NULL;
+ if(bar>=6||!bytes)return NULL;
+ if(offset>p->length[bar]||bytes>p->length[bar]-offset||p->bar[bar]+offset+bytes>ROLE_DIRECT_LIMIT){
+  role_puts("ROLE_NIC_BAR_REJECT base/length/offset/bytes=");role_hex(p->bar[bar]);role_hex(p->length[bar]);role_hex(offset);role_hex(bytes);role_puts("\n");return NULL;
+ }
+ role_puts("ROLE_NIC_BAR address=");role_hex(p->bar[bar]+offset);role_puts(" bytes=");role_hex(bytes);role_puts("\n");
  return role_va(p->bar[bar]+offset);
 }
 static volatile u32 *role_msix_table;

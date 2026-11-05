@@ -18,7 +18,7 @@ static unsigned range_count;
 static int claim_range(u64 start,u64 bytes)
 {
  extern char _end[];unsigned i;
- if(!bytes||bytes>0x100000000UL||start>0x100000000UL-bytes||
+ if(!bytes||bytes>ROLE_DIRECT_LIMIT||start>ROLE_DIRECT_LIMIT-bytes||
     start<role_pa(_end)||!role_ram_contains(start,bytes))return -22;
  for(i=0;i<range_count;i++)if(start<ranges[i].start+ranges[i].bytes&&ranges[i].start<start+bytes)return -22;
  if(range_count>=8)return -22;ranges[range_count++]=(struct range){start,bytes};return 0;

@@ -8,33 +8,60 @@ startup_64:
  cld
  mov %rsi,%r15
  lea role_boot_stack_end(%rip),%rsp
- /* Static bootstrap mappings: first 4GiB, identity + direct + kernel alias.
-  * Filled using RIP-relative addresses while executing at physical addresses. */
+ /* One direct map through 64TiB (also covers QEMU's high PCI aperture).
+  * 1GiB direct-map pages; separate 2MiB pages for the kernel text alias. */
+ mov $0x80000001,%eax
+ cpuid
+ test $(1<<26),%edx
+ jnz 9f
+ lea role_no_1gb(%rip),%rsi
+7: lodsb
+ test %al,%al
+ jz 8f
+ mov %al,%bl
+ mov $0x3fd,%dx
+6: in %dx,%al
+ test $32,%al
+ jz 6b
+ mov %bl,%al
+ mov $0x3f8,%dx
+ out %al,%dx
+ jmp 7b
+8: hlt
+ jmp 8b
+9:
  lea role_pml4(%rip),%rdi
- lea role_pud(%rip),%rax
+ lea role_puds(%rip),%rax
  or $3,%rax
  mov %rax,0(%rdi)
- mov %rax,2184(%rdi) /* direct map PML4[273] */
- lea role_high_pud(%rip),%rax
- or $3,%rax
- mov %rax,4088(%rdi)
- lea role_pmd(%rip),%rax
- or $3,%rax
- lea role_high_pud(%rip),%rdi
- mov %rax,4080(%rdi)
- lea role_pud(%rip),%rdi
- mov $4,%ecx
+ add $2184,%rdi
+ mov $128,%ecx
 1: mov %rax,(%rdi)
  add $4096,%rax
  add $8,%rdi
  loop 1b
- lea role_pmd(%rip),%rdi
- mov $2048,%ecx
+ lea role_high_pud(%rip),%rax
+ or $3,%rax
+ lea role_pml4(%rip),%rdi
+ mov %rax,4088(%rdi)
+ lea role_kernel_pmd(%rip),%rax
+ or $3,%rax
+ lea role_high_pud(%rip),%rdi
+ mov %rax,4080(%rdi)
+ lea role_kernel_pmd(%rip),%rdi
+ mov $512,%ecx
  mov $0x83,%eax
 2: mov %rax,(%rdi)
  add $0x200000,%rax
  add $8,%rdi
  loop 2b
+ lea role_puds(%rip),%rdi
+ mov $65536,%ecx
+ mov $0x83,%eax
+4: mov %rax,(%rdi)
+ add $0x40000000,%rax
+ add $8,%rdi
+ loop 4b
  lea role_pml4(%rip),%rax
  mov %rax,%cr3
  lea __bss_start(%rip),%rdi
@@ -53,9 +80,9 @@ startup_64:
 .balign 4096
 .globl role_pml4
 role_pml4: .skip 4096
-role_pud: .skip 4096
+role_puds: .skip 524288
 role_high_pud: .skip 4096
-role_pmd: .skip 16384
+role_kernel_pmd: .skip 4096
 .section .bss,"aw",@nobits
 .balign 16
 role_boot_stack: .skip 1048576
@@ -144,3 +171,6 @@ role_fault_common:
  call role_fault
  ud2
 .section .note.GNU-stack,"",@progbits
+
+.section .rodata.role_boot_error,"a"
+role_no_1gb: .asciz "ROLE_BOOT_ERROR CPU requires 1GiB pages\n"

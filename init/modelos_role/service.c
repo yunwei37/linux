@@ -97,7 +97,10 @@ void __attribute__((noreturn)) role_service(void)
  status=mos_text_init(role_va(role_tokenizer_phys),role_tokenizer_bytes,128);
  if(status){role_puts("ROLE_TEXT_INIT_ERROR ");role_hex(status);role_halt();}
  struct mos_net_config cfg={.ipv4={10,0,7,15},.gateway={10,0,7,2},.prefix_len=24,.port=8000};
- if(entropy((u8 *)&cfg.random_seed,sizeof(cfg.random_seed))||mos_nic_init(cfg.mac)||mos_net_init(&cfg,role_now_ns()))mos_net_panic();
+ if(entropy((u8 *)&cfg.random_seed,sizeof(cfg.random_seed)))role_runtime_fault();
+ int net_status=mos_nic_init(cfg.mac);
+ if(!net_status)net_status=mos_net_init(&cfg,role_now_ns());
+ if(net_status){role_puts("ROLE_NET_INIT status=");role_hex(net_status);role_puts("\n");mos_net_panic();}
  role_puts("ROLE_HTTP_READY transport=TCP smoltcp=0.12 tokenizer=0.23.2 engine=checked-fixture memory=objects\n");
  for(;;){
   poll_network();int index=mos_net_accept();

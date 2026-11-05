@@ -4,6 +4,7 @@
 #include <linux/types.h>
 #define ROLE_DIRECT 0xffff888000000000UL
 #define ROLE_MAX_CPUS 32
+#define ROLE_DIRECT_LIMIT (64UL<<40)
 static inline void *role_va(u64 p) { return (void *)(ROLE_DIRECT+p); }
 static inline u64 role_pa(const void *p) { u64 a=(u64)p; return a>=0xffffffff80000000UL?a-0xffffffff80000000UL:a-ROLE_DIRECT; }
 static inline u8 role_in(u16 port) { u8 v; asm volatile("inb %1,%0":"=a"(v):"Nd"(port)); return v; }
@@ -25,6 +26,7 @@ int role_cpu_copy(unsigned cpu,u64 source,u64 destination,u64 bytes,u64 boundary
 void role_step_boundary(void);
 int mos_role_enable_fpu(void);
 int mos_role_memory_add_ram(u64,u64);
+int mos_role_high_ram_probe(u64);
 int mos_role_memory_import(u64,u64,unsigned);
 u64 mos_role_memory_free_bytes(void);
 int mos_role_move_begin(u64 *);
