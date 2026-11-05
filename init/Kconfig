@@ -2308,9 +2308,10 @@ config MODELOS_KEXEC_TCP
    same-core handoff control. Old GPU resources stay retained until VM exit.
 
 config MODELOS_ROLE_BOOT
- bool "ModelOS fixed-role CPU-only boot"
+ bool "ModelOS object memory and Op roles"
  depends on X86_64 && !SMP && !RELOCATABLE && !EFI && !PARAVIRT
  help
-   Linux boot protocol and decompressor, then fixed per-core roles.
-   No generic initcalls, tasks, runtime allocator, IRQ/timer services.
+   Linux boot protocol and decompressor, then owner-controlled per-core Ops.
+   Runtime model objects and mailbox role changes; no generic initcalls,
+   Linux tasks/allocators or IRQ/timer services.
    CPU-only qualification profile; not an RM compatibility profile.

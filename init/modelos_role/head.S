@@ -115,15 +115,8 @@ role_ap_end:
 .globl role_wake_isr
 role_wake_isr:
  push %rax
- push %rdx
- mov $0x2f9,%dx
- xor %al,%al
- out %al,%dx
- mov $0x20,%al
- out %al,$0x20
  movabs $0xffff8880fee000b0,%rax
  movl $0,(%rax)
- pop %rdx
  pop %rax
  iretq
 .balign 16

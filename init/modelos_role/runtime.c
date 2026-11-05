@@ -37,7 +37,7 @@ void role_core_init(unsigned slot)
  asm volatile("lgdt %0"::"m"(gd):"memory");
  asm volatile("pushq $8; leaq 1f(%%rip),%%rax; pushq %%rax; lretq; 1:":::"rax","memory");
  asm volatile("mov $16,%%ax; mov %%ax,%%ds; mov %%ax,%%es; mov %%ax,%%ss; mov $24,%%ax; ltr %%ax":::"rax","memory");
- if(!slot){unsigned i;for(i=0;i<256;i++)gate(i,(u64)role_fault_stubs+13*16,1);for(i=0;i<32;i++)gate(i,(u64)role_fault_stubs+i*16,1);gate(0x23,(u64)role_wake_isr,0);gate(0xf1,(u64)role_wake_isr,0);}
+ if(!slot){unsigned i;for(i=0;i<256;i++)gate(i,(u64)role_fault_stubs+13*16,1);for(i=0;i<32;i++)gate(i,(u64)role_fault_stubs+i*16,1);gate(0xf1,(u64)role_wake_isr,0);}
  asm volatile("lidt %0"::"m"(id):"memory");
  if(mos_role_enable_fpu())role_runtime_fault();
  apic_write(0xf0,0x1ff);apic_write(0x320,0x10000);apic_write(0x350,slot?0x10000:0x700);apic_write(0x360,0x400);
@@ -151,4 +151,27 @@ void role_step_boundary(void)
     role_cpu_copy(cpu,move[0],move[1],move[2],boundary)||mos_role_move_finish()||
     role_reconfigure(cpu,ROLE_IDLE,boundary)||mos_role_memory_free_bytes()!=free_before)role_runtime_fault();
  role_puts("ROLE_OBJECT_MOVE_PASS bytes=137 freed=1 cpu_op=1\n");
+}
+
+u64 role_now_ns(void){u64 t=role_tsc();return t/role_tsc_hz*1000000000+(t%role_tsc_hz)*1000000000/role_tsc_hz;}
+void __attribute__((noreturn)) mos_net_panic(void){role_puts("ROLE_NET_ERROR\n");role_halt();}
+int role_nic_arm(void);
+void role_nic_disarm(void);
+u64 role_net_wait(u64 deadline_ns)
+{
+ asm volatile("cli":::"memory");
+ u64 now=role_now_ns(),begin=role_tsc();
+ if(deadline_ns<=now)return 0;
+ if(!role_nic_arm()){role_nic_disarm();return 0;}
+ u32 low,high;
+ /* No periodic clock: program an absolute one-shot only for a TCP deadline. */
+ if(deadline_ns!=~0UL){
+  u64 delta=deadline_ns-now;
+  u64 cycles=(delta/1000000000)*role_tsc_hz+(delta%1000000000)*role_tsc_hz/1000000000;
+  u64 deadline=role_tsc()+cycles;low=deadline;high=deadline>>32;
+  apic_write(0x320,0x40000|0xf1);asm volatile("wrmsr"::"c"(0x6e0),"a"(low),"d"(high));
+ }
+ asm volatile("sti; hlt; cli":::"memory");
+ low=high=0;asm volatile("wrmsr"::"c"(0x6e0),"a"(low),"d"(high));apic_write(0x320,0x10000);
+ role_nic_disarm();return role_tsc()-begin;
 }

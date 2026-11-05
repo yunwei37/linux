@@ -14,6 +14,11 @@ static inline __attribute__((noreturn)) void role_halt(void) { asm volatile("cli
 void start_kernel(void *) __attribute__((noreturn));
 void role_fault(u64 *) __attribute__((noreturn));
 void role_ap_entry(unsigned) __attribute__((noreturn));
+int role_nic_arm(void);
+void role_nic_disarm(void);
+u64 role_now_ns(void);
+u64 role_net_wait(u64 deadline_ns);
+void mos_net_panic(void) __attribute__((noreturn));
 enum role_kind { ROLE_IDLE, ROLE_CPU };
 int role_reconfigure(unsigned cpu,enum role_kind role,u64 boundary);
 int role_cpu_copy(unsigned cpu,u64 source,u64 destination,u64 bytes,u64 boundary);

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0
 /* CPU qualification adapter: production HTTP/tokenizer, checked fixture engine.
- * COM2 carries HTTP bytes. There is no guest TCP stack or GPU computation. */
+ * The net lane smoltcp and polled NIC carry real TCP. No GPU computation. */
 #include "role.h"
 #include <linux/string.h>
 #include "bridge.h"
 #include "http-service.h"
 #include "image.h"
+#include "net.h"
 void *mos_text_reserved_memory(unsigned int table);
 void __attribute__((noreturn)) mos_text_kernel_trap(unsigned int code);
 void *mos_text_reserved_memory(unsigned int table){return role_va(table?role_table_phys:role_linear_phys);}
@@ -18,29 +19,30 @@ static int entropy(unsigned char *p,size_t n)
 static u64 parked_tsc,request_cpu;
 static bool profiling;
 static unsigned long long clock_ns(void){u64 t=role_tsc()-parked_tsc;return t/role_tsc_hz*1000000000+(t%role_tsc_hz)*1000000000/role_tsc_hz;}
-static void serial_init(void)
+static void poll_network(void){if(mos_net_poll(role_now_ns()))mos_net_panic();}
+static void wait_network(void)
 {
- role_out(0x2f9,0);role_out(0x2fb,0x80);role_out(0x2f8,1);role_out(0x2f9,0);role_out(0x2fb,3);role_out(0x2fa,0xc7);role_out(0x2fc,0x0b);
- /* Remap the legacy PIC, unmask only COM2 IRQ3; IRQ0 stays masked. */
- role_out(0x20,0x11);role_out(0xa0,0x11);role_out(0x21,0x20);role_out(0xa1,0x28);role_out(0x21,4);role_out(0xa1,2);role_out(0x21,1);role_out(0xa1,1);role_out(0x21,0xf7);role_out(0xa1,0xff);
+ u64 now=role_now_ns();parked_tsc+=role_net_wait(mos_net_next_poll_ns(now));
 }
-static int serial_read(void *unused,void *data,size_t bytes)
+static int stream_read(void *socket,void *data,size_t bytes)
 {
- u8 *p=data;size_t n=0;if(!bytes)return 0;
+ unsigned index=(u64)socket-1;u64 deadline=role_now_ns()+30000000000UL;
  for(;;){
-  asm volatile("cli":::"memory");
-  while(n<bytes&&(role_in(0x2fd)&1))p[n++]=role_in(0x2f8);
-  if(n){role_out(0x2f9,0);return n;}
-  role_out(0x2f9,1);
-  /* STI shadows interrupts through HLT: no poll-to-sleep lost wakeup. */
-  u64 parked_begin=role_tsc();
-  asm volatile("sti; hlt":::"memory");
-  parked_tsc+=role_tsc()-parked_begin;
+  int n=mos_net_read(index,data,bytes);if(n!=-11)return n;
+  poll_network();n=mos_net_read(index,data,bytes);if(n!=-11)return n;
+  if(role_now_ns()>deadline)return -110;
+  wait_network();
  }
 }
-static int serial_write(void *unused,const void *data,size_t bytes)
+static int stream_write(void *socket,const void *data,size_t bytes)
 {
- const u8 *p=data;size_t n;for(n=0;n<bytes;n++){while(!(role_in(0x2fd)&32))role_pause();role_out(0x2f8,p[n]);}return bytes;
+ unsigned index=(u64)socket-1;u64 deadline=role_now_ns()+30000000000UL;
+ for(;;){
+  int n=mos_net_write(index,data,bytes);if(n>=0){poll_network();return n;}if(n!=-11)return n;
+  poll_network();n=mos_net_write(index,data,bytes);if(n>=0){poll_network();return n;}if(n!=-11)return n;
+  if(role_now_ns()>deadline)return -110;
+  wait_network();
+ }
 }
 #define MAGIC 0x31534f4dU
 struct fixture_request {u32 id,limit;};
@@ -74,25 +76,33 @@ static int fixture_read(void *data,size_t bytes)
  else{w[1]=17;w[3]=0;fixture.token=0;fixture.request++;}
  return 16;
 }
-static int transport_read(void *socket,void *data,size_t bytes){return socket==&fixture?fixture_read(data,bytes):serial_read(socket,data,bytes);}
-static int transport_write(void *socket,const void *data,size_t bytes){return socket==&fixture?fixture_write(data,bytes):serial_write(socket,data,bytes);}
+static int transport_read(void *socket,void *data,size_t bytes){return socket==&fixture?fixture_read(data,bytes):stream_read(socket,data,bytes);}
+static int transport_write(void *socket,const void *data,size_t bytes){return socket==&fixture?fixture_write(data,bytes):stream_write(socket,data,bytes);}
 static void profile(unsigned op,unsigned long long out[6])
 {
  if(op==1){profiling=true;request_cpu=0;}else if(op==0)profiling=false;
- mos_text_profile(op,out);out[4]=request_cpu;out[5]=0; /* COM2 has no TCP CPU time. */
+ mos_text_profile(op,out);out[4]=request_cpu;out[5]=0; /* Protocol transport accounting is separate. */
 }
 static void complete(unsigned long long begin){if(profiling)request_cpu+=clock_ns()-begin;role_step_boundary();}
 static const struct mos_http_ops operations={NULL,NULL,transport_read,transport_write,fixture_connect,fixture_close,mos_text_http_open,mos_text_http_event,mos_text_http_drop,profile,clock_ns,complete};
 void __attribute__((noreturn)) role_service(void)
 {
  u32 a=1,b,c,d;asm volatile("cpuid":"+a"(a),"=b"(b),"=c"(c),"=d"(d));
+ if(!(c&(1U<<24))){role_puts("ROLE_ERROR TSC deadline required\n");role_halt();}
  if(!(c&(1U<<30))){role_puts("ROLE_ERROR RDRAND required\n");role_halt();}
  int status=role_image_load();
  if(status){role_puts("ROLE_IMAGE_ERROR ");role_hex(status);role_puts("\n");role_halt();}
- serial_init();
+
  mos_text_set_entropy(entropy);mos_text_set_clock(clock_ns);
  status=mos_text_init(role_va(role_tokenizer_phys),role_tokenizer_bytes,128);
  if(status){role_puts("ROLE_TEXT_INIT_ERROR ");role_hex(status);role_halt();}
- role_puts("ROLE_HTTP_READY transport=COM2 tokenizer=0.23.2 engine=checked-fixture memory=static\n");
- for(;;){int ret=mos_http_serve((void *)1,&operations);if(ret)role_puts("ROLE_HTTP_REQUEST_ERROR\n");}
+ struct mos_net_config cfg={.ipv4={10,0,7,15},.gateway={10,0,7,2},.prefix_len=24,.port=8000};
+ if(entropy((u8 *)&cfg.random_seed,sizeof(cfg.random_seed))||mos_nic_init(cfg.mac)||mos_net_init(&cfg,role_now_ns()))mos_net_panic();
+ role_puts("ROLE_HTTP_READY transport=TCP smoltcp=0.12 tokenizer=0.23.2 engine=checked-fixture memory=objects\n");
+ for(;;){
+  poll_network();int index=mos_net_accept();
+  if(index==-11){wait_network();continue;}if(index<0)mos_net_panic();
+  int ret=mos_http_serve((void *)(u64)(index+1),&operations);
+  if(ret){mos_net_abort(index);role_puts("ROLE_HTTP_REQUEST_ERROR\n");}else mos_net_close(index);
+ }
 }

@@ -3,8 +3,12 @@
  * owner owns both split vrings. No virtqueue framework, netdev, NAPI, skb,
  * IRQ handler or network softirq. No feature for checksum/segmentation offload
  * or merged receive buffers is negotiated. All packet memory is fixed at boot.
+ * The role profile can route an MSI-X wake; packet processing stays polled.
  * Ring structs/layout come from the existing BSD-licensed virtio_ring.h.
  */
+#ifdef CONFIG_MODELOS_ROLE_BOOT
+#include "../../init/modelos_role/nic-platform.h"
+#else
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/io.h>
@@ -12,6 +16,7 @@
 #include <linux/modelos_net.h>
 #include <linux/pci.h>
 #include <linux/virtio_config.h>
+#endif
 #include <uapi/linux/virtio_net.h>
 #include <uapi/linux/virtio_pci.h>
 #include <uapi/linux/virtio_ring.h>
@@ -42,12 +47,20 @@ void mos_nic_stats(struct mos_nic_stats *out,int reset)
 static void status(u8 value){writeb(value,&common->device_status);}
 static void put64(void __iomem *where,u64 value)
 {writel(lower_32_bits(value),where);writel(upper_32_bits(value),where+4);}
+static u64 nic_clock_ns(void)
+{
+#ifdef CONFIG_MODELOS_ROLE_BOOT
+ return role_now_ns();
+#else
+ return ktime_get_ns();
+#endif
+}
 static void kick(unsigned index)
 { /* Publish ring descriptors before MMIO notification. */
- u64 start=ktime_get_ns();
+ u64 start=nic_clock_ns();
  dma_wmb();writew(index,queues[index].notify);
- if(index){counters.tx_kicks++;counters.tx_kick_ns+=ktime_get_ns()-start;}
- else{counters.rx_kicks++;counters.rx_kick_ns+=ktime_get_ns()-start;}
+ if(index){counters.tx_kicks++;counters.tx_kick_ns+=nic_clock_ns()-start;}
+ else{counters.rx_kicks++;counters.rx_kick_ns+=nic_clock_ns()-start;}
 }
 static int map_caps(void)
 {
@@ -123,7 +136,15 @@ static int queue_init(unsigned index)
 }
 static void cleanup(void)
 {
- if(common){status(0);readb(&common->device_status);}
+ if(common){
+  status(0);
+#ifdef CONFIG_MODELOS_ROLE_BOOT
+  u64 deadline=role_tsc()+role_tsc_hz;
+  while(readb(&common->device_status)){if(role_tsc()>deadline)role_runtime_fault();role_pause();}
+#else
+  readb(&common->device_status);
+#endif
+ }
  for(unsigned i=0;i<2;i++){
   struct poll_queue *q=&queues[i];
   if(q->buffers)dma_free_coherent(&nic->dev,q->ring.num*BUFFER_BYTES,q->buffers,q->buffers_dma);
@@ -143,8 +164,10 @@ int mos_nic_init(u8 mac[6])
  if(!nic)nic=pci_get_device(0x1af4,0x1000,NULL);
  if(!nic)return -ENODEV;
  error=pci_enable_device(nic);if(error)goto put;
+#ifndef CONFIG_MODELOS_ROLE_BOOT
  error=pci_request_regions(nic,"modelos-poll-net");if(error)goto disable;
  error=dma_set_mask_and_coherent(&nic->dev,DMA_BIT_MASK(64));if(error)goto regions;
+#endif
  pci_set_master(nic);pci_intx(nic,0);
  error=map_caps();if(error)goto failed;
  status(0);
@@ -163,13 +186,25 @@ int mos_nic_init(u8 mac[6])
  for(unsigned i=0;i<6;i++)mac[i]=readb(device_cfg+i);
  error=queue_init(0);if(error)goto failed;
  error=queue_init(1);if(error)goto failed;
+#ifdef CONFIG_MODELOS_ROLE_BOOT
+ error=role_nic_msix_prepare(nic);if(error)goto failed;
+ writew(0,&common->queue_select);writew(0,&common->queue_msix_vector);
+ if(readw(&common->queue_msix_vector)!=0){error=-ENOTSUPP;goto failed;}
+#endif
  dma_wmb();status(VIRTIO_CONFIG_S_ACKNOWLEDGE|VIRTIO_CONFIG_S_DRIVER|VIRTIO_CONFIG_S_FEATURES_OK|VIRTIO_CONFIG_S_DRIVER_OK);
  ready=true;kick(0);
  pr_info("MODELOS_POLL_NET ready=1 mac=%pM rx=%u tx=%u irq=0 netdev=0\n",mac,queues[0].ring.num,queues[1].ring.num);return 0;
 failed:cleanup();pci_clear_master(nic);
+#ifndef CONFIG_MODELOS_ROLE_BOOT
 regions:pci_release_regions(nic);
-disable:pci_disable_device(nic);
-put:pci_dev_put(nic);nic=NULL;return error;
+disable:
+#endif
+ pci_disable_device(nic);
+put:
+#ifndef CONFIG_MODELOS_ROLE_BOOT
+ pci_dev_put(nic);
+#endif
+ nic=NULL;return error;
 }
 void mos_nic_poll(void)
 {
@@ -232,3 +267,16 @@ int mos_nic_receive(void *out,size_t capacity)
  }
  return 0;
 }
+
+#ifdef CONFIG_MODELOS_ROLE_BOOT
+/* Interrupt only wakes the owner. All descriptor/TCP work remains polled. */
+int role_nic_arm(void)
+{
+ struct poll_queue *rx=&queues[0],*tx=&queues[1];
+ mos_nic_flush();
+ WRITE_ONCE(rx->ring.avail->flags,0);dma_wmb();writel(0,role_msix_table+3);
+ if(rx->used!=le16_to_cpu(READ_ONCE(rx->ring.used->idx))||tx->used!=le16_to_cpu(READ_ONCE(tx->ring.used->idx)))return 0;
+ return 1;
+}
+void role_nic_disarm(void){writel(1,role_msix_table+3);WRITE_ONCE(queues[0].ring.avail->flags,cpu_to_le16(VRING_AVAIL_F_NO_INTERRUPT));}
+#endif
