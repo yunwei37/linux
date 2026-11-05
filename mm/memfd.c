@@ -493,7 +493,6 @@ static struct file *alloc_file(const char *name, unsigned int flags)
 	return file;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(memfd_create,
 		const char __user *, uname,
 		unsigned int, flags)
@@ -532,4 +531,3 @@ err_free_name:
 	kfree(name);
 	return error;
 }
-#endif

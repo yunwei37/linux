@@ -1619,7 +1619,6 @@ struct sk_buff *skb_morph(struct sk_buff *dst, struct sk_buff *src)
 }
 EXPORT_SYMBOL_GPL(skb_morph);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int mm_account_pinned_pages(struct mmpin *mmp, size_t size)
 {
 	unsigned long max_pg, num_pg, new_pg, old_pg, rlim;
@@ -1850,7 +1849,6 @@ const struct ubuf_info_ops msg_zerocopy_ubuf_ops = {
 };
 EXPORT_SYMBOL_GPL(msg_zerocopy_ubuf_ops);
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 int skb_zerocopy_iter_stream(struct sock *sk, struct sk_buff *skb,
 			     struct msghdr *msg, int len,
@@ -3215,7 +3213,6 @@ static bool __skb_splice_bits(struct sk_buff *skb, struct pipe_inode_info *pipe,
  * Map data from the skb to a pipe. Should handle both the linear part,
  * the fragments, and the frag list.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int skb_splice_bits(struct sk_buff *skb, struct sock *sk, unsigned int offset,
 		    struct pipe_inode_info *pipe, unsigned int tlen,
 		    unsigned int flags)
@@ -3238,7 +3235,6 @@ int skb_splice_bits(struct sk_buff *skb, struct sock *sk, unsigned int offset,
 
 	return ret;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL_GPL(skb_splice_bits);
 
 static int sendmsg_locked(struct sock *sk, struct msghdr *msg)
@@ -5564,10 +5560,6 @@ static bool skb_may_tx_timestamp(struct sock *sk, bool tsonly)
 	if (likely(tsonly || READ_ONCE(sock_net(sk)->core.sysctl_tstamp_allow_data)))
 		return true;
 
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	/* There is no opener file; use the current kernel principal. */
-	return ns_capable(&init_user_ns, CAP_NET_RAW);
-#else
 	/* The sk pointer remains valid as long as the skb is. The sk_socket and
 	 * file pointer may become NULL if the socket is closed. Both structures
 	 * (including file->cred) are RCU freed which means they can be accessed
@@ -5584,7 +5576,6 @@ static bool skb_may_tx_timestamp(struct sock *sk, bool tsonly)
 out:
 	rcu_read_unlock();
 	return ret;
-#endif
 }
 
 void skb_complete_tx_timestamp(struct sk_buff *skb,
@@ -7440,7 +7431,6 @@ size_t memcpy_from_iter_csum(void *iter_from, size_t progress,
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static __always_inline
 size_t copy_from_user_iter_csum(void __user *iter_from, size_t progress,
 				size_t len, void *to, void *priv2)
@@ -7451,7 +7441,6 @@ size_t copy_from_user_iter_csum(void __user *iter_from, size_t progress,
 	*csum = csum_block_add(*csum, next, progress);
 	return next ? 0 : len;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 bool csum_and_copy_from_iter_full(void *addr, size_t bytes,
 				  __wsum *csum, struct iov_iter *i)

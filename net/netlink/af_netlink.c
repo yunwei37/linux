@@ -606,10 +606,8 @@ static void netlink_remove(struct sock *sk)
 		__sk_del_bind_node(sk);
 		netlink_update_listeners(sk);
 	}
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (sk->sk_protocol == NETLINK_GENERIC)
 		atomic_inc(&genl_sk_destructing_cnt);
-#endif
 	netlink_table_ungrab();
 }
 
@@ -645,7 +643,6 @@ static int __netlink_create(struct net *net, struct socket *sock,
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_create(struct net *net, struct socket *sock, int protocol,
 			  int kern)
 {
@@ -704,7 +701,6 @@ out_module:
 	module_put(module);
 	goto out;
 }
-#endif
 
 static void deferred_put_nlk_sk(struct rcu_head *head)
 {
@@ -749,11 +745,9 @@ static int netlink_release(struct socket *sock)
 			if (test_bit(i, nlk->groups))
 				nlk->netlink_unbind(sock_net(sk), i + 1);
 	}
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (sk->sk_protocol == NETLINK_GENERIC &&
 	    atomic_dec_return(&genl_sk_destructing_cnt) == 0)
 		wake_up(&genl_sk_destructing_waitq);
-#endif
 
 	sock->sk = NULL;
 	wake_up_interruptible_all(&nlk->wait);
@@ -805,7 +799,6 @@ static int netlink_release(struct socket *sock)
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_autobind(struct socket *sock)
 {
 	struct sock *sk = sock->sk;
@@ -843,7 +836,6 @@ retry:
 	return err;
 }
 
-#endif
 
 /**
  * __netlink_ns_capable - General netlink message capability test
@@ -858,11 +850,9 @@ retry:
 bool __netlink_ns_capable(const struct netlink_skb_parms *nsp,
 			struct user_namespace *user_ns, int cap)
 {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!(nsp->flags & NETLINK_SKB_DST) &&
 	    !file_ns_capable(nsp->sk->sk_socket->file, user_ns, cap))
 		return false;
-#endif
 	return ns_capable(user_ns, cap);
 }
 EXPORT_SYMBOL(__netlink_ns_capable);
@@ -915,13 +905,11 @@ bool netlink_net_capable(const struct sk_buff *skb, int cap)
 }
 EXPORT_SYMBOL(netlink_net_capable);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static inline int netlink_allowed(const struct socket *sock, unsigned int flag)
 {
 	return (nl_table[sock->sk->sk_protocol].flags & flag) ||
 		ns_capable(sock_net(sock->sk)->user_ns, CAP_NET_ADMIN);
 }
-#endif
 
 static void
 netlink_update_subscriptions(struct sock *sk, unsigned int subscriptions)
@@ -935,7 +923,6 @@ netlink_update_subscriptions(struct sock *sk, unsigned int subscriptions)
 	nlk->subscriptions = subscriptions;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_realloc_groups(struct sock *sk)
 {
 	struct netlink_sock *nlk = nlk_sk(sk);
@@ -1149,7 +1136,6 @@ static int netlink_ioctl(struct socket *sock, unsigned int cmd,
 	 */
 	return -ENOIOCTLCMD;
 }
-#endif
 
 static struct sock *netlink_getsockbyportid(struct sock *ssk, u32 portid)
 {
@@ -1662,7 +1648,6 @@ static void netlink_update_socket_mc(struct netlink_sock *nlk,
 	netlink_update_listeners(&nlk->sk);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_setsockopt(struct socket *sock, int level, int optname,
 			      sockptr_t optval, unsigned int optlen)
 {
@@ -1738,9 +1723,7 @@ static int netlink_setsockopt(struct socket *sock, int level, int optname,
 		assign_bit(nr, &nlk->flags, val);
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_getsockopt(struct socket *sock, int level, int optname,
 			      char __user *optval, int __user *optlen)
 {
@@ -1816,7 +1799,6 @@ static int netlink_getsockopt(struct socket *sock, int level, int optname,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void netlink_cmsg_recv_pktinfo(struct msghdr *msg, struct sk_buff *skb)
 {
@@ -1836,7 +1818,6 @@ static void netlink_cmsg_listen_all_nsid(struct sock *sk, struct msghdr *msg,
 		 &NETLINK_CB(skb).nsid);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 {
 	struct sock *sk = sock->sk;
@@ -1925,9 +1906,7 @@ out:
 	scm_destroy(&scm);
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netlink_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,
 			   int flags)
 {
@@ -2015,7 +1994,6 @@ out:
 	netlink_rcv_wake(sk);
 	return err ? : copied;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void netlink_data_ready(struct sock *sk)
 {
@@ -2184,7 +2162,6 @@ __nlmsg_put(struct sk_buff *skb, u32 portid, u32 seq, int type, int len, int fla
 }
 EXPORT_SYMBOL(__nlmsg_put);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static size_t
 netlink_ack_tlv_len(struct netlink_sock *nlk, int err,
 		    const struct netlink_ext_ack *extack)
@@ -2597,7 +2574,6 @@ skip:
 	return 0;
 }
 EXPORT_SYMBOL(netlink_rcv_skb);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * nlmsg_notify - send a notification netlink message
@@ -2836,7 +2812,6 @@ static const struct proto_ops netlink_ops = {
 	.family =	PF_NETLINK,
 	.owner =	THIS_MODULE,
 	.release =	netlink_release,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.bind =		netlink_bind,
 	.connect =	netlink_connect,
 	.socketpair =	sock_no_socketpair,
@@ -2851,16 +2826,13 @@ static const struct proto_ops netlink_ops = {
 	.sendmsg =	netlink_sendmsg,
 	.recvmsg =	netlink_recvmsg,
 	.mmap =		sock_no_mmap,
-#endif
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct net_proto_family netlink_family_ops = {
 	.family = PF_NETLINK,
 	.create = netlink_create,
 	.owner	= THIS_MODULE,	/* for consistency 8) */
 };
-#endif
 
 static int __net_init netlink_net_init(struct net *net)
 {
@@ -2879,7 +2851,6 @@ static void __net_exit netlink_net_exit(struct net *net)
 #endif
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void __init netlink_add_usersock_entry(void)
 {
 	struct listeners *listeners;
@@ -2899,7 +2870,6 @@ static void __init netlink_add_usersock_entry(void)
 
 	netlink_table_ungrab();
 }
-#endif
 
 static struct pernet_operations __net_initdata netlink_net_ops = {
 	.init = netlink_net_init,
@@ -2976,11 +2946,9 @@ static int __init netlink_proto_init(void)
 			goto panic;
 	}
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	netlink_add_usersock_entry();
 
 	sock_register(&netlink_family_ops);
-#endif
 	register_pernet_subsys(&netlink_net_ops);
 	register_pernet_subsys(&netlink_tap_net_ops);
 	/* The netlink device handler may be needed early. */

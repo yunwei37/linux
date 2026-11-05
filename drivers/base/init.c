@@ -21,9 +21,7 @@
 void __init driver_init(void)
 {
 	/* These are the core pieces */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	bdi_init(&noop_backing_dev_info);
-#endif
 	devtmpfs_init();
 	devices_init();
 	buses_init();

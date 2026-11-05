@@ -236,7 +236,6 @@ int rtnl_net_lock_killable(struct net *net)
 	return ret;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_net_cmp_locks(const struct net *net_a, const struct net *net_b)
 {
 	if (net_eq(net_a, net_b))
@@ -252,7 +251,6 @@ static int rtnl_net_cmp_locks(const struct net *net_a, const struct net *net_b)
 	/* otherwise lock in ascending order */
 	return net_a < net_b ? -1 : 1;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 int rtnl_net_lock_cmp_fn(const struct lockdep_map *a, const struct lockdep_map *b)
 {
@@ -276,13 +274,11 @@ bool lockdep_rtnl_net_is_held(struct net *net)
 }
 EXPORT_SYMBOL(lockdep_rtnl_net_is_held);
 #else
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_net_cmp_locks(const struct net *net_a, const struct net *net_b)
 {
 	/* No need to swap */
 	return -1;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 #endif
 
 struct rtnl_nets {
@@ -293,14 +289,11 @@ struct rtnl_nets {
 	unsigned char len;
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void rtnl_nets_init(struct rtnl_nets *rtnl_nets)
 {
 	memset(rtnl_nets, 0, sizeof(*rtnl_nets));
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void rtnl_nets_destroy(struct rtnl_nets *rtnl_nets)
 {
 	int i;
@@ -312,7 +305,6 @@ static void rtnl_nets_destroy(struct rtnl_nets *rtnl_nets)
 
 	rtnl_nets->len = 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * rtnl_nets_add - Add netns to be locked before ->newlink().
@@ -322,7 +314,6 @@ static void rtnl_nets_destroy(struct rtnl_nets *rtnl_nets)
  *
  * The extra refcnt is released in rtnl_nets_destroy().
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void rtnl_nets_add(struct rtnl_nets *rtnl_nets, struct net *net)
 {
 	int i;
@@ -342,9 +333,7 @@ static void rtnl_nets_add(struct rtnl_nets *rtnl_nets, struct net *net)
 	rtnl_nets->net[i] = net;
 	rtnl_nets->len++;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void rtnl_nets_lock(struct rtnl_nets *rtnl_nets)
 {
 	int i;
@@ -354,9 +343,7 @@ static void rtnl_nets_lock(struct rtnl_nets *rtnl_nets)
 	for (i = 0; i < rtnl_nets->len; i++)
 		__rtnl_net_lock(rtnl_nets->net[i]);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void rtnl_nets_unlock(struct rtnl_nets *rtnl_nets)
 {
 	int i;
@@ -366,7 +353,6 @@ static void rtnl_nets_unlock(struct rtnl_nets *rtnl_nets)
 
 	rtnl_unlock();
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static struct rtnl_link __rcu *__rcu *rtnl_msg_handlers[RTNL_FAMILY_MAX + 1];
 
@@ -384,7 +370,6 @@ static inline int rtm_msgindex(int msgtype)
 	return msgindex;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct rtnl_link *rtnl_get_link(int protocol, int msgtype)
 {
 	struct rtnl_link __rcu **tab;
@@ -398,7 +383,6 @@ static struct rtnl_link *rtnl_get_link(int protocol, int msgtype)
 
 	return rcu_dereference_rtnl(tab[msgtype]);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int rtnl_register_internal(struct module *owner,
 				  int protocol, int msgtype,
@@ -579,7 +563,6 @@ EXPORT_SYMBOL_GPL(__rtnl_unregister_many);
 static DEFINE_MUTEX(link_ops_mutex);
 static LIST_HEAD(link_ops);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct rtnl_link_ops *rtnl_link_ops_get(const char *kind, int *srcu_index)
 {
 	struct rtnl_link_ops *ops;
@@ -599,14 +582,11 @@ unlock:
 
 	return ops;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void rtnl_link_ops_put(struct rtnl_link_ops *ops, int srcu_index)
 {
 	srcu_read_unlock(&ops->srcu, srcu_index);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * rtnl_link_register - Register rtnl_link_ops with rtnetlink.
@@ -2352,7 +2332,6 @@ static const struct nla_policy ifla_xdp_policy[IFLA_XDP_MAX + 1] = {
 	[IFLA_XDP_PROG_ID]	= { .type = NLA_U32 },
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct rtnl_link_ops *linkinfo_to_kind_ops(const struct nlattr *nla,
 						  int *ops_srcu_index)
 {
@@ -2371,9 +2350,7 @@ static struct rtnl_link_ops *linkinfo_to_kind_ops(const struct nlattr *nla,
 
 	return ops;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static bool link_master_filtered(struct net_device *dev, int master_idx)
 {
 	struct net_device *master;
@@ -2394,9 +2371,7 @@ static bool link_master_filtered(struct net_device *dev, int master_idx)
 
 	return false;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static bool link_kind_filtered(const struct net_device *dev,
 			       const struct rtnl_link_ops *kind_ops)
 {
@@ -2405,9 +2380,7 @@ static bool link_kind_filtered(const struct net_device *dev,
 
 	return false;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static bool link_dump_filtered(struct net_device *dev,
 			       int master_idx,
 			       const struct rtnl_link_ops *kind_ops)
@@ -2418,7 +2391,6 @@ static bool link_dump_filtered(struct net_device *dev,
 
 	return false;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * rtnl_get_net_ns_capable - Get netns if sufficiently privileged.
@@ -2455,7 +2427,6 @@ bool rtnl_dev_link_net_capable(const struct net_device *dev,
 }
 EXPORT_SYMBOL_GPL(rtnl_dev_link_net_capable);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_valid_dump_ifinfo_req(const struct nlmsghdr *nlh,
 				      bool strict_check, struct nlattr **tb,
 				      struct netlink_ext_ack *extack)
@@ -2499,9 +2470,7 @@ static int rtnl_valid_dump_ifinfo_req(const struct nlmsghdr *nlh,
 	return nlmsg_parse_deprecated(nlh, hdrlen, tb, IFLA_MAX, ifla_policy,
 				      extack);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_dump_ifinfo(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	struct netlink_ext_ack *extack = cb->extack;
@@ -2593,7 +2562,6 @@ out:
 
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 int rtnl_nla_parse_ifinfomsg(struct nlattr **tb, const struct nlattr *nla_peer,
 			     struct netlink_ext_ack *exterr)
@@ -2650,7 +2618,6 @@ EXPORT_SYMBOL(rtnl_link_get_net);
  * 2. IFLA_NET_NS_FD
  * 3. IFLA_TARGET_NETNSID
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct net *rtnl_link_get_net_by_nlattr(struct net *src_net,
 					       struct nlattr *tb[])
 {
@@ -2668,9 +2635,7 @@ static struct net *rtnl_link_get_net_by_nlattr(struct net *src_net,
 
 	return net;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct net *rtnl_link_get_net_capable(const struct sk_buff *skb,
 					     struct net *src_net,
 					     struct nlattr *tb[], int cap)
@@ -2688,12 +2653,10 @@ static struct net *rtnl_link_get_net_capable(const struct sk_buff *skb,
 
 	return net;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* Verify that rtnetlink requests do not pass additional properties
  * potentially referring to different network namespaces.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_ensure_unique_netns(struct nlattr *tb[],
 				    struct netlink_ext_ack *extack,
 				    bool netns_id_only)
@@ -2722,9 +2685,7 @@ invalid_attr:
 	NL_SET_ERR_MSG(extack, "multiple netns identifying attributes specified");
 	return -EINVAL;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static	int rtnl_set_vf_rate(struct net_device *dev, int vf, int min_tx_rate,
 			     int max_tx_rate)
 {
@@ -2737,7 +2698,6 @@ static	int rtnl_set_vf_rate(struct net_device *dev, int vf, int min_tx_rate,
 
 	return ops->ndo_set_vf_rate(dev, vf, min_tx_rate, max_tx_rate);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int validate_linkmsg(struct net_device *dev, struct nlattr *tb[],
 			    struct netlink_ext_ack *extack)
@@ -2810,7 +2770,6 @@ static int validate_linkmsg(struct net_device *dev, struct nlattr *tb[],
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int handle_infiniband_guid(struct net_device *dev, struct ifla_vf_guid *ivt,
 				  int guid_type)
 {
@@ -2818,9 +2777,7 @@ static int handle_infiniband_guid(struct net_device *dev, struct ifla_vf_guid *i
 
 	return ops->ndo_set_vf_guid(dev, ivt->vf, ivt->guid, guid_type);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int handle_vf_guid(struct net_device *dev, struct ifla_vf_guid *ivt, int guid_type)
 {
 	if (dev->type != ARPHRD_INFINIBAND)
@@ -2828,9 +2785,7 @@ static int handle_vf_guid(struct net_device *dev, struct ifla_vf_guid *ivt, int 
 
 	return handle_infiniband_guid(dev, ivt, guid_type);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int do_setvfinfo(struct net_device *dev, struct nlattr **tb)
 {
 	const struct net_device_ops *ops = dev->netdev_ops;
@@ -2999,9 +2954,7 @@ static int do_setvfinfo(struct net_device *dev, struct nlattr **tb)
 
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int do_set_master(struct net_device *dev, int ifindex,
 			 struct netlink_ext_ack *extack)
 {
@@ -3046,14 +2999,12 @@ static int do_set_master(struct net_device *dev, int ifindex,
 	}
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static const struct nla_policy ifla_proto_down_reason_policy[IFLA_PROTO_DOWN_REASON_VALUE + 1] = {
 	[IFLA_PROTO_DOWN_REASON_MASK]	= { .type = NLA_U32 },
 	[IFLA_PROTO_DOWN_REASON_VALUE]	= { .type = NLA_U32 },
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int do_set_proto_down(struct net_device *dev,
 			     struct nlattr *nl_proto_down,
 			     struct nlattr *nl_proto_down_reason,
@@ -3107,12 +3058,10 @@ static int do_set_proto_down(struct net_device *dev,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #define DO_SETLINK_MODIFIED	0x01
 /* notify flag means notify + modified. */
 #define DO_SETLINK_NOTIFY	0x03
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int do_setlink(const struct sk_buff *skb, struct net_device *dev,
 		      struct net *tgt_net, struct ifinfomsg *ifm,
 		      struct netlink_ext_ack *extack,
@@ -3493,9 +3442,7 @@ errout:
 
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct net_device *rtnl_dev_get(struct net *net,
 				       struct nlattr *tb[])
 {
@@ -3510,9 +3457,7 @@ static struct net_device *rtnl_dev_get(struct net *net,
 
 	return __dev_get_by_name(net, ifname);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_setlink(struct sk_buff *skb, struct nlmsghdr *nlh,
 			struct netlink_ext_ack *extack)
 {
@@ -3562,9 +3507,7 @@ static int rtnl_setlink(struct sk_buff *skb, struct nlmsghdr *nlh,
 errout:
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_group_dellink(const struct net *net, int group)
 {
 	struct net_device *dev, *aux;
@@ -3600,7 +3543,6 @@ static int rtnl_group_dellink(const struct net *net, int group)
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 int rtnl_delete_link(struct net_device *dev, u32 portid, const struct nlmsghdr *nlh)
 {
@@ -3618,7 +3560,6 @@ int rtnl_delete_link(struct net_device *dev, u32 portid, const struct nlmsghdr *
 }
 EXPORT_SYMBOL_GPL(rtnl_delete_link);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_dellink(struct sk_buff *skb, struct nlmsghdr *nlh,
 			struct netlink_ext_ack *extack)
 {
@@ -3670,7 +3611,6 @@ static int rtnl_dellink(struct sk_buff *skb, struct nlmsghdr *nlh,
 
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 int rtnl_configure_link(struct net_device *dev, const struct ifinfomsg *ifm,
 			u32 portid, const struct nlmsghdr *nlh)
@@ -3800,7 +3740,6 @@ struct rtnl_newlink_tbs {
 	struct nlattr *slave_attr[RTNL_SLAVE_MAX_TYPE + 1];
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_changelink(const struct sk_buff *skb, struct nlmsghdr *nlh,
 			   const struct rtnl_link_ops *ops,
 			   struct net_device *dev, struct net *tgt_net,
@@ -3865,9 +3804,7 @@ static int rtnl_changelink(const struct sk_buff *skb, struct nlmsghdr *nlh,
 
 	return do_setlink(skb, dev, tgt_net, nlmsg_data(nlh), extack, tb, status);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_group_changelink(const struct sk_buff *skb,
 				 struct net *net, struct net *tgt_net,
 				 int group, struct ifinfomsg *ifm,
@@ -3887,9 +3824,7 @@ static int rtnl_group_changelink(const struct sk_buff *skb,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_newlink_create(struct sk_buff *skb, struct ifinfomsg *ifm,
 			       const struct rtnl_link_ops *ops,
 			       struct net *tgt_net, struct net *link_net,
@@ -3965,9 +3900,7 @@ out_unregister:
 	}
 	goto out;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct net *rtnl_get_peer_net(struct sk_buff *skb,
 				     const struct rtnl_link_ops *ops,
 				     struct nlattr *tbp[],
@@ -4005,9 +3938,7 @@ static struct net *rtnl_get_peer_net(struct sk_buff *skb,
 
 	return net;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int __rtnl_newlink(struct sk_buff *skb, struct nlmsghdr *nlh,
 			  const struct rtnl_link_ops *ops,
 			  struct net *tgt_net, struct net *link_net,
@@ -4069,9 +4000,7 @@ static int __rtnl_newlink(struct sk_buff *skb, struct nlmsghdr *nlh,
 	return rtnl_newlink_create(skb, ifm, ops, tgt_net, link_net, peer_net, nlh,
 				   tb, data, extack);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_newlink(struct sk_buff *skb, struct nlmsghdr *nlh,
 			struct netlink_ext_ack *extack)
 {
@@ -4195,9 +4124,7 @@ free:
 	kfree(tbs);
 	return ret;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_valid_getlink_req(struct sk_buff *skb,
 				  const struct nlmsghdr *nlh,
 				  struct nlattr **tb,
@@ -4245,9 +4172,7 @@ static int rtnl_valid_getlink_req(struct sk_buff *skb,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_getlink(struct sk_buff *skb, struct nlmsghdr *nlh,
 			struct netlink_ext_ack *extack)
 {
@@ -4321,9 +4246,7 @@ out:
 
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_alt_ifname(int cmd, struct net_device *dev, struct nlattr *attr,
 			   bool *changed, struct netlink_ext_ack *extack)
 {
@@ -4365,9 +4288,7 @@ static int rtnl_alt_ifname(int cmd, struct net_device *dev, struct nlattr *attr,
 		*changed = true;
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_linkprop(int cmd, struct sk_buff *skb, struct nlmsghdr *nlh,
 			 struct netlink_ext_ack *extack)
 {
@@ -4415,25 +4336,19 @@ static int rtnl_linkprop(int cmd, struct sk_buff *skb, struct nlmsghdr *nlh,
 		netdev_state_change(dev);
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_newlinkprop(struct sk_buff *skb, struct nlmsghdr *nlh,
 			    struct netlink_ext_ack *extack)
 {
 	return rtnl_linkprop(RTM_NEWLINKPROP, skb, nlh, extack);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_dellinkprop(struct sk_buff *skb, struct nlmsghdr *nlh,
 			    struct netlink_ext_ack *extack)
 {
 	return rtnl_linkprop(RTM_DELLINKPROP, skb, nlh, extack);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static noinline_for_stack u32 rtnl_calcit(struct sk_buff *skb,
 					  struct nlmsghdr *nlh)
 {
@@ -4473,9 +4388,7 @@ static noinline_for_stack u32 rtnl_calcit(struct sk_buff *skb,
 
 	return nlmsg_total_size(min_ifinfo_dump_size);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_dump_all(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	int idx;
@@ -4522,7 +4435,6 @@ static int rtnl_dump_all(struct sk_buff *skb, struct netlink_callback *cb)
 
 	return skb->len ? : ret;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 struct sk_buff *rtmsg_ifinfo_build_skb(int type, struct net_device *dev,
 				       unsigned int change,
@@ -4641,7 +4553,6 @@ static inline size_t rtnl_fdb_nlmsg_size(const struct net_device *dev)
 	       0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void rtnl_fdb_notify(struct net_device *dev, u8 *addr, u16 vid, int type,
 			    u16 ndm_state)
 {
@@ -4665,7 +4576,6 @@ static void rtnl_fdb_notify(struct net_device *dev, u8 *addr, u16 vid, int type,
 errout:
 	rtnl_set_sk_err(net, RTNLGRP_NEIGH, err);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /*
  * ndo_dflt_fdb_add - default netdevice operation to add an FDB entry
@@ -4709,7 +4619,6 @@ int ndo_dflt_fdb_add(struct ndmsg *ndm,
 }
 EXPORT_SYMBOL(ndo_dflt_fdb_add);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int fdb_vid_parse(struct nlattr *vlan_attr, u16 *p_vid,
 			 struct netlink_ext_ack *extack)
 {
@@ -4731,9 +4640,7 @@ static int fdb_vid_parse(struct nlattr *vlan_attr, u16 *p_vid,
 	*p_vid = vid;
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_fdb_add(struct sk_buff *skb, struct nlmsghdr *nlh,
 			struct netlink_ext_ack *extack)
 {
@@ -4817,7 +4724,6 @@ static int rtnl_fdb_add(struct sk_buff *skb, struct nlmsghdr *nlh,
 out:
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /*
  * ndo_dflt_fdb_del - default netdevice operation to delete an FDB entry
@@ -4846,7 +4752,6 @@ int ndo_dflt_fdb_del(struct ndmsg *ndm,
 }
 EXPORT_SYMBOL(ndo_dflt_fdb_del);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_fdb_del(struct sk_buff *skb, struct nlmsghdr *nlh,
 			struct netlink_ext_ack *extack)
 {
@@ -4953,7 +4858,6 @@ static int rtnl_fdb_del(struct sk_buff *skb, struct nlmsghdr *nlh,
 out:
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int nlmsg_populate_fdb(struct sk_buff *skb,
 			      struct netlink_callback *cb,
@@ -5018,7 +4922,6 @@ out:
 }
 EXPORT_SYMBOL(ndo_dflt_fdb_dump);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int valid_fdb_dump_strict(const struct nlmsghdr *nlh,
 				 int *br_idx, int *brport_idx,
 				 struct netlink_ext_ack *extack)
@@ -5072,9 +4975,7 @@ static int valid_fdb_dump_strict(const struct nlmsghdr *nlh,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int valid_fdb_dump_legacy(const struct nlmsghdr *nlh,
 				 int *br_idx, int *brport_idx,
 				 struct netlink_ext_ack *extack)
@@ -5109,9 +5010,7 @@ static int valid_fdb_dump_legacy(const struct nlmsghdr *nlh,
 	}
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_fdb_dump(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	const struct net_device_ops *ops = NULL, *cops = NULL;
@@ -5190,9 +5089,7 @@ static int rtnl_fdb_dump(struct sk_buff *skb, struct netlink_callback *cb)
 
 	return skb->len;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int valid_fdb_get_strict(const struct nlmsghdr *nlh,
 				struct nlattr **tb, u8 *ndm_flags,
 				int *br_idx, int *brport_idx, u8 **addr,
@@ -5255,9 +5152,7 @@ static int valid_fdb_get_strict(const struct nlmsghdr *nlh,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_fdb_get(struct sk_buff *in_skb, struct nlmsghdr *nlh,
 			struct netlink_ext_ack *extack)
 {
@@ -5353,7 +5248,6 @@ out:
 	kfree_skb(skb);
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int brport_nla_put_flag(struct sk_buff *skb, u32 flags, u32 mask,
 			       unsigned int attrnum, unsigned int flag)
@@ -5466,7 +5360,6 @@ nla_put_failure:
 }
 EXPORT_SYMBOL_GPL(ndo_dflt_bridge_getlink);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int valid_bridge_getlink_req(const struct nlmsghdr *nlh,
 				    bool strict_check, u32 *filter_mask,
 				    struct netlink_ext_ack *extack)
@@ -5520,9 +5413,7 @@ static int valid_bridge_getlink_req(const struct nlmsghdr *nlh,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_bridge_getlink(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	const struct nlmsghdr *nlh = cb->nlh;
@@ -5582,7 +5473,6 @@ out_err:
 
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static inline size_t bridge_nlmsg_size(void)
 {
@@ -5599,7 +5489,6 @@ static inline size_t bridge_nlmsg_size(void)
 		+ nla_total_size(sizeof(u16));	/* IFLA_BRIDGE_MODE */
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_bridge_notify(struct net_device *dev)
 {
 	struct net *net = dev_net(dev);
@@ -5635,9 +5524,7 @@ errout:
 		rtnl_set_sk_err(net, RTNLGRP_LINK, err);
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_bridge_setlink(struct sk_buff *skb, struct nlmsghdr *nlh,
 			       struct netlink_ext_ack *extack)
 {
@@ -5717,9 +5604,7 @@ static int rtnl_bridge_setlink(struct sk_buff *skb, struct nlmsghdr *nlh,
 out:
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_bridge_dellink(struct sk_buff *skb, struct nlmsghdr *nlh,
 			       struct netlink_ext_ack *extack)
 {
@@ -5794,7 +5679,6 @@ static int rtnl_bridge_dellink(struct sk_buff *skb, struct nlmsghdr *nlh,
 out:
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static bool stats_attr_valid(unsigned int mask, int attrid, int idxattr)
 {
@@ -6324,7 +6208,6 @@ ifla_stats_set_policy[IFLA_STATS_GETSET_MAX + 1] = {
 	[IFLA_STATS_SET_OFFLOAD_XSTATS_L3_STATS] = NLA_POLICY_MAX(NLA_U8, 1),
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_stats_get_parse_filters(struct nlattr *ifla_filters,
 					struct rtnl_stats_dump_filters *filters,
 					struct netlink_ext_ack *extack)
@@ -6350,9 +6233,7 @@ static int rtnl_stats_get_parse_filters(struct nlattr *ifla_filters,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_stats_get_parse(const struct nlmsghdr *nlh,
 				u32 filter_mask,
 				struct rtnl_stats_dump_filters *filters,
@@ -6380,9 +6261,7 @@ static int rtnl_stats_get_parse(const struct nlmsghdr *nlh,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_valid_stats_req(const struct nlmsghdr *nlh, bool strict_check,
 				bool is_dump, struct netlink_ext_ack *extack)
 {
@@ -6411,9 +6290,7 @@ static int rtnl_valid_stats_req(const struct nlmsghdr *nlh, bool strict_check,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_stats_get(struct sk_buff *skb, struct nlmsghdr *nlh,
 			  struct netlink_ext_ack *extack)
 {
@@ -6465,9 +6342,7 @@ static int rtnl_stats_get(struct sk_buff *skb, struct nlmsghdr *nlh,
 
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_stats_dump(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	struct netlink_ext_ack *extack = cb->extack;
@@ -6521,7 +6396,6 @@ static int rtnl_stats_dump(struct sk_buff *skb, struct netlink_callback *cb)
 
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 void rtnl_offload_xstats_notify(struct net_device *dev)
 {
@@ -6558,7 +6432,6 @@ errout:
 }
 EXPORT_SYMBOL(rtnl_offload_xstats_notify);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_stats_set(struct sk_buff *skb, struct nlmsghdr *nlh,
 			  struct netlink_ext_ack *extack)
 {
@@ -6624,9 +6497,7 @@ static int rtnl_stats_set(struct sk_buff *skb, struct nlmsghdr *nlh,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_mdb_valid_dump_req(const struct nlmsghdr *nlh,
 				   struct netlink_ext_ack *extack)
 {
@@ -6649,13 +6520,11 @@ static int rtnl_mdb_valid_dump_req(const struct nlmsghdr *nlh,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 struct rtnl_mdb_dump_ctx {
 	long idx;
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_mdb_dump(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	struct rtnl_mdb_dump_ctx *ctx = (void *)cb->ctx;
@@ -6698,7 +6567,6 @@ out:
 	ctx->idx = idx;
 	return skb->len;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int rtnl_validate_mdb_entry_get(const struct nlattr *attr,
 				       struct netlink_ext_ack *extack)
@@ -6747,7 +6615,6 @@ static const struct nla_policy mdba_get_policy[MDBA_GET_ENTRY_MAX + 1] = {
 	[MDBA_GET_ENTRY_ATTRS] = { .type = NLA_NESTED },
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_mdb_get(struct sk_buff *in_skb, struct nlmsghdr *nlh,
 			struct netlink_ext_ack *extack)
 {
@@ -6787,7 +6654,6 @@ static int rtnl_mdb_get(struct sk_buff *in_skb, struct nlmsghdr *nlh,
 	return dev->netdev_ops->ndo_mdb_get(dev, tb, NETLINK_CB(in_skb).portid,
 					    nlh->nlmsg_seq, extack);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int rtnl_validate_mdb_entry(const struct nlattr *attr,
 				   struct netlink_ext_ack *extack)
@@ -6852,7 +6718,6 @@ static const struct nla_policy mdba_policy[MDBA_SET_ENTRY_MAX + 1] = {
 	[MDBA_SET_ENTRY_ATTRS] = { .type = NLA_NESTED },
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_mdb_add(struct sk_buff *skb, struct nlmsghdr *nlh,
 			struct netlink_ext_ack *extack)
 {
@@ -6891,7 +6756,6 @@ static int rtnl_mdb_add(struct sk_buff *skb, struct nlmsghdr *nlh,
 
 	return dev->netdev_ops->ndo_mdb_add(dev, tb, nlh->nlmsg_flags, extack);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int rtnl_validate_mdb_entry_del_bulk(const struct nlattr *attr,
 					    struct netlink_ext_ack *extack)
@@ -6934,7 +6798,6 @@ static const struct nla_policy mdba_del_bulk_policy[MDBA_SET_ENTRY_MAX + 1] = {
 	[MDBA_SET_ENTRY_ATTRS] = { .type = NLA_NESTED },
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_mdb_del(struct sk_buff *skb, struct nlmsghdr *nlh,
 			struct netlink_ext_ack *extack)
 {
@@ -6987,11 +6850,9 @@ static int rtnl_mdb_del(struct sk_buff *skb, struct nlmsghdr *nlh,
 
 	return dev->netdev_ops->ndo_mdb_del(dev, tb, extack);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* Process one rtnetlink message. */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	const bool needs_lock = !(cb->flags & RTNL_FLAG_DUMP_UNLOCKED);
@@ -7023,9 +6884,7 @@ static int rtnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
 	}
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnetlink_dump_start(struct sock *ssk, struct sk_buff *skb,
 				const struct nlmsghdr *nlh,
 				struct netlink_dump_control *control)
@@ -7039,9 +6898,7 @@ static int rtnetlink_dump_start(struct sock *ssk, struct sk_buff *skb,
 
 	return netlink_dump_start(ssk, skb, nlh, control);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnetlink_rcv_msg(struct sk_buff *skb, struct nlmsghdr *nlh,
 			     struct netlink_ext_ack *extack)
 {
@@ -7165,16 +7022,12 @@ err_unlock:
 	rcu_read_unlock();
 	return -EOPNOTSUPP;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void rtnetlink_rcv(struct sk_buff *skb)
 {
 	netlink_rcv_skb(skb, &rtnetlink_rcv_msg);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnetlink_bind(struct net *net, int group)
 {
 	switch (group) {
@@ -7186,7 +7039,6 @@ static int rtnetlink_bind(struct net *net, int group)
 	}
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int rtnetlink_event(struct notifier_block *this, unsigned long event, void *ptr)
 {
@@ -7225,15 +7077,9 @@ static int __net_init rtnetlink_net_init(struct net *net)
 	struct sock *sk;
 	struct netlink_kernel_cfg cfg = {
 		.groups		= RTNLGRP_MAX,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		.input		= rtnetlink_rcv,
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		.flags		= NL_CFG_F_NONROOT_RECV,
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		.bind		= rtnetlink_bind,
-#endif
 	};
 
 	sk = netlink_kernel_create(net, NETLINK_ROUTE, &cfg);
@@ -7254,7 +7100,6 @@ static struct pernet_operations rtnetlink_net_ops = {
 	.exit = rtnetlink_net_exit,
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct rtnl_msg_handler rtnetlink_rtnl_msg_handlers[] __initconst = {
 	{.msgtype = RTM_NEWLINK, .doit = rtnl_newlink,
 	 .flags = RTNL_FLAG_DOIT_PERNET},
@@ -7289,7 +7134,6 @@ static const struct rtnl_msg_handler rtnetlink_rtnl_msg_handlers[] __initconst =
 	{.protocol = PF_BRIDGE, .msgtype = RTM_GETMDB, .doit = rtnl_mdb_get,
 	 .dumpit = rtnl_mdb_dump},
 };
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 void __init rtnetlink_init(void)
 {
@@ -7298,7 +7142,5 @@ void __init rtnetlink_init(void)
 
 	register_netdevice_notifier(&rtnetlink_dev_notifier);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	rtnl_register_many(rtnetlink_rtnl_msg_handlers);
-#endif
 }

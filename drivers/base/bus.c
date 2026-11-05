@@ -84,7 +84,6 @@ done:
 	return sp;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct bus_type *bus_get(const struct bus_type *bus)
 {
 	struct subsys_private *sp = bus_to_subsys(bus);
@@ -132,7 +131,6 @@ static const struct sysfs_ops driver_sysfs_ops = {
 	.store	= drv_attr_store,
 };
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void driver_release(struct kobject *kobj)
 {
@@ -143,16 +141,13 @@ static void driver_release(struct kobject *kobj)
 }
 
 static const struct kobj_type driver_ktype = {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops	= &driver_sysfs_ops,
-#endif
 	.release	= driver_release,
 };
 
 /*
  * sysfs bindings for buses
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t bus_attr_show(struct kobject *kobj, struct attribute *attr,
 			     char *buf)
 {
@@ -184,7 +179,6 @@ static const struct sysfs_ops bus_sysfs_ops = {
 	.store	= bus_attr_store,
 };
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 int bus_create_file(const struct bus_type *bus, struct bus_attribute *attr)
 {
@@ -222,13 +216,10 @@ static void bus_release(struct kobject *kobj)
 }
 
 static const struct kobj_type bus_ktype = {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops	= &bus_sysfs_ops,
-#endif
 	.release	= bus_release,
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int bus_uevent_filter(const struct kobject *kobj)
 {
 	const struct kobj_type *ktype = get_ktype(kobj);
@@ -241,9 +232,7 @@ static int bus_uevent_filter(const struct kobject *kobj)
 static const struct kset_uevent_ops bus_uevent_ops = {
 	.filter = bus_uevent_filter,
 };
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 /* Manually detach a device from its associated driver. */
 static ssize_t unbind_store(struct device_driver *drv, const char *buf,
 			    size_t count)
@@ -334,7 +323,6 @@ static ssize_t drivers_probe_store(const struct bus_type *bus,
 	return err;
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static struct device *next_device(struct klist_iter *i)
 {
@@ -481,7 +469,6 @@ int bus_for_each_drv(const struct bus_type *bus, struct device_driver *start,
 }
 EXPORT_SYMBOL_GPL(bus_for_each_drv);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t driver_override_store(struct device *dev,
 				     struct device_attribute *attr,
 				     const char *buf, size_t count)
@@ -511,7 +498,6 @@ static struct attribute *driver_override_dev_attrs[] = {
 static const struct attribute_group driver_override_dev_group = {
 	.attrs = driver_override_dev_attrs,
 };
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * bus_add_device - add device to bus
@@ -553,13 +539,11 @@ int bus_add_device(struct device *dev)
 	if (error)
 		goto out_put;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (dev->bus->driver_override) {
 		error = device_add_group(dev, &driver_override_dev_group);
 		if (error)
 			goto out_groups;
 	}
-#endif
 
 	error = sysfs_create_link(&sp->devices_kset->kobj, &dev->kobj, dev_name(dev));
 	if (error)
@@ -575,13 +559,9 @@ int bus_add_device(struct device *dev)
 out_subsys:
 	sysfs_remove_link(&sp->devices_kset->kobj, dev_name(dev));
 out_override:
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (dev->bus->driver_override)
 		device_remove_group(dev, &driver_override_dev_group);
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 out_groups:
-#endif
 	device_remove_groups(dev, sp->bus->dev_groups);
 out_put:
 	subsys_put(sp);
@@ -639,10 +619,8 @@ void bus_remove_device(struct device *dev)
 
 	sysfs_remove_link(&dev->kobj, "subsystem");
 	sysfs_remove_link(&sp->devices_kset->kobj, dev_name(dev));
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (dev->bus->driver_override)
 		device_remove_group(dev, &driver_override_dev_group);
-#endif
 	device_remove_groups(dev, dev->bus->dev_groups);
 	if (klist_node_attached(&dev->p->knode_bus))
 		klist_del(&dev->p->knode_bus);
@@ -660,7 +638,6 @@ void bus_remove_device(struct device *dev)
 	subsys_put(sp);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int __must_check add_bind_files(struct device_driver *drv)
 {
 	int ret;
@@ -704,9 +681,7 @@ static void remove_probe_files(const struct bus_type *bus)
 	bus_remove_file(bus, &bus_attr_drivers_probe);
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t uevent_store(struct device_driver *drv, const char *buf,
 			    size_t count)
 {
@@ -716,7 +691,6 @@ static ssize_t uevent_store(struct device_driver *drv, const char *buf,
 	return rc ? rc : count;
 }
 static DRIVER_ATTR_WO(uevent);
-#endif
 
 /**
  * bus_add_driver - Add a driver to the bus.
@@ -764,13 +738,11 @@ int bus_add_driver(struct device_driver *drv)
 		goto out_detach;
 	}
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	error = driver_create_file(drv, &driver_attr_uevent);
 	if (error) {
 		printk(KERN_ERR "%s: uevent attr (%s) failed\n",
 			__func__, drv->name);
 	}
-#endif
 
 	error = driver_add_groups(drv, sp->bus->drv_groups);
 	if (error) {
@@ -779,7 +751,6 @@ int bus_add_driver(struct device_driver *drv)
 			__func__, drv->name);
 	}
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!drv->suppress_bind_attrs) {
 		error = add_bind_files(drv);
 		if (error) {
@@ -788,7 +759,6 @@ int bus_add_driver(struct device_driver *drv)
 				__func__, drv->name);
 		}
 	}
-#endif
 
 	return 0;
 
@@ -822,14 +792,10 @@ void bus_remove_driver(struct device_driver *drv)
 
 	pr_debug("bus: '%s': remove driver %s\n", sp->bus->name, drv->name);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!drv->suppress_bind_attrs)
 		remove_bind_files(drv);
-#endif
 	driver_remove_groups(drv, sp->bus->drv_groups);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	driver_remove_file(drv, &driver_attr_uevent);
-#endif
 	klist_remove(&drv->p->knode_bus);
 	driver_detach(drv);
 	module_remove_driver(drv);
@@ -907,7 +873,6 @@ static void klist_devices_put(struct klist_node *n)
 	put_device(dev);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t bus_uevent_store(const struct bus_type *bus,
 				const char *buf, size_t count)
 {
@@ -932,7 +897,6 @@ static ssize_t bus_uevent_store(const struct bus_type *bus,
  */
 static struct bus_attribute bus_attr_uevent = __ATTR(uevent, 0200, NULL,
 						     bus_uevent_store);
-#endif
 
 /**
  * bus_register - register a driver-core subsystem
@@ -970,11 +934,9 @@ int bus_register(const struct bus_type *bus)
 	if (retval)
 		goto out;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	retval = bus_create_file(bus, &bus_attr_uevent);
 	if (retval)
 		goto bus_uevent_fail;
-#endif
 
 	priv->devices_kset = kset_create_and_add("devices", NULL, bus_kobj);
 	if (!priv->devices_kset) {
@@ -995,11 +957,9 @@ int bus_register(const struct bus_type *bus)
 	klist_init(&priv->klist_devices, klist_devices_get, klist_devices_put);
 	klist_init(&priv->klist_drivers, NULL, NULL);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	retval = add_probe_files(bus);
 	if (retval)
 		goto bus_probe_files_fail;
-#endif
 
 	retval = sysfs_create_groups(bus_kobj, bus->bus_groups);
 	if (retval)
@@ -1009,18 +969,14 @@ int bus_register(const struct bus_type *bus)
 	return 0;
 
 bus_groups_fail:
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	remove_probe_files(bus);
 bus_probe_files_fail:
-#endif
 	kset_unregister(priv->drivers_kset);
 bus_drivers_fail:
 	kset_unregister(priv->devices_kset);
 bus_devices_fail:
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	bus_remove_file(bus, &bus_attr_uevent);
 bus_uevent_fail:
-#endif
 	kset_unregister(&priv->subsys);
 	/* Above kset_unregister() will kfree @priv */
 	priv = NULL;
@@ -1051,12 +1007,8 @@ void bus_unregister(const struct bus_type *bus)
 
 	bus_kobj = &sp->subsys.kobj;
 	sysfs_remove_groups(bus_kobj, bus->bus_groups);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	remove_probe_files(bus);
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	bus_remove_file(bus, &bus_attr_uevent);
-#endif
 
 	kset_unregister(sp->drivers_kset);
 	kset_unregister(sp->devices_kset);
@@ -1488,11 +1440,7 @@ EXPORT_SYMBOL_GPL(bus_get_dev_root);
 
 int __init buses_init(void)
 {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	bus_kset = kset_create_and_add("bus", NULL, NULL);
-#else
 	bus_kset = kset_create_and_add("bus", &bus_uevent_ops, NULL);
-#endif
 	if (!bus_kset)
 		return -ENOMEM;
 

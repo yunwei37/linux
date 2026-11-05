@@ -140,7 +140,6 @@ long do_utimes(int dfd, const char __user *filename, struct timespec64 *times,
 	return do_utimes_path(dfd, filename, times, flags);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(utimensat, int, dfd, const char __user *, filename,
 		struct __kernel_timespec __user *, utimes, int, flags)
 {
@@ -159,7 +158,6 @@ SYSCALL_DEFINE4(utimensat, int, dfd, const char __user *, filename,
 
 	return do_utimes(dfd, filename, utimes ? tstimes : NULL, flags);
 }
-#endif
 
 #ifdef __ARCH_WANT_SYS_UTIME
 /*
@@ -197,23 +195,18 @@ static long do_futimesat(int dfd, const char __user *filename,
 }
 
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(futimesat, int, dfd, const char __user *, filename,
 		struct __kernel_old_timeval __user *, utimes)
 {
 	return do_futimesat(dfd, filename, utimes);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(utimes, char __user *, filename,
 		struct __kernel_old_timeval __user *, utimes)
 {
 	return do_futimesat(AT_FDCWD, filename, utimes);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(utime, char __user *, filename, struct utimbuf __user *, times)
 {
 	struct timespec64 tv[2];
@@ -228,7 +221,6 @@ SYSCALL_DEFINE2(utime, char __user *, filename, struct utimbuf __user *, times)
 	return do_utimes(AT_FDCWD, filename, times ? tv : NULL, 0);
 }
 #endif
-#endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
 /*
@@ -236,7 +228,6 @@ SYSCALL_DEFINE2(utime, char __user *, filename, struct utimbuf __user *, times)
  * of sys_utimes.
  */
 #ifdef __ARCH_WANT_SYS_UTIME32
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(utime32, const char __user *, filename,
 		struct old_utimbuf32 __user *, t)
 {
@@ -252,9 +243,7 @@ SYSCALL_DEFINE2(utime32, const char __user *, filename,
 	return do_utimes(AT_FDCWD, filename, t ? tv : NULL, 0);
 }
 #endif
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(utimensat_time32, unsigned int, dfd, const char __user *, filename, struct old_timespec32 __user *, t, int, flags)
 {
 	struct timespec64 tv[2];
@@ -269,7 +258,6 @@ SYSCALL_DEFINE4(utimensat_time32, unsigned int, dfd, const char __user *, filena
 	}
 	return do_utimes(dfd, filename, t ? tv : NULL, flags);
 }
-#endif
 
 #ifdef __ARCH_WANT_SYS_UTIME32
 static long do_compat_futimesat(unsigned int dfd, const char __user *filename,
@@ -292,20 +280,16 @@ static long do_compat_futimesat(unsigned int dfd, const char __user *filename,
 	return do_utimes(dfd, filename, t ? tv : NULL, 0);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(futimesat_time32, unsigned int, dfd,
 		       const char __user *, filename,
 		       struct old_timeval32 __user *, t)
 {
 	return do_compat_futimesat(dfd, filename, t);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(utimes_time32, const char __user *, filename, struct old_timeval32 __user *, t)
 {
 	return do_compat_futimesat(AT_FDCWD, filename, t);
 }
-#endif
 #endif
 #endif

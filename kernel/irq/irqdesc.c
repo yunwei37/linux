@@ -351,9 +351,7 @@ ATTRIBUTE_GROUPS(irq);
 
 static const struct kobj_type irq_kobj_type = {
 	.release	= irq_kobj_release,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops	= &kobj_sysfs_ops,
-#endif
 	.default_groups = irq_groups,
 };
 

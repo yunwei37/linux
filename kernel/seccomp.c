@@ -2123,13 +2123,11 @@ static long do_seccomp(unsigned int op, unsigned int flags,
 	}
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(seccomp, unsigned int, op, unsigned int, flags,
 			 void __user *, uargs)
 {
 	return do_seccomp(op, flags, uargs);
 }
-#endif
 
 /**
  * prctl_set_seccomp: configures current->seccomp.mode

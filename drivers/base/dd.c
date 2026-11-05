@@ -478,9 +478,7 @@ static void driver_bound(struct device *dev)
 	driver_deferred_probe_trigger();
 
 	bus_notify(dev, BUS_NOTIFY_BOUND_DRIVER);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->kobj, KOBJ_BIND);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 }
 
 static ssize_t coredump_store(struct device *dev, struct device_attribute *attr,
@@ -1364,9 +1362,7 @@ static void __device_release_driver(struct device *dev, struct device *parent)
 		device_pm_check_callbacks(dev);
 
 		bus_notify(dev, BUS_NOTIFY_UNBOUND_DRIVER);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		kobject_uevent(&dev->kobj, KOBJ_UNBIND);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	}
 }
 

@@ -14,9 +14,6 @@
  * This allows printing both to /sys/kernel/debug/sched/debug and
  * to the console
  */
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-#define SEQ_printf(m, x...) pr_cont(x)
-#else
 #define SEQ_printf(m, x...)			\
  do {						\
 	if (m)					\
@@ -24,7 +21,6 @@
 	else					\
 		pr_cont(x);			\
  } while (0)
-#endif
 
 /*
  * Ease the printing of nsec fields:

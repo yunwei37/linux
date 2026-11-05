@@ -407,25 +407,20 @@ static off_t ksys_lseek(unsigned int fd, off_t offset, unsigned int whence)
 	return retval;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(lseek, unsigned int, fd, off_t, offset, unsigned int, whence)
 {
 	return ksys_lseek(fd, offset, whence);
 }
-#endif
 
 #ifdef CONFIG_COMPAT
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(lseek, unsigned int, fd, compat_off_t, offset, unsigned int, whence)
 {
 	return ksys_lseek(fd, offset, whence);
 }
 #endif
-#endif
 
 #if !defined(CONFIG_64BIT) || defined(CONFIG_COMPAT) || \
 	defined(__ARCH_WANT_SYS_LLSEEK)
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(llseek, unsigned int, fd, unsigned long, offset_high,
 		unsigned long, offset_low, loff_t __user *, result,
 		unsigned int, whence)
@@ -451,7 +446,6 @@ SYSCALL_DEFINE5(llseek, unsigned int, fd, unsigned long, offset_high,
 	}
 	return retval;
 }
-#endif
 #endif
 
 int rw_verify_area(int read_write, struct file *file, const loff_t *ppos, size_t count)
@@ -725,12 +719,10 @@ ssize_t ksys_read(unsigned int fd, char __user *buf, size_t count)
 	return ret;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
 {
 	return ksys_read(fd, buf, count);
 }
-#endif
 
 ssize_t ksys_write(unsigned int fd, const char __user *buf, size_t count)
 {
@@ -751,13 +743,11 @@ ssize_t ksys_write(unsigned int fd, const char __user *buf, size_t count)
 	return ret;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(write, unsigned int, fd, const char __user *, buf,
 		size_t, count)
 {
 	return ksys_write(fd, buf, count);
 }
-#endif
 
 ssize_t ksys_pread64(unsigned int fd, char __user *buf, size_t count,
 		     loff_t pos)
@@ -775,22 +765,18 @@ ssize_t ksys_pread64(unsigned int fd, char __user *buf, size_t count,
 	return -ESPIPE;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(pread64, unsigned int, fd, char __user *, buf,
 			size_t, count, loff_t, pos)
 {
 	return ksys_pread64(fd, buf, count, pos);
 }
-#endif
 
 #if defined(CONFIG_COMPAT) && defined(__ARCH_WANT_COMPAT_PREAD64)
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(pread64, unsigned int, fd, char __user *, buf,
 		       size_t, count, compat_arg_u64_dual(pos))
 {
 	return ksys_pread64(fd, buf, count, compat_arg_u64_glue(pos));
 }
-#endif
 #endif
 
 ssize_t ksys_pwrite64(unsigned int fd, const char __user *buf,
@@ -809,22 +795,18 @@ ssize_t ksys_pwrite64(unsigned int fd, const char __user *buf,
 	return -ESPIPE;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(pwrite64, unsigned int, fd, const char __user *, buf,
 			 size_t, count, loff_t, pos)
 {
 	return ksys_pwrite64(fd, buf, count, pos);
 }
-#endif
 
 #if defined(CONFIG_COMPAT) && defined(__ARCH_WANT_COMPAT_PWRITE64)
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(pwrite64, unsigned int, fd, const char __user *, buf,
 		       size_t, count, compat_arg_u64_dual(pos))
 {
 	return ksys_pwrite64(fd, buf, count, compat_arg_u64_glue(pos));
 }
-#endif
 #endif
 
 static ssize_t do_iter_readv_writev(struct file *filp, struct iov_iter *iter,
@@ -1177,23 +1159,18 @@ static ssize_t do_pwritev(unsigned long fd, const struct iovec __user *vec,
 	return ret;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(readv, unsigned long, fd, const struct iovec __user *, vec,
 		unsigned long, vlen)
 {
 	return do_readv(fd, vec, vlen, 0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(writev, unsigned long, fd, const struct iovec __user *, vec,
 		unsigned long, vlen)
 {
 	return do_writev(fd, vec, vlen, 0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(preadv, unsigned long, fd, const struct iovec __user *, vec,
 		unsigned long, vlen, unsigned long, pos_l, unsigned long, pos_h)
 {
@@ -1201,9 +1178,7 @@ SYSCALL_DEFINE5(preadv, unsigned long, fd, const struct iovec __user *, vec,
 
 	return do_preadv(fd, vec, vlen, pos, 0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(preadv2, unsigned long, fd, const struct iovec __user *, vec,
 		unsigned long, vlen, unsigned long, pos_l, unsigned long, pos_h,
 		rwf_t, flags)
@@ -1215,9 +1190,7 @@ SYSCALL_DEFINE6(preadv2, unsigned long, fd, const struct iovec __user *, vec,
 
 	return do_preadv(fd, vec, vlen, pos, flags);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(pwritev, unsigned long, fd, const struct iovec __user *, vec,
 		unsigned long, vlen, unsigned long, pos_l, unsigned long, pos_h)
 {
@@ -1225,9 +1198,7 @@ SYSCALL_DEFINE5(pwritev, unsigned long, fd, const struct iovec __user *, vec,
 
 	return do_pwritev(fd, vec, vlen, pos, 0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(pwritev2, unsigned long, fd, const struct iovec __user *, vec,
 		unsigned long, vlen, unsigned long, pos_l, unsigned long, pos_h,
 		rwf_t, flags)
@@ -1239,7 +1210,6 @@ SYSCALL_DEFINE6(pwritev2, unsigned long, fd, const struct iovec __user *, vec,
 
 	return do_pwritev(fd, vec, vlen, pos, flags);
 }
-#endif
 
 /*
  * Various compat syscalls.  Note that they all pretend to take a native
@@ -1248,7 +1218,6 @@ SYSCALL_DEFINE6(pwritev2, unsigned long, fd, const struct iovec __user *, vec,
  */
 #ifdef CONFIG_COMPAT
 #ifdef __ARCH_WANT_COMPAT_SYS_PREADV64
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(preadv64, unsigned long, fd,
 		const struct iovec __user *, vec,
 		unsigned long, vlen, loff_t, pos)
@@ -1256,9 +1225,7 @@ COMPAT_SYSCALL_DEFINE4(preadv64, unsigned long, fd,
 	return do_preadv(fd, vec, vlen, pos, 0);
 }
 #endif
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(preadv, compat_ulong_t, fd,
 		const struct iovec __user *, vec,
 		compat_ulong_t, vlen, u32, pos_low, u32, pos_high)
@@ -1267,10 +1234,8 @@ COMPAT_SYSCALL_DEFINE5(preadv, compat_ulong_t, fd,
 
 	return do_preadv(fd, vec, vlen, pos, 0);
 }
-#endif
 
 #ifdef __ARCH_WANT_COMPAT_SYS_PREADV64V2
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(preadv64v2, unsigned long, fd,
 		const struct iovec __user *, vec,
 		unsigned long, vlen, loff_t, pos, rwf_t, flags)
@@ -1280,9 +1245,7 @@ COMPAT_SYSCALL_DEFINE5(preadv64v2, unsigned long, fd,
 	return do_preadv(fd, vec, vlen, pos, flags);
 }
 #endif
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE6(preadv2, compat_ulong_t, fd,
 		const struct iovec __user *, vec,
 		compat_ulong_t, vlen, u32, pos_low, u32, pos_high,
@@ -1294,10 +1257,8 @@ COMPAT_SYSCALL_DEFINE6(preadv2, compat_ulong_t, fd,
 		return do_readv(fd, vec, vlen, flags);
 	return do_preadv(fd, vec, vlen, pos, flags);
 }
-#endif
 
 #ifdef __ARCH_WANT_COMPAT_SYS_PWRITEV64
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(pwritev64, unsigned long, fd,
 		const struct iovec __user *, vec,
 		unsigned long, vlen, loff_t, pos)
@@ -1305,9 +1266,7 @@ COMPAT_SYSCALL_DEFINE4(pwritev64, unsigned long, fd,
 	return do_pwritev(fd, vec, vlen, pos, 0);
 }
 #endif
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(pwritev, compat_ulong_t, fd,
 		const struct iovec __user *,vec,
 		compat_ulong_t, vlen, u32, pos_low, u32, pos_high)
@@ -1316,10 +1275,8 @@ COMPAT_SYSCALL_DEFINE5(pwritev, compat_ulong_t, fd,
 
 	return do_pwritev(fd, vec, vlen, pos, 0);
 }
-#endif
 
 #ifdef __ARCH_WANT_COMPAT_SYS_PWRITEV64V2
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(pwritev64v2, unsigned long, fd,
 		const struct iovec __user *, vec,
 		unsigned long, vlen, loff_t, pos, rwf_t, flags)
@@ -1329,9 +1286,7 @@ COMPAT_SYSCALL_DEFINE5(pwritev64v2, unsigned long, fd,
 	return do_pwritev(fd, vec, vlen, pos, flags);
 }
 #endif
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE6(pwritev2, compat_ulong_t, fd,
 		const struct iovec __user *,vec,
 		compat_ulong_t, vlen, u32, pos_low, u32, pos_high, rwf_t, flags)
@@ -1342,7 +1297,6 @@ COMPAT_SYSCALL_DEFINE6(pwritev2, compat_ulong_t, fd,
 		return do_writev(fd, vec, vlen, flags);
 	return do_pwritev(fd, vec, vlen, pos, flags);
 }
-#endif
 #endif /* CONFIG_COMPAT */
 
 static ssize_t do_sendfile(int out_fd, int in_fd, loff_t *ppos,
@@ -1441,7 +1395,6 @@ static ssize_t do_sendfile(int out_fd, int in_fd, loff_t *ppos,
 	return retval;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(sendfile, int, out_fd, int, in_fd, off_t __user *, offset, size_t, count)
 {
 	loff_t pos;
@@ -1460,9 +1413,7 @@ SYSCALL_DEFINE4(sendfile, int, out_fd, int, in_fd, off_t __user *, offset, size_
 
 	return do_sendfile(out_fd, in_fd, NULL, count, 0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd, loff_t __user *, offset, size_t, count)
 {
 	loff_t pos;
@@ -1479,10 +1430,8 @@ SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd, loff_t __user *, offset, si
 
 	return do_sendfile(out_fd, in_fd, NULL, count, 0);
 }
-#endif
 
 #ifdef CONFIG_COMPAT
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(sendfile, int, out_fd, int, in_fd,
 		compat_off_t __user *, offset, compat_size_t, count)
 {
@@ -1502,9 +1451,7 @@ COMPAT_SYSCALL_DEFINE4(sendfile, int, out_fd, int, in_fd,
 
 	return do_sendfile(out_fd, in_fd, NULL, count, 0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd,
 		compat_loff_t __user *, offset, compat_size_t, count)
 {
@@ -1522,7 +1469,6 @@ COMPAT_SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd,
 
 	return do_sendfile(out_fd, in_fd, NULL, count, 0);
 }
-#endif
 #endif
 
 /*
@@ -1699,7 +1645,6 @@ done:
 }
 EXPORT_SYMBOL(vfs_copy_file_range);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(copy_file_range, int, fd_in, loff_t __user *, off_in,
 		int, fd_out, loff_t __user *, off_out,
 		size_t, len, unsigned int, flags)
@@ -1755,7 +1700,6 @@ SYSCALL_DEFINE6(copy_file_range, int, fd_in, loff_t __user *, off_in,
 	}
 	return ret;
 }
-#endif
 
 /*
  * Don't operate on ranges the page cache doesn't support, and don't exceed the

@@ -903,7 +903,6 @@ char *restricted_pointer(char *buf, char *end, const void *ptr,
 	return pointer_string(buf, end, ptr, spec);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static noinline_for_stack
 char *dentry_name(char *buf, char *end, const struct dentry *d, struct printf_spec spec,
 		  const char *fmt)
@@ -962,7 +961,6 @@ char *file_dentry_name(char *buf, char *end, const struct file *f,
 
 	return dentry_name(buf, end, f->f_path.dentry, spec, fmt);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #ifdef CONFIG_BLOCK
 static noinline_for_stack
@@ -2134,12 +2132,10 @@ char *flags_string(char *buf, char *end, void *flags_ptr,
 	switch (fmt[1]) {
 	case 'p':
 		return format_page_flags(buf, end, *(unsigned long *)flags_ptr);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	case 'v':
 		flags = *(unsigned long *)flags_ptr;
 		names = vmaflag_names;
 		break;
-#endif
 	case 'g':
 		flags = (__force unsigned long)(*(gfp_t *)flags_ptr);
 		names = gfpflag_names;
@@ -2559,18 +2555,14 @@ char *pointer(const char *fmt, char *buf, char *end, void *ptr,
 		return fourcc_string(buf, end, ptr, spec, fmt);
 	case 'a':
 		return address_val(buf, end, ptr, spec, fmt);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	case 'd':
 		return dentry_name(buf, end, ptr, spec, fmt);
-#endif
 	case 't':
 		return time_and_date(buf, end, ptr, spec, fmt);
 	case 'C':
 		return clock(buf, end, ptr, spec, fmt);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	case 'D':
 		return file_dentry_name(buf, end, ptr, spec, fmt);
-#endif
 #ifdef CONFIG_BLOCK
 	case 'g':
 		return bdev_name(buf, end, ptr, spec, fmt);

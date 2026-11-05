@@ -21,7 +21,6 @@
  * @maskp: pointer to bitmap array that will contain result.
  * @nmaskbits: size of bitmap, in bits.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int bitmap_parse_user(const char __user *ubuf,
 			unsigned int ulen, unsigned long *maskp,
 			int nmaskbits)
@@ -38,7 +37,6 @@ int bitmap_parse_user(const char __user *ubuf,
 	kfree(buf);
 	return ret;
 }
-#endif
 EXPORT_SYMBOL(bitmap_parse_user);
 
 /**
@@ -78,7 +76,6 @@ EXPORT_SYMBOL(bitmap_print_to_pagebuf);
  * @off: in the string from which we are copying, We copy to @buf
  * @count: the maximum number of bytes to print
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int bitmap_print_to_buf(bool list, char *buf, const unsigned long *maskp,
 		int nmaskbits, loff_t off, size_t count)
 {
@@ -95,7 +92,6 @@ static int bitmap_print_to_buf(bool list, char *buf, const unsigned long *maskp,
 
 	return size;
 }
-#endif
 
 /**
  * bitmap_print_bitmask_to_buf  - convert bitmap to hex bitmask format ASCII string
@@ -181,13 +177,11 @@ static int bitmap_print_to_buf(bool list, char *buf, const unsigned long *maskp,
  *
  * Returns the number of characters actually printed to @buf
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int bitmap_print_bitmask_to_buf(char *buf, const unsigned long *maskp,
 				int nmaskbits, loff_t off, size_t count)
 {
 	return bitmap_print_to_buf(false, buf, maskp, nmaskbits, off, count);
 }
-#endif
 EXPORT_SYMBOL(bitmap_print_bitmask_to_buf);
 
 /**
@@ -201,13 +195,11 @@ EXPORT_SYMBOL(bitmap_print_bitmask_to_buf);
  * Everything is same with the above bitmap_print_bitmask_to_buf() except
  * the print format.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int bitmap_print_list_to_buf(char *buf, const unsigned long *maskp,
 			     int nmaskbits, loff_t off, size_t count)
 {
 	return bitmap_print_to_buf(true, buf, maskp, nmaskbits, off, count);
 }
-#endif
 EXPORT_SYMBOL(bitmap_print_list_to_buf);
 
 /*
@@ -420,7 +412,6 @@ EXPORT_SYMBOL(bitmap_parselist);
  *
  * Wrapper for bitmap_parselist(), providing it with user buffer.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int bitmap_parselist_user(const char __user *ubuf,
 			unsigned int ulen, unsigned long *maskp,
 			int nmaskbits)
@@ -437,7 +428,6 @@ int bitmap_parselist_user(const char __user *ubuf,
 	kfree(buf);
 	return ret;
 }
-#endif
 EXPORT_SYMBOL(bitmap_parselist_user);
 
 static const char *bitmap_get_x32_reverse(const char *start,

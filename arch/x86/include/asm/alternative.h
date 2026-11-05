@@ -42,13 +42,6 @@
  */
 
 #ifdef CONFIG_SMP
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-/* Associate patch metadata with its instruction section for real section GC. */
-#define LOCK_PREFIX_HERE \
- ".ifndef .Llock_link_%=\n.Llock_link_%=:\n.endif\n" \
- " .pushsection .smp_locks.%=,\"ao\",@progbits,.Llock_link_%=\n" \
- " .balign 4\n .long 671f - .\n .popsection\n671:"
-#else
 #define LOCK_PREFIX_HERE \
 		".pushsection .smp_locks,\"a\"\n"	\
 		".balign 4\n"				\
@@ -56,7 +49,6 @@
 		".popsection\n"				\
 		"671:"
 
-#endif
 #define LOCK_PREFIX LOCK_PREFIX_HERE "\n\tlock "
 
 #else /* ! CONFIG_SMP */
@@ -205,13 +197,8 @@ static inline int alternatives_text_reserved(void *start, void *end)
 		"((" alt_rlen ")-(" alt_slen ")),0x90\n"		\
 	"773:\n"
 
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-#define __ALT_SECTION ".pushsection .altinstructions.%=,\"ao\",@progbits,.Lalt_link_%=\n"
-#define __ALT_REPLACEMENT_SECTION ".pushsection .altinstr_replacement.%=,\"axo\",@progbits,.Lalt_link_%=\n"
-#else
 #define __ALT_SECTION ".pushsection .altinstructions,\"a\"\n"
 #define __ALT_REPLACEMENT_SECTION ".pushsection .altinstr_replacement, \"ax\"\n"
-#endif
 
 #define ALTINSTR_ENTRY(ft_flags)					      \
 	__ALT_SECTION				      \

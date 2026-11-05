@@ -13459,7 +13459,6 @@ perf_check_permission(struct perf_event_attr *attr, struct task_struct *task)
  * @group_fd:		group leader event fd
  * @flags:		perf event open flags
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(perf_event_open,
 		struct perf_event_attr __user *, attr_uptr,
 		pid_t, pid, int, cpu, int, group_fd, unsigned long, flags)
@@ -13868,7 +13867,6 @@ err_fd:
 	put_unused_fd(event_fd);
 	return err;
 }
-#endif
 
 /**
  * perf_event_create_kernel_counter

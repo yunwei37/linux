@@ -2607,7 +2607,6 @@ static int kernel_move_pages(pid_t pid, unsigned long nr_pages,
 	return err;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(move_pages, pid_t, pid, unsigned long, nr_pages,
 		const void __user * __user *, pages,
 		const int __user *, nodes,
@@ -2615,7 +2614,6 @@ SYSCALL_DEFINE6(move_pages, pid_t, pid, unsigned long, nr_pages,
 {
 	return kernel_move_pages(pid, nr_pages, pages, nodes, status, flags);
 }
-#endif
 
 #ifdef CONFIG_NUMA_BALANCING
 /*

@@ -1505,7 +1505,6 @@ int insn_get_effective_ip(struct pt_regs *regs, unsigned long *ip)
  * - 0 if nothing was copied.
  * - -EINVAL if the linear address of the instruction could not be calculated
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int insn_fetch_from_user(struct pt_regs *regs, unsigned char buf[MAX_INSN_SIZE])
 {
 	unsigned long ip;
@@ -1518,7 +1517,6 @@ int insn_fetch_from_user(struct pt_regs *regs, unsigned char buf[MAX_INSN_SIZE])
 
 	return MAX_INSN_SIZE - not_copied;
 }
-#endif
 
 /**
  * insn_fetch_from_user_inatomic() - Copy instruction bytes from user-space memory
@@ -1535,7 +1533,6 @@ int insn_fetch_from_user(struct pt_regs *regs, unsigned char buf[MAX_INSN_SIZE])
  *  - 0 if nothing was copied.
  *  - -EINVAL if the linear address of the instruction could not be calculated.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int insn_fetch_from_user_inatomic(struct pt_regs *regs, unsigned char buf[MAX_INSN_SIZE])
 {
 	unsigned long ip;
@@ -1548,7 +1545,6 @@ int insn_fetch_from_user_inatomic(struct pt_regs *regs, unsigned char buf[MAX_IN
 
 	return MAX_INSN_SIZE - not_copied;
 }
-#endif
 
 /**
  * insn_decode_from_regs() - Decode an instruction

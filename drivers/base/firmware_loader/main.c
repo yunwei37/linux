@@ -493,9 +493,6 @@ fw_get_filesystem_firmware(struct device *device, struct fw_priv *fw_priv,
 					     size_t in_size,
 					     const void *in_buffer))
 {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	return -ENOENT;
-#else
 	size_t size;
 	int i, len, maxlen = 0;
 	int rc = -ENOENT;
@@ -594,7 +591,6 @@ fw_get_filesystem_firmware(struct device *device, struct fw_priv *fw_priv,
 	__putname(path);
 
 	return rc;
-#endif
 }
 
 /* firmware holds the ownership of pages */
@@ -875,10 +871,6 @@ _request_firmware(const struct firmware **firmware_p, const char *name,
 	 * called by a driver when serving an unrelated request from userland, we use
 	 * the kernel credentials to read the file.
 	 */
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	/* Built-in lookup already ran in _request_firmware_prepare. */
-	ret = -ENOENT;
-#else
 	kern_cred = prepare_kernel_cred(&init_task);
 	if (!kern_cred) {
 		ret = -ENOMEM;
@@ -918,7 +910,6 @@ _request_firmware(const struct firmware **firmware_p, const char *name,
 
 	revert_creds(old_cred);
 	put_cred(kern_cred);
-#endif
 
 out:
 	if (ret < 0) {

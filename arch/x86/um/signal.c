@@ -336,7 +336,6 @@ int setup_signal_stack_si(unsigned long stack_top, struct ksignal *ksig,
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(sigreturn)
 {
 	unsigned long sp = PT_REGS_SP(&current->thread.regs);
@@ -362,7 +361,6 @@ SYSCALL_DEFINE0(sigreturn)
 	force_sig(SIGSEGV);
 	return 0;
 }
-#endif
 
 #else
 
@@ -446,7 +444,6 @@ int setup_signal_stack_si(unsigned long stack_top, struct ksignal *ksig,
 }
 #endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(rt_sigreturn)
 {
 	unsigned long sp = PT_REGS_SP(&current->thread.regs);
@@ -471,4 +468,3 @@ SYSCALL_DEFINE0(rt_sigreturn)
 	force_sig(SIGSEGV);
 	return 0;
 }
-#endif

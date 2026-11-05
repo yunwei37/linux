@@ -226,11 +226,3 @@ config CRASH_MAX_MEMORY_RANGES
 	  /sys/kernel/crash_elfcorehdr_size attribute.
 
 endmenu
-
-config MODELOS_KEXEC_FREE_SNAPSHOT
- bool "Snapshot free buddy pages at the final x86 kexec boundary"
- depends on X86_64 && KEXEC_CORE && KEXEC_HANDOVER
- help
-   Export a physical free-page bitmap into named KHO memory after other
-   CPUs and devices are stopped. The receiver can retain every old in-use
-   page and reclaim only this free subset. Experimental planned handoff.

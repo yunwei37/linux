@@ -2096,24 +2096,20 @@ static int ksys_umount(char __user *name, int flags)
 	return path_umount(&path, flags);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(umount, char __user *, name, int, flags)
 {
 	return ksys_umount(name, flags);
 }
-#endif
 
 #ifdef __ARCH_WANT_SYS_OLDUMOUNT
 
 /*
  *	The 2.0 compatible umount. No flags.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(oldumount, char __user *, name)
 {
 	return ksys_umount(name, 0);
 }
-#endif
 
 #endif
 
@@ -3166,7 +3162,6 @@ static struct file *vfs_open_tree(int dfd, const char __user *filename, unsigned
 	return dentry_open(&path, O_PATH, current_cred());
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(open_tree, int, dfd, const char __user *, filename, unsigned, flags)
 {
 	int fd;
@@ -3183,7 +3178,6 @@ SYSCALL_DEFINE3(open_tree, int, dfd, const char __user *, filename, unsigned, fl
 	fd_install(fd, no_free_ptr(file));
 	return fd;
 }
-#endif
 
 /*
  * Don't allow locked mount flags to be cleared.
@@ -4312,7 +4306,6 @@ struct dentry *mount_subtree(struct vfsmount *m, const char *name)
 }
 EXPORT_SYMBOL(mount_subtree);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(mount, char __user *, dev_name, char __user *, dir_name,
 		char __user *, type, unsigned long, flags, void __user *, data)
 {
@@ -4346,7 +4339,6 @@ out_dev:
 out_type:
 	return ret;
 }
-#endif
 
 #define FSMOUNT_VALID_FLAGS                                                    \
 	(MOUNT_ATTR_RDONLY | MOUNT_ATTR_NOSUID | MOUNT_ATTR_NODEV |            \
@@ -4382,7 +4374,6 @@ static unsigned int attr_flags_to_mnt_flags(u64 attr_flags)
  * Create a kernel mount representation for a new, prepared superblock
  * (specified by fs_fd) and attach to an open_tree-like file descriptor.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(fsmount, int, fs_fd, unsigned int, flags,
 		unsigned int, attr_flags)
 {
@@ -4503,7 +4494,6 @@ err_unlock:
 	mutex_unlock(&fc->uapi_mutex);
 	return ret;
 }
-#endif
 
 static inline int vfs_move_mount(const struct path *from_path,
 				 const struct path *to_path,
@@ -4529,7 +4519,6 @@ static inline int vfs_move_mount(const struct path *from_path,
  *
  * Note the flags value is a combination of MOVE_MOUNT_* flags.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(move_mount,
 		int, from_dfd, const char __user *, from_pathname,
 		int, to_dfd, const char __user *, to_pathname,
@@ -4609,7 +4598,6 @@ SYSCALL_DEFINE5(move_mount,
 
 	return vfs_move_mount(&from_path, &to_path, mflags);
 }
-#endif
 
 /*
  * Return true if path is reachable from root
@@ -4658,7 +4646,6 @@ EXPORT_SYMBOL(path_is_under);
  *    though, so you may need to say mount --bind /nfs/my_root /nfs/my_root
  *    first.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(pivot_root, const char __user *, new_root,
 		const char __user *, put_old)
 {
@@ -4743,7 +4730,6 @@ SYSCALL_DEFINE2(pivot_root, const char __user *, new_root,
 	chroot_fs_refs(&root, &new);
 	return 0;
 }
-#endif
 
 static unsigned int recalc_flags(struct mount_kattr *kattr, struct mount *mnt)
 {
@@ -5109,7 +5095,6 @@ static int wants_mount_setattr(struct mount_attr __user *uattr, size_t usize,
 	return 1;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(mount_setattr, int, dfd, const char __user *, path,
 		unsigned int, flags, struct mount_attr __user *, uattr,
 		size_t, usize)
@@ -5151,9 +5136,7 @@ SYSCALL_DEFINE5(mount_setattr, int, dfd, const char __user *, path,
 	finish_mount_kattr(&kattr);
 	return err;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(open_tree_attr, int, dfd, const char __user *, filename,
 		unsigned, flags, struct mount_attr __user *, uattr,
 		size_t, usize)
@@ -5193,7 +5176,6 @@ SYSCALL_DEFINE5(open_tree_attr, int, dfd, const char __user *, filename,
 	fd_install(fd, no_free_ptr(file));
 	return fd;
 }
-#endif
 
 int show_path(struct seq_file *m, struct dentry *root)
 {
@@ -5905,7 +5887,6 @@ static struct mnt_namespace *grab_requested_mnt_ns(const struct mnt_id_req *kreq
 	return mnt_ns;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(statmount, const struct mnt_id_req __user *, req,
 		struct statmount __user *, buf, size_t, bufsize,
 		unsigned int, flags)
@@ -5952,7 +5933,6 @@ retry:
 		goto retry;
 	return ret;
 }
-#endif
 
 struct klistmount {
 	u64 last_mnt_id;
@@ -6061,7 +6041,6 @@ static inline int prepare_klistmount(struct klistmount *kls, struct mnt_id_req *
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(listmount, const struct mnt_id_req __user *, req,
 		u64 __user *, mnt_ids, size_t, nr_mnt_ids, unsigned int, flags)
 {
@@ -6110,7 +6089,6 @@ SYSCALL_DEFINE4(listmount, const struct mnt_id_req __user *, req,
 
 	return ret;
 }
-#endif
 
 struct mnt_namespace init_mnt_ns = {
 	.ns.inum	= ns_init_inum(&init_mnt_ns),

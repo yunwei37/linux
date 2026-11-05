@@ -81,9 +81,7 @@ static void quickstart_notify(acpi_handle handle, u32 event, void *context)
 		sparse_keymap_report_event(data->input_device, 0x1, 1, true);
 		mutex_unlock(&data->input_lock);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		acpi_bus_generate_netlink_event(DRIVER_NAME, dev_name(data->dev), event, 0);
-#endif
 		break;
 	default:
 		dev_err(data->dev, FW_INFO "Unexpected ACPI notify event (%u)\n", event);

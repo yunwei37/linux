@@ -787,7 +787,6 @@ static inline void __range_close(struct files_struct *files, unsigned int fd,
  * from @fd up to and including @max_fd are closed.
  * Currently, errors to close a given file descriptor are ignored.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(close_range, unsigned int, fd, unsigned int, max_fd,
 		unsigned int, flags)
 {
@@ -839,7 +838,6 @@ SYSCALL_DEFINE3(close_range, unsigned int, fd, unsigned int, max_fd,
 
 	return 0;
 }
-#endif
 
 /**
  * file_close_fd - return file associated with fd
@@ -1432,14 +1430,11 @@ out_unlock:
 	return err;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(dup3, unsigned int, oldfd, unsigned int, newfd, int, flags)
 {
 	return ksys_dup3(oldfd, newfd, flags);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(dup2, unsigned int, oldfd, unsigned int, newfd)
 {
 	if (unlikely(newfd == oldfd)) { /* corner case */
@@ -1458,9 +1453,7 @@ SYSCALL_DEFINE2(dup2, unsigned int, oldfd, unsigned int, newfd)
 	}
 	return ksys_dup3(oldfd, newfd, 0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(dup, unsigned int, fildes)
 {
 	int ret = -EBADF;
@@ -1475,7 +1468,6 @@ SYSCALL_DEFINE1(dup, unsigned int, fildes)
 	}
 	return ret;
 }
-#endif
 
 int f_dupfd(unsigned int from, struct file *file, unsigned flags)
 {

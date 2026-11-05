@@ -1968,7 +1968,6 @@ out:
  * MREMAP_FIXED option added 5-Dec-1999 by Benjamin LaHaise
  * This option implies MREMAP_MAYMOVE.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
 		unsigned long, new_len, unsigned long, flags,
 		unsigned long, new_addr)
@@ -2003,4 +2002,3 @@ SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
 
 	return do_mremap(&vrm);
 }
-#endif

@@ -183,12 +183,10 @@ int do_set_thread_area(struct task_struct *p, int idx,
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(set_thread_area, struct user_desc __user *, u_info)
 {
 	return do_set_thread_area(current, -1, u_info, 1);
 }
-#endif
 
 
 /*
@@ -237,12 +235,10 @@ int do_get_thread_area(struct task_struct *p, int idx,
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(get_thread_area, struct user_desc __user *, u_info)
 {
 	return do_get_thread_area(current, -1, u_info);
 }
-#endif
 
 int regset_tls_active(struct task_struct *target,
 		      const struct user_regset *regset)

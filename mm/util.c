@@ -195,7 +195,6 @@ char *kmemdup_nul(const char *s, size_t len, gfp_t gfp)
 }
 EXPORT_SYMBOL(kmemdup_nul);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static kmem_buckets *user_buckets __ro_after_init;
 
 static int __init init_user_buckets(void)
@@ -313,7 +312,6 @@ void *memdup_user_nul(const void __user *src, size_t len)
 
 	return p;
 }
-#endif
 
 EXPORT_SYMBOL(memdup_user_nul);
 
@@ -328,7 +326,6 @@ int vma_is_stack_for_current(const struct vm_area_struct *vma)
 /*
  * Change backing file, only valid to use during initial VMA setup.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void vma_set_file(struct vm_area_struct *vma, struct file *file)
 {
 	/* Changing an anonymous vma with this is illegal */
@@ -336,7 +333,6 @@ void vma_set_file(struct vm_area_struct *vma, struct file *file)
 	swap(vma->vm_file, file);
 	fput(file);
 }
-#endif
 EXPORT_SYMBOL(vma_set_file);
 
 #ifndef STACK_RND_MASK
@@ -567,7 +563,6 @@ int account_locked_vm(struct mm_struct *mm, unsigned long pages, bool inc)
 }
 EXPORT_SYMBOL_GPL(account_locked_vm);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 unsigned long vm_mmap_pgoff(struct file *file, unsigned long addr,
 	unsigned long len, unsigned long prot,
 	unsigned long flag, unsigned long pgoff)
@@ -593,7 +588,6 @@ unsigned long vm_mmap_pgoff(struct file *file, unsigned long addr,
 	}
 	return ret;
 }
-#endif
 
 /*
  * Perform a userland memory mapping into the current process address space. See
@@ -612,7 +606,6 @@ unsigned long vm_mmap_pgoff(struct file *file, unsigned long addr,
  * Returns either an error, or the address at which the requested mapping has
  * been performed.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 unsigned long vm_mmap(struct file *file, unsigned long addr,
 	unsigned long len, unsigned long prot,
 	unsigned long flag, unsigned long offset)
@@ -624,7 +617,6 @@ unsigned long vm_mmap(struct file *file, unsigned long addr,
 
 	return vm_mmap_pgoff(file, addr, len, prot, flag, offset >> PAGE_SHIFT);
 }
-#endif
 EXPORT_SYMBOL(vm_mmap);
 
 /**
@@ -992,7 +984,6 @@ error:
  * Return: the size of the cmdline field copied. Note that the copy does
  * not guarantee an ending NULL byte.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int get_cmdline(struct task_struct *task, char *buffer, int buflen)
 {
 	int res = 0;
@@ -1041,7 +1032,6 @@ out_mm:
 out:
 	return res;
 }
-#endif
 
 int __weak memcmp_pages(struct page *page1, struct page *page2)
 {
@@ -1154,7 +1144,6 @@ EXPORT_SYMBOL(flush_dcache_folio);
  * @vma: The VMA to apply the .mmap_prepare() hook to.
  * Returns: 0 on success or error.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int __compat_vma_mmap_prepare(const struct file_operations *f_op,
 		struct file *file, struct vm_area_struct *vma)
 {
@@ -1178,7 +1167,6 @@ int __compat_vma_mmap_prepare(const struct file_operations *f_op,
 
 	return 0;
 }
-#endif
 EXPORT_SYMBOL(__compat_vma_mmap_prepare);
 
 /**
@@ -1207,12 +1195,10 @@ EXPORT_SYMBOL(__compat_vma_mmap_prepare);
  *
  * Returns: 0 on success or error.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int compat_vma_mmap_prepare(struct file *file, struct vm_area_struct *vma)
 {
 	return __compat_vma_mmap_prepare(file->f_op, file, vma);
 }
-#endif
 EXPORT_SYMBOL(compat_vma_mmap_prepare);
 
 static void set_ps_flags(struct page_snapshot *ps, const struct folio *folio,

@@ -3189,7 +3189,6 @@ int fib_dump_info_fnhe(struct sk_buff *skb, struct netlink_callback *cb,
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct sk_buff *inet_rtm_getroute_build_skb(__be32 src, __be32 dst,
 						   u8 ip_proto, __be16 sport,
 						   __be16 dport)
@@ -3250,9 +3249,7 @@ static struct sk_buff *inet_rtm_getroute_build_skb(__be32 src, __be32 dst,
 
 	return skb;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_rtm_valid_getroute_req(struct sk_buff *skb,
 				       const struct nlmsghdr *nlh,
 				       struct nlattr **tb,
@@ -3321,9 +3318,7 @@ static int inet_rtm_valid_getroute_req(struct sk_buff *skb,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_rtm_getroute(struct sk_buff *in_skb, struct nlmsghdr *nlh,
 			     struct netlink_ext_ack *extack)
 {
@@ -3493,7 +3488,6 @@ errout_rcu:
 	kfree_skb(skb);
 	goto errout_free;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 void ip_rt_multicast_event(struct in_device *in_dev)
 {
@@ -3752,12 +3746,10 @@ static __net_initdata struct pernet_operations ipv4_inetpeer_ops = {
 struct ip_rt_acct __percpu *ip_rt_acct __read_mostly;
 #endif /* CONFIG_IP_ROUTE_CLASSID */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct rtnl_msg_handler ip_rt_rtnl_msg_handlers[] __initconst = {
 	{.protocol = PF_INET, .msgtype = RTM_GETROUTE,
 	 .doit = inet_rtm_getroute, .flags = RTNL_FLAG_DOIT_UNLOCKED},
 };
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 int __init ip_rt_init(void)
 {
@@ -3816,9 +3808,7 @@ int __init ip_rt_init(void)
 	xfrm_init();
 	xfrm4_init();
 #endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	rtnl_register_many(ip_rt_rtnl_msg_handlers);
-#endif
 
 #ifdef CONFIG_SYSCTL
 	register_pernet_subsys(&sysctl_route_ops);

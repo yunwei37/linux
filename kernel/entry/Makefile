@@ -13,7 +13,5 @@ CFLAGS_REMOVE_common.o	 = -fstack-protector -fstack-protector-strong
 CFLAGS_common.o		+= -fno-stack-protector
 
 obj-$(CONFIG_GENERIC_IRQ_ENTRY) 	+= common.o
-ifndef CONFIG_MODELOS_KERNEL_ONLY
 obj-$(CONFIG_GENERIC_SYSCALL) 		+= syscall-common.o syscall_user_dispatch.o
-endif
 obj-$(CONFIG_VIRT_XFER_TO_GUEST_WORK)	+= virt.o

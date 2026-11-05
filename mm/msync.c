@@ -29,7 +29,6 @@
  * So by _not_ starting I/O in MS_ASYNC we provide complete flexibility to
  * applications.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(msync, unsigned long, start, size_t, len, int, flags)
 {
 	unsigned long end;
@@ -113,4 +112,3 @@ out_unlock:
 out:
 	return error ? : unmapped_error;
 }
-#endif

@@ -121,12 +121,6 @@
 #include <kunit/test.h>
 
 static int kernel_init(void *);
-#ifdef CONFIG_MODELOS
-void __noreturn modelos_enter(void);
-#ifdef CONFIG_MODELOS_RUST
-void __noreturn modelos_rust_enter(void);
-#endif
-#endif
 
 /*
  * Debug helper: via this flag we know that we are in 'early bootup code'
@@ -689,11 +683,7 @@ static noinline void __ref __noreturn rest_init(void)
 	 * the init task will end up wanting to create kthreads, which, if
 	 * we schedule it before we create kthreadd, will OOPS.
 	 */
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	pid = kernel_thread(kernel_init, NULL, NULL, CLONE_FS | CLONE_FILES);
-#else
 	pid = user_mode_thread(kernel_init, NULL, CLONE_FS);
-#endif
 	/*
 	 * Pin init on the boot CPU. Task migration is not properly working
 	 * until sched_init_smp() has been run. It will set the allowed
@@ -938,9 +928,7 @@ void start_kernel(void)
 	 * initalization of page allocator
 	 */
 	setup_log_buf(0);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	vfs_caches_init_early();
-#endif
 	sort_main_extable();
 	trap_init();
 	mm_core_init();
@@ -1054,13 +1042,9 @@ void start_kernel(void)
 	arch_cpu_finalize_init();
 
 	pid_idr_init();
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	anon_vma_init();
-#endif
 	thread_stack_cache_init();
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	cred_init();
-#endif
 	fork_init();
 	proc_caches_init();
 	uts_ns_init();
@@ -1069,27 +1053,13 @@ void start_kernel(void)
 	security_init();
 	dbg_late_init();
 	net_ns_init();
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	vfs_caches_init();
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	pagecache_init();
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	signals_init();
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	seq_file_init();
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	proc_root_init();
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	nsfs_init();
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	pidfs_init();
-#endif
 	cpuset_init();
 	mem_cgroup_init();
 	cgroup_init();
@@ -1496,11 +1466,6 @@ static int __ref kernel_init(void *unused)
 
 	rcu_end_inkernel_boot();
 
-#ifdef CONFIG_MODELOS_RUST
-	modelos_rust_enter();
-#elif defined(CONFIG_MODELOS)
-	modelos_enter();
-#endif
 
 	do_sysctl_args();
 
@@ -1546,7 +1511,6 @@ static int __ref kernel_init(void *unused)
 }
 
 /* Open /dev/console, for stdin/stdout/stderr, this should never fail */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void __init console_on_rootfs(void)
 {
 	struct file *file = filp_open("/dev/console", O_RDWR, 0);
@@ -1560,7 +1524,6 @@ void __init console_on_rootfs(void)
 	init_dup(file);
 	fput(file);
 }
-#endif
 
 static noinline void __init kernel_init_freeable(void)
 {
@@ -1595,10 +1558,6 @@ static noinline void __init kernel_init_freeable(void)
 
 	kunit_run_all_tests();
 
-#ifdef CONFIG_MODELOS
-	/* No rootfs, console file descriptors or executable init are needed. */
-	return;
-#endif
 
 	wait_for_initramfs();
 	console_on_rootfs();

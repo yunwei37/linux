@@ -630,7 +630,6 @@ static inline void fpu_inherit_perms(struct fpu *dst_fpu)
 }
 
 /* A passed ssp of zero will not cause any update */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int update_fpu_shstk(struct task_struct *dst, unsigned long ssp)
 {
 #ifdef CONFIG_X86_USER_SHADOW_STACK
@@ -657,7 +656,6 @@ static int update_fpu_shstk(struct task_struct *dst, unsigned long ssp)
 	return 0;
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* Clone current's FPU state on fork */
 int fpu_clone(struct task_struct *dst, u64 clone_flags, bool minimal,
@@ -692,9 +690,7 @@ int fpu_clone(struct task_struct *dst, u64 clone_flags, bool minimal,
 	 * No FPU state inheritance for kernel threads and IO
 	 * worker threads.
 	 */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (minimal)
-#endif
 	{
 		/* Clear out the minimal state */
 		memcpy(&dst_fpu->fpstate->regs, &init_fpstate.regs,
@@ -702,7 +698,6 @@ int fpu_clone(struct task_struct *dst, u64 clone_flags, bool minimal,
 		return 0;
 	}
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	/*
 	 * If a new feature is added, ensure all dynamic features are
 	 * caller-saved from here!
@@ -742,7 +737,6 @@ int fpu_clone(struct task_struct *dst, u64 clone_flags, bool minimal,
 	trace_x86_fpu_copy_dst(dst_fpu);
 
 	return 0;
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 }
 
 /*
@@ -792,7 +786,6 @@ void fpu__drop(struct task_struct *tsk)
 	preempt_enable();
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 /*
  * Clear FPU registers by setting them up from the init fpstate.
  * Caller must do fpregs_[un]lock() around it.
@@ -912,7 +905,6 @@ void fpregs_lock_and_load(void)
 		fpregs_restore_userregs();
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #ifdef CONFIG_X86_DEBUG_FPU
 /*

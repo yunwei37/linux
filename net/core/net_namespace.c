@@ -842,7 +842,6 @@ static const struct nla_policy rtnl_net_policy[NETNSA_MAX + 1] = {
 	[NETNSA_TARGET_NSID]	= { .type = NLA_S32 },
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_net_newid(struct sk_buff *skb, struct nlmsghdr *nlh,
 			  struct netlink_ext_ack *extack)
 {
@@ -903,7 +902,6 @@ out:
 	put_net(peer);
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int rtnl_net_get_size(void)
 {
@@ -951,7 +949,6 @@ nla_put_failure:
 	return -EMSGSIZE;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_net_valid_getid_req(struct sk_buff *skb,
 				    const struct nlmsghdr *nlh,
 				    struct nlattr **tb,
@@ -988,9 +985,7 @@ static int rtnl_net_valid_getid_req(struct sk_buff *skb,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_net_getid(struct sk_buff *skb, struct nlmsghdr *nlh,
 			  struct netlink_ext_ack *extack)
 {
@@ -1068,7 +1063,6 @@ out:
 	put_net(peer);
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 struct rtnl_net_dump_cb {
 	struct net *tgt_net;
@@ -1080,7 +1074,6 @@ struct rtnl_net_dump_cb {
 };
 
 /* Runs in RCU-critical section. */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_net_dumpid_one(int id, void *peer, void *data)
 {
 	struct rtnl_net_dump_cb *net_cb = (struct rtnl_net_dump_cb *)data;
@@ -1100,9 +1093,7 @@ cont:
 	net_cb->idx++;
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_valid_dump_net_req(const struct nlmsghdr *nlh, struct sock *sk,
 				   struct rtnl_net_dump_cb *net_cb,
 				   struct netlink_callback *cb)
@@ -1144,9 +1135,7 @@ static int rtnl_valid_dump_net_req(const struct nlmsghdr *nlh, struct sock *sk,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtnl_net_dumpid(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	struct rtnl_net_dump_cb net_cb = {
@@ -1179,7 +1168,6 @@ end:
 		put_net(net_cb.tgt_net);
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void rtnl_net_notifyid(struct net *net, int cmd, int id, u32 portid,
 			      struct nlmsghdr *nlh, gfp_t gfp)
@@ -1256,7 +1244,6 @@ static void __init netns_ipv4_struct_check(void)
 }
 #endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct rtnl_msg_handler net_ns_rtnl_msg_handlers[] __initconst = {
 	{.msgtype = RTM_NEWNSID, .doit = rtnl_net_newid,
 	 .flags = RTNL_FLAG_DOIT_UNLOCKED},
@@ -1264,7 +1251,6 @@ static const struct rtnl_msg_handler net_ns_rtnl_msg_handlers[] __initconst = {
 	 .dumpit = rtnl_net_dumpid,
 	 .flags = RTNL_FLAG_DOIT_UNLOCKED | RTNL_FLAG_DUMP_UNLOCKED},
 };
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 void __init net_ns_init(void)
 {
@@ -1309,9 +1295,7 @@ void __init net_ns_init(void)
 	if (register_pernet_subsys(&net_ns_ops))
 		panic("Could not register network namespace subsystems");
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	rtnl_register_many(net_ns_rtnl_msg_handlers);
-#endif
 }
 
 #ifdef CONFIG_NET_NS

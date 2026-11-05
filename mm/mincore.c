@@ -275,7 +275,6 @@ static long do_mincore(unsigned long addr, unsigned long pages, unsigned char *v
  *		mapped
  *  -EAGAIN - A kernel resource was temporarily unavailable.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(mincore, unsigned long, start, size_t, len,
 		unsigned char __user *, vec)
 {
@@ -328,4 +327,3 @@ SYSCALL_DEFINE3(mincore, unsigned long, start, size_t, len,
 	free_page((unsigned long) tmp);
 	return retval;
 }
-#endif

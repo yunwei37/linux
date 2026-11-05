@@ -12,9 +12,7 @@ obj-y     = fork.o exec_domain.o panic.o \
 	    notifier.o ksysfs.o cred.o reboot.o \
 	    async.o range.o smpboot.o ucount.o regset.o ksyms_common.o
 
-ifndef CONFIG_MODELOS_KERNEL_ONLY
 obj-y += sys_ni.o
-endif
 
 obj-$(CONFIG_MULTIUSER) += groups.o
 obj-$(CONFIG_VHOST_TASK) += vhost_task.o
@@ -211,13 +209,3 @@ $(obj)/kheaders.md5: $(obj)/kheaders-srclist FORCE
 	$(call filechk,kheaders_md5sum)
 
 clean-files := kheaders.md5 kheaders-srclist kheaders-objlist
-
-ifdef CONFIG_MODELOS_KERNEL_ONLY
-# No syscall bodies or UID-overflow sysctl are consumed by kernel workers.
-obj-y := $(filter-out ptrace.o capability.o sys.o,$(obj-y))
-endif
-
-ifdef CONFIG_MODELOS_KERNEL_ONLY
-obj-y := $(filter-out umh.o,$(obj-y))
-endif
-obj-$(CONFIG_MODELOS_KEXEC_FREE_SNAPSHOT) += kexec_free_snapshot.o

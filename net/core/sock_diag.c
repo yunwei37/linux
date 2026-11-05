@@ -16,14 +16,12 @@
 #include <linux/inet_diag.h>
 #include <linux/sock_diag.h>
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct sock_diag_handler __rcu *sock_diag_handlers[AF_MAX];
 
 static const struct sock_diag_inet_compat __rcu *inet_rcv_compat;
 
 static struct workqueue_struct *broadcast_wq;
 
-#endif
 
 DEFINE_COOKIE(sock_cookie);
 
@@ -42,7 +40,6 @@ u64 __sock_gen_cookie(struct sock *sk)
 	return res;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int sock_diag_check_cookie(struct sock *sk, const __u32 *cookie)
 {
 	u64 res;
@@ -357,5 +354,3 @@ static int __init sock_diag_init(void)
 	return register_pernet_subsys(&diag_net_ops);
 }
 device_initcall(sock_diag_init);
-
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */

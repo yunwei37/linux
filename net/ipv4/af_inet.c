@@ -855,7 +855,6 @@ int inet_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
 }
 EXPORT_SYMBOL(inet_sendmsg);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void inet_splice_eof(struct socket *sock)
 {
 	const struct proto *prot;
@@ -869,7 +868,6 @@ void inet_splice_eof(struct socket *sock)
 	if (prot->splice_eof)
 		prot->splice_eof(sock);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL_GPL(inet_splice_eof);
 
 INDIRECT_CALLABLE_DECLARE(int udp_recvmsg(struct sock *, struct msghdr *,
@@ -953,7 +951,6 @@ EXPORT_SYMBOL(inet_shutdown);
  *	There's a good 20K of config code hanging around the kernel.
  */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 {
 	struct sock *sk = sock->sk;
@@ -1009,7 +1006,6 @@ int inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 	}
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL(inet_ioctl);
 
 #ifdef CONFIG_COMPAT
@@ -1033,7 +1029,6 @@ static int inet_compat_routing_ioctl(struct sock *sk, unsigned int cmd,
 	return ip_rt_ioctl(sock_net(sk), cmd, &rt);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_compat_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 {
 	void __user *argp = compat_ptr(arg);
@@ -1049,7 +1044,6 @@ static int inet_compat_ioctl(struct socket *sock, unsigned int cmd, unsigned lon
 		return sk->sk_prot->compat_ioctl(sk, cmd, arg);
 	}
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 #endif /* CONFIG_COMPAT */
 
 const struct proto_ops inet_stream_ops = {
@@ -1061,37 +1055,27 @@ const struct proto_ops inet_stream_ops = {
 	.socketpair	   = sock_no_socketpair,
 	.accept		   = inet_accept,
 	.getname	   = inet_getname,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.poll		   = tcp_poll,
 	.ioctl		   = inet_ioctl,
 	.gettstamp	   = sock_gettstamp,
-#endif
 	.listen		   = inet_listen,
 	.shutdown	   = inet_shutdown,
 	.setsockopt	   = sock_common_setsockopt,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt	   = sock_common_getsockopt,
-#endif
 	.sendmsg	   = inet_sendmsg,
 	.recvmsg	   = inet_recvmsg,
 #ifdef CONFIG_MMU
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.mmap		   = tcp_mmap,
 #endif
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.splice_eof	   = inet_splice_eof,
 	.splice_read	   = tcp_splice_read,
-#endif
 	.set_peek_off      = sk_set_peek_off,
 	.read_sock	   = tcp_read_sock,
 	.read_skb	   = tcp_read_skb,
 	.sendmsg_locked    = tcp_sendmsg_locked,
 	.peek_len	   = tcp_peek_len,
 #ifdef CONFIG_COMPAT
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.compat_ioctl	   = inet_compat_ioctl,
-#endif
 #endif
 	.set_rcvlowat	   = tcp_set_rcvlowat,
 };
@@ -1106,29 +1090,21 @@ const struct proto_ops inet_dgram_ops = {
 	.socketpair	   = sock_no_socketpair,
 	.accept		   = sock_no_accept,
 	.getname	   = inet_getname,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.poll		   = udp_poll,
 	.ioctl		   = inet_ioctl,
 	.gettstamp	   = sock_gettstamp,
-#endif
 	.listen		   = sock_no_listen,
 	.shutdown	   = inet_shutdown,
 	.setsockopt	   = sock_common_setsockopt,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt	   = sock_common_getsockopt,
-#endif
 	.sendmsg	   = inet_sendmsg,
 	.read_skb	   = udp_read_skb,
 	.recvmsg	   = inet_recvmsg,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.mmap		   = sock_no_mmap,
 	.splice_eof	   = inet_splice_eof,
-#endif
 	.set_peek_off	   = udp_set_peek_off,
 #ifdef CONFIG_COMPAT
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.compat_ioctl	   = inet_compat_ioctl,
-#endif
 #endif
 };
 EXPORT_SYMBOL(inet_dgram_ops);
@@ -1146,27 +1122,19 @@ static const struct proto_ops inet_sockraw_ops = {
 	.socketpair	   = sock_no_socketpair,
 	.accept		   = sock_no_accept,
 	.getname	   = inet_getname,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.poll		   = datagram_poll,
 	.ioctl		   = inet_ioctl,
 	.gettstamp	   = sock_gettstamp,
-#endif
 	.listen		   = sock_no_listen,
 	.shutdown	   = inet_shutdown,
 	.setsockopt	   = sock_common_setsockopt,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt	   = sock_common_getsockopt,
-#endif
 	.sendmsg	   = inet_sendmsg,
 	.recvmsg	   = inet_recvmsg,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.mmap		   = sock_no_mmap,
 	.splice_eof	   = inet_splice_eof,
-#endif
 #ifdef CONFIG_COMPAT
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.compat_ioctl	   = inet_compat_ioctl,
-#endif
 #endif
 };
 

@@ -37,7 +37,6 @@ static inline void compat_sig_setmask(sigset_t *blocked, compat_sigset_word set)
 	memcpy(blocked->sig, &set, sizeof(set));
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(sigprocmask, int, how,
 		       compat_old_sigset_t __user *, nset,
 		       compat_old_sigset_t __user *, oset)
@@ -78,7 +77,6 @@ COMPAT_SYSCALL_DEFINE3(sigprocmask, int, how,
 
 	return 0;
 }
-#endif
 
 #endif
 
@@ -123,7 +121,6 @@ static int compat_get_user_cpu_mask(compat_ulong_t __user *user_mask_ptr,
 	return compat_get_bitmap(k, user_mask_ptr, len * 8);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(sched_setaffinity, compat_pid_t, pid,
 		       unsigned int, len,
 		       compat_ulong_t __user *, user_mask_ptr)
@@ -143,9 +140,7 @@ out:
 	free_cpumask_var(new_mask);
 	return retval;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(sched_getaffinity, compat_pid_t,  pid, unsigned int, len,
 		       compat_ulong_t __user *, user_mask_ptr)
 {
@@ -173,7 +168,6 @@ COMPAT_SYSCALL_DEFINE3(sched_getaffinity, compat_pid_t,  pid, unsigned int, len,
 
 	return ret;
 }
-#endif
 
 /*
  * We currently only need the following fields from the sigevent

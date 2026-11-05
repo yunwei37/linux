@@ -2476,7 +2476,6 @@ EXPORT_SYMBOL(dev_driver_string);
 
 #define to_dev_attr(_attr) container_of(_attr, struct device_attribute, attr)
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t dev_attr_show(struct kobject *kobj, struct attribute *attr,
 			     char *buf)
 {
@@ -2510,7 +2509,6 @@ static const struct sysfs_ops dev_sysfs_ops = {
 	.store	= dev_attr_store,
 };
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #define to_ext_attr(x) container_of(x, struct dev_ext_attribute, attr)
 
@@ -2660,15 +2658,12 @@ static void device_get_ownership(const struct kobject *kobj, kuid_t *uid, kgid_t
 
 static const struct kobj_type device_ktype = {
 	.release	= device_release,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops	= &dev_sysfs_ops,
-#endif
 	.namespace	= device_namespace,
 	.get_ownership	= device_get_ownership,
 };
 
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int dev_uevent_filter(const struct kobject *kobj)
 {
 	const struct kobj_type *ktype = get_ktype(kobj);
@@ -2794,9 +2789,7 @@ static const struct kset_uevent_ops device_uevent_ops = {
 	.name =		dev_uevent_name,
 	.uevent =	dev_uevent,
 };
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t uevent_show(struct device *dev, struct device_attribute *attr,
 			   char *buf)
 {
@@ -2855,7 +2848,6 @@ static ssize_t uevent_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 static DEVICE_ATTR_RW(uevent);
-#endif
 
 static ssize_t online_show(struct device *dev, struct device_attribute *attr,
 			   char *buf)
@@ -3287,9 +3279,7 @@ struct kobj_ns_type_operations *class_dir_child_ns_type(const struct kobject *ko
 
 static const struct kobj_type class_dir_ktype = {
 	.release	= class_dir_release,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops	= &kobj_sysfs_ops,
-#endif
 	.child_ns_type	= class_dir_child_ns_type
 };
 
@@ -3712,11 +3702,9 @@ int device_add(struct device *dev)
 	/* notify platform of device entry */
 	device_platform_notify(dev);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	error = device_create_file(dev, &dev_attr_uevent);
 	if (error)
 		goto attrError;
-#endif
 
 	error = device_add_class_symlinks(dev);
 	if (error)
@@ -3748,9 +3736,7 @@ int device_add(struct device *dev)
 	 * after dpm_sysfs_add() and before kobject_uevent().
 	 */
 	bus_notify(dev, BUS_NOTIFY_ADD_DEVICE);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->kobj, KOBJ_ADD);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	/*
 	 * Check if any of the other devices (consumers) have been waiting for
@@ -3828,14 +3814,10 @@ done:
  AttrsError:
 	device_remove_class_symlinks(dev);
  SymlinkError:
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	device_remove_file(dev, &dev_attr_uevent);
  attrError:
-#endif
 	device_platform_notify_remove(dev);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->kobj, KOBJ_REMOVE);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	glue_dir = get_glue_dir(dev);
 	kobject_del(&dev->kobj);
  Error:
@@ -3975,9 +3957,7 @@ void device_del(struct device *dev)
 		mutex_unlock(&sp->mutex);
 		subsys_put(sp);
 	}
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	device_remove_file(dev, &dev_attr_uevent);
-#endif
 	device_remove_attrs(dev);
 	bus_remove_device(dev);
 	device_pm_remove(dev);
@@ -3997,9 +3977,7 @@ void device_del(struct device *dev)
 	devres_release_all(dev);
 
 	bus_notify(dev, BUS_NOTIFY_REMOVED_DEVICE);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->kobj, KOBJ_REMOVE);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	glue_dir = get_glue_dir(dev);
 	kobject_del(&dev->kobj);
 	cleanup_glue_dir(dev, glue_dir);
@@ -4232,11 +4210,7 @@ EXPORT_SYMBOL_GPL(device_find_child);
 
 int __init devices_init(void)
 {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	devices_kset = kset_create_and_add("devices", NULL, NULL);
-#else
 	devices_kset = kset_create_and_add("devices", &device_uevent_ops, NULL);
-#endif
 	if (!devices_kset)
 		return -ENOMEM;
 	dev_kobj = kobject_create_and_add("dev", NULL);
@@ -4305,9 +4279,7 @@ int device_offline(struct device *dev)
 		} else {
 			ret = dev->bus->offline(dev);
 			if (!ret) {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 				kobject_uevent(&dev->kobj, KOBJ_OFFLINE);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 				dev->offline = true;
 			}
 		}
@@ -4336,9 +4308,7 @@ int device_online(struct device *dev)
 		if (dev->offline) {
 			ret = dev->bus->online(dev);
 			if (!ret) {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 				kobject_uevent(&dev->kobj, KOBJ_ONLINE);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 				dev->offline = false;
 			}
 		} else {
@@ -4854,7 +4824,6 @@ int device_change_owner(struct device *dev, kuid_t kuid, kgid_t kgid)
 	if (error)
 		goto out;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	/*
 	 * Change the uevent file for @dev to the new owner. The uevent file
 	 * was created in a separate step when @dev got added and we mirror
@@ -4864,7 +4833,6 @@ int device_change_owner(struct device *dev, kuid_t kuid, kgid_t kgid)
 					kgid);
 	if (error)
 		goto out;
-#endif
 
 	/*
 	 * Change the device groups, the device groups associated with the

@@ -208,9 +208,7 @@ static __always_inline void regs_set_return_value(struct pt_regs *regs, unsigned
  */
 static __always_inline int user_mode(struct pt_regs *regs)
 {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	return 0;
-#elif defined(CONFIG_X86_32)
+#if   defined(CONFIG_X86_32)
 	return ((regs->cs & SEGMENT_RPL_MASK) | (regs->flags & X86_VM_MASK)) >= USER_RPL;
 #else
 	return !!(regs->cs & 3);

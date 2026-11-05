@@ -208,7 +208,6 @@ int thermal_zone_device_set_policy(struct thermal_zone_device *tz,
 	return ret;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int thermal_build_list_of_policies(char *buf)
 {
 	struct thermal_governor *pos;
@@ -223,7 +222,6 @@ int thermal_build_list_of_policies(char *buf)
 
 	return count;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void __init thermal_unregister_governors(void)
 {
@@ -647,9 +645,7 @@ void __thermal_zone_device_update(struct thermal_zone_device *tz,
 
 	thermal_zone_handle_trips(tz, governor, &low, &high);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	thermal_thresholds_handle(tz, &low, &high);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	thermal_zone_set_trips(tz, low, high);
 
@@ -867,7 +863,6 @@ static int thermal_bind_cdev_to_trip(struct thermal_zone_device *tz,
 		goto free_mem;
 
 	dev->id = result;
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	sprintf(dev->name, "cdev%d", dev->id);
 	result =
 	    sysfs_create_link(&tz->device.kobj, &cdev->device.kobj, dev->name);
@@ -894,28 +889,21 @@ static int thermal_bind_cdev_to_trip(struct thermal_zone_device *tz,
 	result = device_create_file(&tz->device, &dev->weight_attr);
 	if (result)
 		goto remove_trip_file;
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	result = thermal_instance_add(dev, cdev, td);
 	if (result)
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-		goto release_ida;
-#else
 		goto remove_weight_file;
-#endif
 
 	thermal_governor_update_tz(tz, THERMAL_TZ_BIND_CDEV);
 
 	return 0;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 remove_weight_file:
 	device_remove_file(&tz->device, &dev->weight_attr);
 remove_trip_file:
 	device_remove_file(&tz->device, &dev->attr);
 remove_symbol_link:
 	sysfs_remove_link(&tz->device.kobj, dev->name);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 release_ida:
 	ida_free(&tz->ida, dev->id);
 free_mem:
@@ -960,11 +948,9 @@ static void thermal_unbind_cdev_from_trip(struct thermal_zone_device *tz,
 unbind:
 	thermal_governor_update_tz(tz, THERMAL_TZ_UNBIND_CDEV);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	device_remove_file(&tz->device, &pos->weight_attr);
 	device_remove_file(&tz->device, &pos->attr);
 	sysfs_remove_link(&tz->device.kobj, pos->name);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	ida_free(&tz->ida, pos->id);
 	kfree(pos);
 }
@@ -977,9 +963,7 @@ static void thermal_release(struct device *dev)
 	if (!strncmp(dev_name(dev), "thermal_zone",
 		     sizeof("thermal_zone") - 1)) {
 		tz = to_thermal_zone(dev);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		thermal_zone_destroy_device_groups(tz);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 		thermal_set_governor(tz, NULL);
 		ida_destroy(&tz->ida);
 		mutex_destroy(&tz->lock);
@@ -987,9 +971,7 @@ static void thermal_release(struct device *dev)
 	} else if (!strncmp(dev_name(dev), "cooling_device",
 			    sizeof("cooling_device") - 1)) {
 		cdev = to_cooling_device(dev);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		thermal_cooling_device_destroy_sysfs(cdev);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 		kfree_const(cdev->type);
 		ida_free(&thermal_cdev_ida, cdev->id);
 		kfree(cdev);
@@ -1132,9 +1114,7 @@ __thermal_cooling_device_register(struct device_node *np,
 	if (ret)
 		current_state = ULONG_MAX;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	thermal_cooling_device_setup_sysfs(cdev);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	ret = dev_set_name(&cdev->device, "cooling_device%d", cdev->id);
 	if (ret)
@@ -1155,9 +1135,7 @@ __thermal_cooling_device_register(struct device_node *np,
 	return cdev;
 
 out_cooling_dev:
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	thermal_cooling_device_destroy_sysfs(cdev);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 out_cdev_type:
 	kfree_const(cdev->type);
 out_ida_remove:
@@ -1309,9 +1287,7 @@ void thermal_cooling_device_update(struct thermal_cooling_device *cdev)
 	if (cdev->ops->get_max_state(cdev, &cdev->max_state))
 		return;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	thermal_cooling_device_stats_reinit(cdev);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	list_for_each_entry(ti, &cdev->thermal_instances, cdev_node) {
 		if (ti->upper == cdev->max_state)
@@ -1338,9 +1314,7 @@ void thermal_cooling_device_update(struct thermal_cooling_device *cdev)
 	if (cdev->ops->get_cur_state(cdev, &state) || state > cdev->max_state)
 		return;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	thermal_cooling_device_stats_update(cdev, state);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 }
 EXPORT_SYMBOL_GPL(thermal_cooling_device_update);
 
@@ -1632,7 +1606,6 @@ thermal_zone_device_register_with_trips(const char *type,
 	if (result)
 		goto remove_id;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	/* sys I/F */
 	/* Add nodes that are always present via .groups */
 	result = thermal_zone_create_device_groups(tz);
@@ -1640,13 +1613,11 @@ thermal_zone_device_register_with_trips(const char *type,
 		thermal_set_governor(tz, NULL);
 		goto remove_id;
 	}
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	result = device_register(&tz->device);
 	if (result)
 		goto release_device;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!tz->tzp || !tz->tzp->no_hwmon) {
 		result = thermal_add_hwmon_sysfs(tz);
 		if (result)
@@ -1656,7 +1627,6 @@ thermal_zone_device_register_with_trips(const char *type,
 	result = thermal_thresholds_init(tz);
 	if (result)
 		goto remove_hwmon;
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	thermal_zone_init_complete(tz);
 
@@ -1666,12 +1636,10 @@ thermal_zone_device_register_with_trips(const char *type,
 
 	return tz;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 remove_hwmon:
 	thermal_remove_hwmon_sysfs(tz);
 unregister:
 	device_del(&tz->device);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 release_device:
 	put_device(&tz->device);
 	wait_for_completion(&tz->removal);
@@ -1757,12 +1725,8 @@ void thermal_zone_device_unregister(struct thermal_zone_device *tz)
 
 	cancel_delayed_work_sync(&tz->poll_queue);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	thermal_thresholds_exit(tz);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	thermal_remove_hwmon_sysfs(tz);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	device_del(&tz->device);
 	put_device(&tz->device);

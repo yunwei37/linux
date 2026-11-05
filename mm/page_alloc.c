@@ -3396,9 +3396,7 @@ out:
 	    unlikely(test_bit(ZONE_BOOSTED_WATERMARK, &zone->flags))) {
 		clear_bit(ZONE_BOOSTED_WATERMARK, &zone->flags);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		wakeup_kswapd(zone, 0, 0, zone_idx(zone));
-#endif
 	}
 
 	VM_BUG_ON_PAGE(page && bad_range(zone, page), page);
@@ -4510,9 +4508,7 @@ static void wake_all_kswapds(unsigned int order, gfp_t gfp_mask,
 		if (last_pgdat == zone->zone_pgdat)
 			continue;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		wakeup_kswapd(zone, gfp_mask, reclaim_order, highest_zoneidx);
-#endif
 		last_pgdat = zone->zone_pgdat;
 	}
 }
@@ -4735,20 +4731,6 @@ static inline struct page *
 __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 						struct alloc_context *ac)
 {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	/* No user/file reclaim. Preserve the no-fail contract for kernel users. */
-	if (gfp_mask & __GFP_NOFAIL) {
-		struct page *page;
-		do {
-			page = get_page_from_freelist(gfp_mask, order, ALLOC_WMARK_MIN, ac);
-			if (page)
-				return page;
-			schedule_timeout_uninterruptible(1);
-		} while (1);
-	}
-	warn_alloc(gfp_mask, NULL, "ModelOS kernel allocation failed, order:%u", order);
-	return NULL;
-#else
 	bool can_direct_reclaim = gfp_mask & __GFP_DIRECT_RECLAIM;
 	bool can_compact = gfp_compaction_allowed(gfp_mask);
 	bool nofail = gfp_mask & __GFP_NOFAIL;
@@ -5056,7 +5038,6 @@ fail:
 			"page allocation failure: order:%u", order);
 got_pg:
 	return page;
-#endif
 }
 
 static inline bool prepare_alloc_pages(gfp_t gfp_mask, unsigned int order,
@@ -6353,14 +6334,10 @@ static int page_alloc_cpu_dead(unsigned int cpu)
 {
 	struct zone *zone;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 
 	lru_add_drain_cpu(cpu);
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	mlock_drain_remote(cpu);
-#endif
 	drain_pages(cpu);
 
 	/*

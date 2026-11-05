@@ -571,7 +571,6 @@ out:
 	return error;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(timer_create, const clockid_t, which_clock,
 		struct sigevent __user *, timer_event_spec,
 		timer_t __user *, created_timer_id)
@@ -585,10 +584,8 @@ SYSCALL_DEFINE3(timer_create, const clockid_t, which_clock,
 	}
 	return do_timer_create(which_clock, NULL, created_timer_id);
 }
-#endif
 
 #ifdef CONFIG_COMPAT
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(timer_create, clockid_t, which_clock,
 		       struct compat_sigevent __user *, timer_event_spec,
 		       timer_t __user *, created_timer_id)
@@ -602,7 +599,6 @@ COMPAT_SYSCALL_DEFINE3(timer_create, clockid_t, which_clock,
 	}
 	return do_timer_create(which_clock, NULL, created_timer_id);
 }
-#endif
 #endif
 
 static struct k_itimer *__lock_timer(timer_t timer_id)
@@ -753,7 +749,6 @@ static int do_timer_gettime(timer_t timer_id,  struct itimerspec64 *setting)
 }
 
 /* Get the time remaining on a POSIX.1b interval timer. */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(timer_gettime, timer_t, timer_id,
 		struct __kernel_itimerspec __user *, setting)
 {
@@ -766,11 +761,9 @@ SYSCALL_DEFINE2(timer_gettime, timer_t, timer_id,
 	}
 	return ret;
 }
-#endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(timer_gettime32, timer_t, timer_id,
 		struct old_itimerspec32 __user *, setting)
 {
@@ -783,7 +776,6 @@ SYSCALL_DEFINE2(timer_gettime32, timer_t, timer_id,
 	}
 	return ret;
 }
-#endif
 
 #endif
 
@@ -805,13 +797,11 @@ SYSCALL_DEFINE2(timer_gettime32, timer_t, timer_id,
  *	-EINVAL		@timer_id is invalid
  *	1..INT_MAX	The number of overruns related to the last delivered signal
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(timer_getoverrun, timer_t, timer_id)
 {
 	scoped_timer_get_or_fail(timer_id)
 		return timer_overrun_to_int(scoped_timer);
 }
-#endif
 
 static bool common_hrtimer_arm(struct k_itimer *timr, ktime_t expires,
 			       bool absolute, bool sigev_none)
@@ -963,7 +953,6 @@ static int do_timer_settime(timer_t timer_id, int tmr_flags, struct itimerspec64
 }
 
 /* Set a POSIX.1b interval timer */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(timer_settime, timer_t, timer_id, int, flags,
 		const struct __kernel_itimerspec __user *, new_setting,
 		struct __kernel_itimerspec __user *, old_setting)
@@ -985,10 +974,8 @@ SYSCALL_DEFINE4(timer_settime, timer_t, timer_id, int, flags,
 	}
 	return error;
 }
-#endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(timer_settime32, timer_t, timer_id, int, flags,
 		struct old_itimerspec32 __user *, new,
 		struct old_itimerspec32 __user *, old)
@@ -1009,7 +996,6 @@ SYSCALL_DEFINE4(timer_settime32, timer_t, timer_id, int, flags,
 	}
 	return error;
 }
-#endif
 #endif
 
 int common_timer_del(struct k_itimer *timer)
@@ -1072,7 +1058,6 @@ static void posix_timer_delete(struct k_itimer *timer)
 }
 
 /* Delete a POSIX.1b interval timer. */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(timer_delete, timer_t, timer_id)
 {
 	struct k_itimer *timer;
@@ -1085,7 +1070,6 @@ SYSCALL_DEFINE1(timer_delete, timer_t, timer_id)
 	posix_timer_unhash_and_free(timer);
 	return 0;
 }
-#endif
 
 /*
  * Invoked from do_exit() when the last thread of a thread group exits.
@@ -1130,7 +1114,6 @@ void exit_itimers(struct task_struct *tsk)
 	}
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_settime, const clockid_t, which_clock,
 		const struct __kernel_timespec __user *, tp)
 {
@@ -1149,9 +1132,7 @@ SYSCALL_DEFINE2(clock_settime, const clockid_t, which_clock,
 	 */
 	return kc->clock_set(which_clock, &new_tp);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_gettime, const clockid_t, which_clock,
 		struct __kernel_timespec __user *, tp)
 {
@@ -1169,7 +1150,6 @@ SYSCALL_DEFINE2(clock_gettime, const clockid_t, which_clock,
 
 	return error;
 }
-#endif
 
 int do_clock_adjtime(const clockid_t which_clock, struct __kernel_timex * ktx)
 {
@@ -1183,7 +1163,6 @@ int do_clock_adjtime(const clockid_t which_clock, struct __kernel_timex * ktx)
 	return kc->clock_adj(which_clock, ktx);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_adjtime, const clockid_t, which_clock,
 		struct __kernel_timex __user *, utx)
 {
@@ -1200,7 +1179,6 @@ SYSCALL_DEFINE2(clock_adjtime, const clockid_t, which_clock,
 
 	return err;
 }
-#endif
 
 /**
  * sys_clock_getres - Get the resolution of a clock
@@ -1275,7 +1253,6 @@ SYSCALL_DEFINE2(clock_adjtime, const clockid_t, which_clock,
  *	-ENODEV		Dynamic POSIX clock is not backed by a device
  *	-EOPNOTSUPP	Dynamic POSIX clock does not support getres()
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_getres, const clockid_t, which_clock,
 		struct __kernel_timespec __user *, tp)
 {
@@ -1293,11 +1270,9 @@ SYSCALL_DEFINE2(clock_getres, const clockid_t, which_clock,
 
 	return error;
 }
-#endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_settime32, clockid_t, which_clock,
 		struct old_timespec32 __user *, tp)
 {
@@ -1312,9 +1287,7 @@ SYSCALL_DEFINE2(clock_settime32, clockid_t, which_clock,
 
 	return kc->clock_set(which_clock, &ts);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_gettime32, clockid_t, which_clock,
 		struct old_timespec32 __user *, tp)
 {
@@ -1332,9 +1305,7 @@ SYSCALL_DEFINE2(clock_gettime32, clockid_t, which_clock,
 
 	return err;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_adjtime32, clockid_t, which_clock,
 		struct old_timex32 __user *, utp)
 {
@@ -1352,9 +1323,7 @@ SYSCALL_DEFINE2(clock_adjtime32, clockid_t, which_clock,
 
 	return err;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(clock_getres_time32, clockid_t, which_clock,
 		struct old_timespec32 __user *, tp)
 {
@@ -1371,7 +1340,6 @@ SYSCALL_DEFINE2(clock_getres_time32, clockid_t, which_clock,
 
 	return err;
 }
-#endif
 
 #endif
 
@@ -1406,7 +1374,6 @@ static int common_nsleep_timens(const clockid_t which_clock, int flags,
 				 which_clock);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(clock_nanosleep, const clockid_t, which_clock, int, flags,
 		const struct __kernel_timespec __user *, rqtp,
 		struct __kernel_timespec __user *, rmtp)
@@ -1432,11 +1399,9 @@ SYSCALL_DEFINE4(clock_nanosleep, const clockid_t, which_clock, int, flags,
 
 	return kc->nsleep(which_clock, flags, &t);
 }
-#endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(clock_nanosleep_time32, clockid_t, which_clock, int, flags,
 		struct old_timespec32 __user *, rqtp,
 		struct old_timespec32 __user *, rmtp)
@@ -1462,7 +1427,6 @@ SYSCALL_DEFINE4(clock_nanosleep_time32, clockid_t, which_clock, int, flags,
 
 	return kc->nsleep(which_clock, flags, &t);
 }
-#endif
 
 #endif
 

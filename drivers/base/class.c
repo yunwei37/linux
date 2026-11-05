@@ -66,7 +66,6 @@ done:
 	return sp;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t class_attr_show(struct kobject *kobj, struct attribute *attr,
 			       char *buf)
 {
@@ -91,7 +90,6 @@ static ssize_t class_attr_store(struct kobject *kobj, struct attribute *attr,
 	return ret;
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void class_release(struct kobject *kobj)
 {
@@ -118,18 +116,14 @@ static const struct kobj_ns_type_operations *class_child_ns_type(const struct ko
 	return class->ns_type;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct sysfs_ops class_sysfs_ops = {
 	.show	   = class_attr_show,
 	.store	   = class_attr_store,
 };
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static const struct kobj_type class_ktype = {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops	= &class_sysfs_ops,
-#endif
 	.release	= class_release,
 	.child_ns_type	= class_child_ns_type,
 };

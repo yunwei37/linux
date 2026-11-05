@@ -13,7 +13,6 @@
 #include <linux/instrumented.h>
 #include <linux/iov_iter.h>
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static __always_inline
 size_t copy_to_user_iter(void __user *iter_to, size_t progress,
 			 size_t len, void *from, void *priv2)
@@ -59,7 +58,6 @@ size_t copy_from_user_iter(void __user *iter_from, size_t progress,
 	return res;
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static __always_inline
 size_t memcpy_to_iter(void *iter_to, size_t progress,
@@ -90,7 +88,6 @@ size_t memcpy_from_iter(void *iter_from, size_t progress,
  *
  * Always returns 0 for non-userspace iterators.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 size_t fault_in_iov_iter_readable(const struct iov_iter *i, size_t size)
 {
 	if (iter_is_ubuf(i)) {
@@ -118,7 +115,6 @@ size_t fault_in_iov_iter_readable(const struct iov_iter *i, size_t size)
 	}
 	return 0;
 }
-#endif
 EXPORT_SYMBOL(fault_in_iov_iter_readable);
 
 /*
@@ -135,7 +131,6 @@ EXPORT_SYMBOL(fault_in_iov_iter_readable);
  *
  * Always returns 0 for non-user-space iterators.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 size_t fault_in_iov_iter_writeable(const struct iov_iter *i, size_t size)
 {
 	if (iter_is_ubuf(i)) {
@@ -163,10 +158,8 @@ size_t fault_in_iov_iter_writeable(const struct iov_iter *i, size_t size)
 	}
 	return 0;
 }
-#endif
 EXPORT_SYMBOL(fault_in_iov_iter_writeable);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void iov_iter_init(struct iov_iter *i, unsigned int direction,
 			const struct iovec *iov, unsigned long nr_segs,
 			size_t count)
@@ -182,7 +175,6 @@ void iov_iter_init(struct iov_iter *i, unsigned int direction,
 		.count = count
 	};
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL(iov_iter_init);
 
 size_t _copy_to_iter(const void *addr, size_t bytes, struct iov_iter *i)
@@ -197,7 +189,6 @@ size_t _copy_to_iter(const void *addr, size_t bytes, struct iov_iter *i)
 EXPORT_SYMBOL(_copy_to_iter);
 
 #ifdef CONFIG_ARCH_HAS_COPY_MC
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static __always_inline
 size_t copy_to_user_iter_mc(void __user *iter_to, size_t progress,
 			    size_t len, void *from, void *priv2)
@@ -209,7 +200,6 @@ size_t copy_to_user_iter_mc(void __user *iter_to, size_t progress,
 	}
 	return len;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static __always_inline
 size_t memcpy_to_iter_mc(void *iter_to, size_t progress,
@@ -272,14 +262,12 @@ size_t _copy_from_iter(void *addr, size_t bytes, struct iov_iter *i)
 }
 EXPORT_SYMBOL(_copy_from_iter);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static __always_inline
 size_t copy_from_user_iter_nocache(void __user *iter_from, size_t progress,
 				   size_t len, void *to, void *priv2)
 {
 	return copy_from_user_inatomic_nontemporal(to + progress, iter_from, len);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 size_t _copy_from_iter_nocache(void *addr, size_t bytes, struct iov_iter *i)
 {
@@ -293,14 +281,12 @@ size_t _copy_from_iter_nocache(void *addr, size_t bytes, struct iov_iter *i)
 EXPORT_SYMBOL(_copy_from_iter_nocache);
 
 #ifdef CONFIG_ARCH_HAS_UACCESS_FLUSHCACHE
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static __always_inline
 size_t copy_from_user_iter_flushcache(void __user *iter_from, size_t progress,
 				      size_t len, void *to, void *priv2)
 {
 	return copy_from_user_flushcache(to + progress, iter_from, len);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static __always_inline
 size_t memcpy_from_iter_flushcache(void *iter_from, size_t progress,
@@ -1076,7 +1062,6 @@ static ssize_t __iov_iter_get_pages_alloc(struct iov_iter *i,
 	if (maxsize > MAX_RW_COUNT)
 		maxsize = MAX_RW_COUNT;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (likely(user_backed_iter(i))) {
 		unsigned long addr;
 		int res;
@@ -1099,7 +1084,6 @@ static ssize_t __iov_iter_get_pages_alloc(struct iov_iter *i,
 		iov_iter_advance(i, maxsize);
 		return maxsize;
 	}
-#endif
 	if (iov_iter_is_bvec(i)) {
 		struct page **p;
 		struct page *page;
@@ -1241,7 +1225,6 @@ const void *dup_iter(struct iov_iter *new, struct iov_iter *old, gfp_t flags)
 }
 EXPORT_SYMBOL(dup_iter);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static __noclone int copy_compat_iovec_from_user(struct iovec *iov,
 		const struct iovec __user *uvec, u32 nr_segs)
 {
@@ -1460,7 +1443,6 @@ int import_ubuf(int rw, void __user *buf, size_t len, struct iov_iter *i)
 }
 EXPORT_SYMBOL_GPL(import_ubuf);
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * iov_iter_restore() - Restore a &struct iov_iter to the same state as when
@@ -1743,7 +1725,6 @@ static ssize_t iov_iter_extract_kvec_pages(struct iov_iter *i,
  * the buffer; using a pin rather than a ref makes forces fork() to give the
  * child a copy of the page.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t iov_iter_extract_user_pages(struct iov_iter *i,
 					   struct page ***pages,
 					   size_t maxsize,
@@ -1776,7 +1757,6 @@ static ssize_t iov_iter_extract_user_pages(struct iov_iter *i,
 	iov_iter_advance(i, maxsize);
 	return maxsize;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /**
  * iov_iter_extract_pages - Extract a list of contiguous pages from an iterator
@@ -1832,12 +1812,10 @@ ssize_t iov_iter_extract_pages(struct iov_iter *i,
 	if (!maxsize)
 		return 0;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (likely(user_backed_iter(i)))
 		return iov_iter_extract_user_pages(i, pages, maxsize,
 						   maxpages, extraction_flags,
 						   offset0);
-#endif
 	if (iov_iter_is_kvec(i))
 		return iov_iter_extract_kvec_pages(i, pages, maxsize,
 						   maxpages, extraction_flags,

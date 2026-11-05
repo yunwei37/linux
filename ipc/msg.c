@@ -312,12 +312,10 @@ long ksys_msgget(key_t key, int msgflg)
 	return ipcget(ns, &msg_ids(ns), &msg_ops, &msg_params);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(msgget, key_t, key, int, msgflg)
 {
 	return ksys_msgget(key, msgflg);
 }
-#endif
 
 static inline unsigned long
 copy_msqid_to_user(void __user *buf, struct msqid64_ds *in, int version)
@@ -639,12 +637,10 @@ static long ksys_msgctl(int msqid, int cmd, struct msqid_ds __user *buf, int ver
 	}
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(msgctl, int, msqid, int, cmd, struct msqid_ds __user *, buf)
 {
 	return ksys_msgctl(msqid, cmd, buf, IPC_64);
 }
-#endif
 
 #ifdef CONFIG_ARCH_WANT_IPC_PARSE_VERSION
 long ksys_old_msgctl(int msqid, int cmd, struct msqid_ds __user *buf)
@@ -654,12 +650,10 @@ long ksys_old_msgctl(int msqid, int cmd, struct msqid_ds __user *buf)
 	return ksys_msgctl(msqid, cmd, buf, version);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(old_msgctl, int, msqid, int, cmd, struct msqid_ds __user *, buf)
 {
 	return ksys_old_msgctl(msqid, cmd, buf);
 }
-#endif
 #endif
 
 #ifdef CONFIG_COMPAT
@@ -777,12 +771,10 @@ static long compat_ksys_msgctl(int msqid, int cmd, void __user *uptr, int versio
 	}
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(msgctl, int, msqid, int, cmd, void __user *, uptr)
 {
 	return compat_ksys_msgctl(msqid, cmd, uptr, IPC_64);
 }
-#endif
 
 #ifdef CONFIG_ARCH_WANT_COMPAT_IPC_PARSE_VERSION
 long compat_ksys_old_msgctl(int msqid, int cmd, void __user *uptr)
@@ -792,12 +784,10 @@ long compat_ksys_old_msgctl(int msqid, int cmd, void __user *uptr)
 	return compat_ksys_msgctl(msqid, cmd, uptr, version);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(old_msgctl, int, msqid, int, cmd, void __user *, uptr)
 {
 	return compat_ksys_old_msgctl(msqid, cmd, uptr);
 }
-#endif
 #endif
 #endif
 
@@ -978,13 +968,11 @@ long ksys_msgsnd(int msqid, struct msgbuf __user *msgp, size_t msgsz,
 	return do_msgsnd(msqid, mtype, msgp->mtext, msgsz, msgflg);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(msgsnd, int, msqid, struct msgbuf __user *, msgp, size_t, msgsz,
 		int, msgflg)
 {
 	return ksys_msgsnd(msqid, msgp, msgsz, msgflg);
 }
-#endif
 
 #ifdef CONFIG_COMPAT
 
@@ -1004,13 +992,11 @@ long compat_ksys_msgsnd(int msqid, compat_uptr_t msgp,
 	return do_msgsnd(msqid, mtype, up->mtext, (ssize_t)msgsz, msgflg);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(msgsnd, int, msqid, compat_uptr_t, msgp,
 		       compat_ssize_t, msgsz, int, msgflg)
 {
 	return compat_ksys_msgsnd(msqid, msgp, msgsz, msgflg);
 }
-#endif
 #endif
 
 static inline int convert_mode(long *msgtyp, int msgflg)
@@ -1281,13 +1267,11 @@ long ksys_msgrcv(int msqid, struct msgbuf __user *msgp, size_t msgsz,
 	return do_msgrcv(msqid, msgp, msgsz, msgtyp, msgflg, do_msg_fill);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(msgrcv, int, msqid, struct msgbuf __user *, msgp, size_t, msgsz,
 		long, msgtyp, int, msgflg)
 {
 	return ksys_msgrcv(msqid, msgp, msgsz, msgtyp, msgflg);
 }
-#endif
 
 #ifdef CONFIG_COMPAT
 static long compat_do_msg_fill(void __user *dest, struct msg_msg *msg, size_t bufsz)
@@ -1311,14 +1295,12 @@ long compat_ksys_msgrcv(int msqid, compat_uptr_t msgp, compat_ssize_t msgsz,
 			 msgflg, compat_do_msg_fill);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(msgrcv, int, msqid, compat_uptr_t, msgp,
 		       compat_ssize_t, msgsz, compat_long_t, msgtyp,
 		       int, msgflg)
 {
 	return compat_ksys_msgrcv(msqid, msgp, msgsz, msgtyp, msgflg);
 }
-#endif
 #endif
 
 int msg_init_ns(struct ipc_namespace *ns)

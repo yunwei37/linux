@@ -112,7 +112,6 @@ static int check_brk_limits(unsigned long addr, unsigned long len)
 		? 0 : -EAGAIN;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(brk, unsigned long, brk)
 {
 	unsigned long newbrk, oldbrk, origbrk;
@@ -212,7 +211,6 @@ out:
 	mmap_write_unlock(mm);
 	return origbrk;
 }
-#endif
 
 /*
  * If a hint addr is less than mmap_min_addr change hint to be as
@@ -610,14 +608,12 @@ out_fput:
 	return retval;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(mmap_pgoff, unsigned long, addr, unsigned long, len,
 		unsigned long, prot, unsigned long, flags,
 		unsigned long, fd, unsigned long, pgoff)
 {
 	return ksys_mmap_pgoff(addr, len, prot, flags, fd, pgoff);
 }
-#endif
 
 #ifdef __ARCH_WANT_SYS_OLD_MMAP
 struct mmap_arg_struct {
@@ -629,7 +625,6 @@ struct mmap_arg_struct {
 	unsigned long offset;
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(old_mmap, struct mmap_arg_struct __user *, arg)
 {
 	struct mmap_arg_struct a;
@@ -642,7 +637,6 @@ SYSCALL_DEFINE1(old_mmap, struct mmap_arg_struct __user *, arg)
 	return ksys_mmap_pgoff(a.addr, a.len, a.prot, a.flags, a.fd,
 			       a.offset >> PAGE_SHIFT);
 }
-#endif
 #endif /* __ARCH_WANT_SYS_OLD_MMAP */
 
 /*
@@ -1080,19 +1074,16 @@ int vm_munmap(unsigned long start, size_t len)
 }
 EXPORT_SYMBOL(vm_munmap);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(munmap, unsigned long, addr, size_t, len)
 {
 	addr = untagged_addr(addr);
 	return __vm_munmap(addr, len, true);
 }
-#endif
 
 
 /*
  * Emulation of deprecated remap_file_pages() syscall.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
 		unsigned long, prot, unsigned long, pgoff, unsigned long, flags)
 {
@@ -1211,7 +1202,6 @@ out:
 		ret = 0;
 	return ret;
 }
-#endif
 
 int vm_brk_flags(unsigned long addr, unsigned long request, vm_flags_t vm_flags)
 {

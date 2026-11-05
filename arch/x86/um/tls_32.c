@@ -264,7 +264,6 @@ clear:
 	goto out;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(set_thread_area, struct user_desc __user *, user_desc)
 {
 	struct user_desc info;
@@ -293,7 +292,6 @@ SYSCALL_DEFINE1(set_thread_area, struct user_desc __user *, user_desc)
 		return ret;
 	return set_tls_entry(current, &info, idx, 1);
 }
-#endif
 
 /*
  * Perform set_thread_area on behalf of the traced child.
@@ -314,7 +312,6 @@ int ptrace_set_thread_area(struct task_struct *child, int idx,
 	return set_tls_entry(child, &info, idx, 0);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(get_thread_area, struct user_desc __user *, user_desc)
 {
 	struct user_desc info;
@@ -336,7 +333,6 @@ SYSCALL_DEFINE1(get_thread_area, struct user_desc __user *, user_desc)
 out:
 	return ret;
 }
-#endif
 
 /*
  * Perform get_thread_area on behalf of the traced child.

@@ -2877,7 +2877,6 @@ static void flush_percpu_swap_cluster(struct swap_info_struct *si)
 }
 
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
 {
 	struct swap_info_struct *p = NULL;
@@ -3038,7 +3037,6 @@ out:
 	putname(pathname);
 	return err;
 }
-#endif
 
 #ifdef CONFIG_PROC_FS
 static __poll_t swaps_poll(struct file *file, poll_table *wait)
@@ -3454,7 +3452,6 @@ err:
 	return ERR_PTR(err);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
 {
 	struct swap_info_struct *si;
@@ -3717,7 +3714,6 @@ out:
 		inode_unlock(inode);
 	return error;
 }
-#endif
 
 void si_swapinfo(struct sysinfo *val)
 {

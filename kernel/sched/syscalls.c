@@ -139,7 +139,6 @@ int can_nice(const struct task_struct *p, const int nice)
  * sys_setpriority is a more generic, but much slower function that
  * does similar things.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(nice, int, increment)
 {
 	long nice, retval;
@@ -163,7 +162,6 @@ SYSCALL_DEFINE1(nice, int, increment)
 	set_user_nice(current, nice);
 	return 0;
 }
-#endif
 
 #endif /* __ARCH_WANT_SYS_NICE */
 
@@ -543,9 +541,6 @@ int __sched_setscheduler(struct task_struct *p,
 	int queue_flags = DEQUEUE_SAVE | DEQUEUE_MOVE | DEQUEUE_NOCLOCK;
 	struct rq *rq;
 	bool cpuset_locked = false;
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	user = false;
-#endif
 
 	/* The pi code expects interrupts enabled */
 	BUG_ON(pi && in_interrupt());
@@ -964,7 +959,6 @@ static void get_params(struct task_struct *p, struct sched_attr *attr)
  *
  * Return: 0 on success. An error code otherwise.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(sched_setscheduler, pid_t, pid, int, policy, struct sched_param __user *, param)
 {
 	if (policy < 0)
@@ -972,7 +966,6 @@ SYSCALL_DEFINE3(sched_setscheduler, pid_t, pid, int, policy, struct sched_param 
 
 	return do_sched_setscheduler(pid, policy, param);
 }
-#endif
 
 /**
  * sys_sched_setparam - set/change the RT priority of a thread
@@ -981,12 +974,10 @@ SYSCALL_DEFINE3(sched_setscheduler, pid_t, pid, int, policy, struct sched_param 
  *
  * Return: 0 on success. An error code otherwise.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(sched_setparam, pid_t, pid, struct sched_param __user *, param)
 {
 	return do_sched_setscheduler(pid, SETPARAM_POLICY, param);
 }
-#endif
 
 /**
  * sys_sched_setattr - same as above, but with extended sched_attr
@@ -994,7 +985,6 @@ SYSCALL_DEFINE2(sched_setparam, pid_t, pid, struct sched_param __user *, param)
  * @uattr: structure containing the extended parameters.
  * @flags: for future extension.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(sched_setattr, pid_t, pid, struct sched_attr __user *, uattr,
 			       unsigned int, flags)
 {
@@ -1022,7 +1012,6 @@ SYSCALL_DEFINE3(sched_setattr, pid_t, pid, struct sched_attr __user *, uattr,
 
 	return sched_setattr(p, &attr);
 }
-#endif
 
 /**
  * sys_sched_getscheduler - get the policy (scheduling class) of a thread
@@ -1031,7 +1020,6 @@ SYSCALL_DEFINE3(sched_setattr, pid_t, pid, struct sched_attr __user *, uattr,
  * Return: On success, the policy of the thread. Otherwise, a negative error
  * code.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(sched_getscheduler, pid_t, pid)
 {
 	struct task_struct *p;
@@ -1053,7 +1041,6 @@ SYSCALL_DEFINE1(sched_getscheduler, pid_t, pid)
 	}
 	return retval;
 }
-#endif
 
 /**
  * sys_sched_getparam - get the RT priority of a thread
@@ -1063,7 +1050,6 @@ SYSCALL_DEFINE1(sched_getscheduler, pid_t, pid)
  * Return: On success, 0 and the RT priority is in @param. Otherwise, an error
  * code.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(sched_getparam, pid_t, pid, struct sched_param __user *, param)
 {
 	struct sched_param lp = { .sched_priority = 0 };
@@ -1091,7 +1077,6 @@ SYSCALL_DEFINE2(sched_getparam, pid_t, pid, struct sched_param __user *, param)
 	 */
 	return copy_to_user(param, &lp, sizeof(*param)) ? -EFAULT : 0;
 }
-#endif
 
 /**
  * sys_sched_getattr - similar to sched_getparam, but with sched_attr
@@ -1100,7 +1085,6 @@ SYSCALL_DEFINE2(sched_getparam, pid_t, pid, struct sched_param __user *, param)
  * @usize: sizeof(attr) for fwd/bwd comp.
  * @flags: for future extension.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(sched_getattr, pid_t, pid, struct sched_attr __user *, uattr,
 		unsigned int, usize, unsigned int, flags)
 {
@@ -1141,7 +1125,6 @@ SYSCALL_DEFINE4(sched_getattr, pid_t, pid, struct sched_attr __user *, uattr,
 	kattr.size = min(usize, sizeof(kattr));
 	return copy_struct_to_user(uattr, usize, &kattr, sizeof(kattr), NULL);
 }
-#endif
 
 int dl_task_check_affinity(struct task_struct *p, const struct cpumask *mask)
 {
@@ -1233,7 +1216,6 @@ out_free_cpus_allowed:
 	return retval;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 {
 	struct affinity_context ac;
@@ -1279,7 +1261,6 @@ long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 
 	return retval;
 }
-#endif
 
 static int get_user_cpu_mask(unsigned long __user *user_mask_ptr, unsigned len,
 			     struct cpumask *new_mask)
@@ -1300,7 +1281,6 @@ static int get_user_cpu_mask(unsigned long __user *user_mask_ptr, unsigned len,
  *
  * Return: 0 on success. An error code otherwise.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(sched_setaffinity, pid_t, pid, unsigned int, len,
 		unsigned long __user *, user_mask_ptr)
 {
@@ -1316,7 +1296,6 @@ SYSCALL_DEFINE3(sched_setaffinity, pid_t, pid, unsigned int, len,
 	free_cpumask_var(new_mask);
 	return retval;
 }
-#endif
 
 long sched_getaffinity(pid_t pid, struct cpumask *mask)
 {
@@ -1347,7 +1326,6 @@ long sched_getaffinity(pid_t pid, struct cpumask *mask)
  * Return: size of CPU mask copied to user_mask_ptr on success. An
  * error code otherwise.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(sched_getaffinity, pid_t, pid, unsigned int, len,
 		unsigned long __user *, user_mask_ptr)
 {
@@ -1375,7 +1353,6 @@ SYSCALL_DEFINE3(sched_getaffinity, pid_t, pid, unsigned int, len,
 
 	return ret;
 }
-#endif
 
 static void do_sched_yield(void)
 {
@@ -1402,13 +1379,11 @@ static void do_sched_yield(void)
  *
  * Return: 0.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(sched_yield)
 {
 	do_sched_yield();
 	return 0;
 }
-#endif
 
 /**
  * yield - yield the current processor to other threads.
@@ -1513,7 +1488,6 @@ EXPORT_SYMBOL_GPL(yield_to);
  * rt_priority that can be used by a given scheduling class.
  * On failure, a negative error code is returned.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(sched_get_priority_max, int, policy)
 {
 	int ret = -EINVAL;
@@ -1533,7 +1507,6 @@ SYSCALL_DEFINE1(sched_get_priority_max, int, policy)
 	}
 	return ret;
 }
-#endif
 
 /**
  * sys_sched_get_priority_min - return minimum RT priority.
@@ -1543,7 +1516,6 @@ SYSCALL_DEFINE1(sched_get_priority_max, int, policy)
  * rt_priority that can be used by a given scheduling class.
  * On failure, a negative error code is returned.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(sched_get_priority_min, int, policy)
 {
 	int ret = -EINVAL;
@@ -1562,7 +1534,6 @@ SYSCALL_DEFINE1(sched_get_priority_min, int, policy)
 	}
 	return ret;
 }
-#endif
 
 static int sched_rr_get_interval(pid_t pid, struct timespec64 *t)
 {
@@ -1603,7 +1574,6 @@ static int sched_rr_get_interval(pid_t pid, struct timespec64 *t)
  * Return: On success, 0 and the time-slice is in @interval. Otherwise,
  * an error code.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(sched_rr_get_interval, pid_t, pid,
 		struct __kernel_timespec __user *, interval)
 {
@@ -1615,10 +1585,8 @@ SYSCALL_DEFINE2(sched_rr_get_interval, pid_t, pid,
 
 	return retval;
 }
-#endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(sched_rr_get_interval_time32, pid_t, pid,
 		struct old_timespec32 __user *, interval)
 {
@@ -1629,5 +1597,4 @@ SYSCALL_DEFINE2(sched_rr_get_interval_time32, pid_t, pid,
 		retval = put_old_timespec32(&t, interval);
 	return retval;
 }
-#endif
 #endif

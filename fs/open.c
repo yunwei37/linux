@@ -148,20 +148,16 @@ retry:
 	return error;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(truncate, const char __user *, path, long, length)
 {
 	return do_sys_truncate(path, length);
 }
-#endif
 
 #ifdef CONFIG_COMPAT
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(truncate, const char __user *, path, compat_off_t, length)
 {
 	return do_sys_truncate(path, length);
 }
-#endif
 #endif
 
 int do_ftruncate(struct file *file, loff_t length, int small)
@@ -214,57 +210,45 @@ int do_sys_ftruncate(unsigned int fd, loff_t length, int small)
 	return do_ftruncate(fd_file(f), length, small);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(ftruncate, unsigned int, fd, off_t, length)
 {
 	return do_sys_ftruncate(fd, length, 1);
 }
-#endif
 
 #ifdef CONFIG_COMPAT
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(ftruncate, unsigned int, fd, compat_off_t, length)
 {
 	return do_sys_ftruncate(fd, length, 1);
 }
 #endif
-#endif
 
 /* LFS versions of truncate are only needed on 32 bit machines */
 #if BITS_PER_LONG == 32
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(truncate64, const char __user *, path, loff_t, length)
 {
 	return do_sys_truncate(path, length);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(ftruncate64, unsigned int, fd, loff_t, length)
 {
 	return do_sys_ftruncate(fd, length, 0);
 }
-#endif
 #endif /* BITS_PER_LONG == 32 */
 
 #if defined(CONFIG_COMPAT) && defined(__ARCH_WANT_COMPAT_TRUNCATE64)
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(truncate64, const char __user *, pathname,
 		       compat_arg_u64_dual(length))
 {
 	return ksys_truncate(pathname, compat_arg_u64_glue(length));
 }
 #endif
-#endif
 
 #if defined(CONFIG_COMPAT) && defined(__ARCH_WANT_COMPAT_FTRUNCATE64)
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(ftruncate64, unsigned int, fd,
 		       compat_arg_u64_dual(length))
 {
 	return ksys_ftruncate(fd, compat_arg_u64_glue(length));
 }
-#endif
 #endif
 
 int vfs_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
@@ -382,22 +366,18 @@ int ksys_fallocate(int fd, int mode, loff_t offset, loff_t len)
 	return vfs_fallocate(fd_file(f), mode, offset, len);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
 {
 	return ksys_fallocate(fd, mode, offset, len);
 }
-#endif
 
 #if defined(CONFIG_COMPAT) && defined(__ARCH_WANT_COMPAT_FALLOCATE)
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE6(fallocate, int, fd, int, mode, compat_arg_u64_dual(offset),
 		       compat_arg_u64_dual(len))
 {
 	return ksys_fallocate(fd, mode, compat_arg_u64_glue(offset),
 			      compat_arg_u64_glue(len));
 }
-#endif
 #endif
 
 /*
@@ -556,29 +536,22 @@ out:
 	return res;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
 {
 	return do_faccessat(dfd, filename, mode, 0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(faccessat2, int, dfd, const char __user *, filename, int, mode,
 		int, flags)
 {
 	return do_faccessat(dfd, filename, mode, flags);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(access, const char __user *, filename, int, mode)
 {
 	return do_faccessat(AT_FDCWD, filename, mode, 0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(chdir, const char __user *, filename)
 {
 	struct path path;
@@ -604,9 +577,7 @@ dput_and_out:
 out:
 	return error;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(fchdir, unsigned int, fd)
 {
 	CLASS(fd_raw, f)(fd);
@@ -623,9 +594,7 @@ SYSCALL_DEFINE1(fchdir, unsigned int, fd)
 		set_fs_pwd(current->fs, &fd_file(f)->f_path);
 	return error;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(chroot, const char __user *, filename)
 {
 	struct path path;
@@ -658,7 +627,6 @@ dput_and_out:
 out:
 	return error;
 }
-#endif
 
 int chmod_common(const struct path *path, umode_t mode)
 {
@@ -699,7 +667,6 @@ int vfs_fchmod(struct file *file, umode_t mode)
 	return chmod_common(&file->f_path, mode);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(fchmod, unsigned int, fd, umode_t, mode)
 {
 	CLASS(fd, f)(fd);
@@ -709,7 +676,6 @@ SYSCALL_DEFINE2(fchmod, unsigned int, fd, umode_t, mode)
 
 	return vfs_fchmod(fd_file(f), mode);
 }
-#endif
 
 static int do_fchmodat(int dfd, const char __user *filename, umode_t mode,
 		       unsigned int flags)
@@ -738,28 +704,22 @@ retry:
 	return error;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(fchmodat2, int, dfd, const char __user *, filename,
 		umode_t, mode, unsigned int, flags)
 {
 	return do_fchmodat(dfd, filename, mode, flags);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(fchmodat, int, dfd, const char __user *, filename,
 		umode_t, mode)
 {
 	return do_fchmodat(dfd, filename, mode, 0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(chmod, const char __user *, filename, umode_t, mode)
 {
 	return do_fchmodat(AT_FDCWD, filename, mode, 0);
 }
-#endif
 
 /*
  * Check whether @kuid is valid and if so generate and set vfsuid_t in
@@ -871,28 +831,22 @@ out:
 	return error;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(fchownat, int, dfd, const char __user *, filename, uid_t, user,
 		gid_t, group, int, flag)
 {
 	return do_fchownat(dfd, filename, user, group, flag);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(chown, const char __user *, filename, uid_t, user, gid_t, group)
 {
 	return do_fchownat(AT_FDCWD, filename, user, group, 0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(lchown, const char __user *, filename, uid_t, user, gid_t, group)
 {
 	return do_fchownat(AT_FDCWD, filename, user, group,
 			   AT_SYMLINK_NOFOLLOW);
 }
-#endif
 
 int vfs_fchown(struct file *file, uid_t user, gid_t group)
 {
@@ -917,12 +871,10 @@ int ksys_fchown(unsigned int fd, uid_t user, gid_t group)
 	return vfs_fchown(fd_file(f), user, group);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(fchown, unsigned int, fd, uid_t, user, gid_t, group)
 {
 	return ksys_fchown(fd, user, group);
 }
-#endif
 
 static inline int file_get_write_access(struct file *f)
 {
@@ -1501,16 +1453,13 @@ int do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 }
 
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, umode_t, mode)
 {
 	if (force_o_largefile())
 		flags |= O_LARGEFILE;
 	return do_sys_open(AT_FDCWD, filename, flags, mode);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(openat, int, dfd, const char __user *, filename, int, flags,
 		umode_t, mode)
 {
@@ -1518,9 +1467,7 @@ SYSCALL_DEFINE4(openat, int, dfd, const char __user *, filename, int, flags,
 		flags |= O_LARGEFILE;
 	return do_sys_open(dfd, filename, flags, mode);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(openat2, int, dfd, const char __user *, filename,
 		struct open_how __user *, how, size_t, usize)
 {
@@ -1547,30 +1494,25 @@ SYSCALL_DEFINE4(openat2, int, dfd, const char __user *, filename,
 
 	return do_sys_openat2(dfd, filename, &tmp);
 }
-#endif
 
 #ifdef CONFIG_COMPAT
 /*
  * Exactly like sys_open(), except that it doesn't set the
  * O_LARGEFILE flag.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, umode_t, mode)
 {
 	return do_sys_open(AT_FDCWD, filename, flags, mode);
 }
-#endif
 
 /*
  * Exactly like sys_openat(), except that it doesn't set the
  * O_LARGEFILE flag.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(openat, int, dfd, const char __user *, filename, int, flags, umode_t, mode)
 {
 	return do_sys_open(dfd, filename, flags, mode);
 }
-#endif
 #endif
 
 #ifndef __alpha__
@@ -1579,7 +1521,6 @@ COMPAT_SYSCALL_DEFINE4(openat, int, dfd, const char __user *, filename, int, fla
  * For backward compatibility?  Maybe this should be moved
  * into arch/i386 instead?
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(creat, const char __user *, pathname, umode_t, mode)
 {
 	int flags = O_CREAT | O_WRONLY | O_TRUNC;
@@ -1588,7 +1529,6 @@ SYSCALL_DEFINE2(creat, const char __user *, pathname, umode_t, mode)
 		flags |= O_LARGEFILE;
 	return do_sys_open(AT_FDCWD, pathname, flags, mode);
 }
-#endif
 #endif
 
 /*
@@ -1631,7 +1571,6 @@ EXPORT_SYMBOL(filp_close);
  * releasing the fd. This ensures that one clone task can't release
  * an fd while another clone is opening it.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(close, unsigned int, fd)
 {
 	int retval;
@@ -1661,13 +1600,11 @@ SYSCALL_DEFINE1(close, unsigned int, fd)
 
 	return retval;
 }
-#endif
 
 /*
  * This routine simulates a hangup on the tty, to arrange that users
  * are given clean terminals at login time.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(vhangup)
 {
 	if (capable(CAP_SYS_TTY_CONFIG)) {
@@ -1676,7 +1613,6 @@ SYSCALL_DEFINE0(vhangup)
 	}
 	return -EPERM;
 }
-#endif
 
 /*
  * Called when an inode is about to be open.

@@ -4075,7 +4075,6 @@ EXPORT_SYMBOL(vzalloc_noprof);
  *
  * Return: pointer to the allocated memory or %NULL on error
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void *vmalloc_user_noprof(unsigned long size)
 {
 	return __vmalloc_node_range_noprof(size, SHMLBA,  VMALLOC_START, VMALLOC_END,
@@ -4083,7 +4082,6 @@ void *vmalloc_user_noprof(unsigned long size)
 				    VM_USERMAP, NUMA_NO_NODE,
 				    __builtin_return_address(0));
 }
-#endif
 EXPORT_SYMBOL(vmalloc_user_noprof);
 
 /**
@@ -4269,7 +4267,6 @@ EXPORT_SYMBOL(vmalloc_32_noprof);
  *
  * Return: pointer to the allocated memory or %NULL on error
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void *vmalloc_32_user_noprof(unsigned long size)
 {
 	return __vmalloc_node_range_noprof(size, SHMLBA,  VMALLOC_START, VMALLOC_END,
@@ -4277,7 +4274,6 @@ void *vmalloc_32_user_noprof(unsigned long size)
 				    VM_USERMAP, NUMA_NO_NODE,
 				    __builtin_return_address(0));
 }
-#endif
 EXPORT_SYMBOL(vmalloc_32_user_noprof);
 
 /*
@@ -4285,7 +4281,6 @@ EXPORT_SYMBOL(vmalloc_32_user_noprof);
  *
  * Returns the number of zeroed bytes.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static size_t zero_iter(struct iov_iter *iter, size_t count)
 {
 	size_t remains = count;
@@ -4303,7 +4298,6 @@ static size_t zero_iter(struct iov_iter *iter, size_t count)
 
 	return count - remains;
 }
-#endif
 
 /*
  * small helper routine, copy contents to iter from addr.
@@ -4311,7 +4305,6 @@ static size_t zero_iter(struct iov_iter *iter, size_t count)
  *
  * Returns the number of copied bytes.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static size_t aligned_vread_iter(struct iov_iter *iter,
 				 const char *addr, size_t count)
 {
@@ -4350,14 +4343,12 @@ static size_t aligned_vread_iter(struct iov_iter *iter,
 
 	return count - remains;
 }
-#endif
 
 /*
  * Read from a vm_map_ram region of memory.
  *
  * Returns the number of copied bytes.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static size_t vmap_ram_vread_iter(struct iov_iter *iter, const char *addr,
 				  size_t count, unsigned long flags)
 {
@@ -4437,7 +4428,6 @@ finished:
 	spin_unlock(&vb->lock);
 	return count - remains;
 }
-#endif
 
 /**
  * vread_iter() - read vmalloc area in a safe way to an iterator.
@@ -4463,7 +4453,6 @@ finished:
  * (same number as @count) or %0 if [addr...addr+count) doesn't
  * include any intersection with valid vmalloc area
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 long vread_iter(struct iov_iter *iter, const char *addr, size_t count)
 {
 	struct vmap_node *vn;
@@ -4564,7 +4553,6 @@ finished:
 
 	return count - remains;
 }
-#endif
 
 /**
  * remap_vmalloc_range_partial - map vmalloc pages to userspace
@@ -4583,7 +4571,6 @@ finished:
  *
  * Similar to remap_pfn_range() (see mm/memory.c)
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int remap_vmalloc_range_partial(struct vm_area_struct *vma, unsigned long uaddr,
 				void *kaddr, unsigned long pgoff,
 				unsigned long size)
@@ -4629,7 +4616,6 @@ int remap_vmalloc_range_partial(struct vm_area_struct *vma, unsigned long uaddr,
 
 	return 0;
 }
-#endif
 
 /**
  * remap_vmalloc_range - map vmalloc pages to userspace
@@ -4645,7 +4631,6 @@ int remap_vmalloc_range_partial(struct vm_area_struct *vma, unsigned long uaddr,
  *
  * Similar to remap_pfn_range() (see mm/memory.c)
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int remap_vmalloc_range(struct vm_area_struct *vma, void *addr,
 						unsigned long pgoff)
 {
@@ -4653,7 +4638,6 @@ int remap_vmalloc_range(struct vm_area_struct *vma, void *addr,
 					   addr, pgoff,
 					   vma->vm_end - vma->vm_start);
 }
-#endif
 EXPORT_SYMBOL(remap_vmalloc_range);
 
 void free_vm_area(struct vm_struct *area)

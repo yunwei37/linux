@@ -1277,9 +1277,7 @@ static int rx_queue_add_kobject(struct net_device *dev, int index)
 	if (error)
 		goto err_default_groups;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(kobj, KOBJ_ADD);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	return error;
 
@@ -2012,9 +2010,7 @@ static int netdev_queue_add_kobject(struct net_device *dev, int index)
 			goto err_default_groups;
 	}
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(kobj, KOBJ_ADD);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	return 0;
 
 err_default_groups:
@@ -2219,7 +2215,6 @@ const struct kobj_ns_type_operations net_ns_type_operations = {
 };
 EXPORT_SYMBOL_GPL(net_ns_type_operations);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int netdev_uevent(const struct device *d, struct kobj_uevent_env *env)
 {
 	const struct net_device *dev = to_net_dev(d);
@@ -2239,7 +2234,6 @@ static int netdev_uevent(const struct device *d, struct kobj_uevent_env *env)
 exit:
 	return retval;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /*
  *	netdev_release -- destroy and free a dead device.
@@ -2277,9 +2271,7 @@ static const struct class net_class = {
 	.name = "net",
 	.dev_release = netdev_release,
 	.dev_groups = net_class_groups,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.dev_uevent = netdev_uevent,
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	.ns_type = &net_ns_type_operations,
 	.namespace = net_namespace,
 	.get_ownership = net_get_ownership,
@@ -2325,10 +2317,8 @@ void netdev_unregister_kobject(struct net_device *ndev)
 {
 	struct device *dev = &ndev->dev;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!check_net(dev_net(ndev)))
 		dev_set_uevent_suppress(dev, 1);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	kobject_get(&dev->kobj);
 

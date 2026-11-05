@@ -915,7 +915,6 @@ retry:
  * calls. Maybe we need to add the process quotas etc. in the future,
  * but we probably should use rlimits for that.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(quotactl, unsigned int, cmd, const char __user *, special,
 		qid_t, id, void __user *, addr)
 {
@@ -971,9 +970,7 @@ out:
 		path_put(pathp);
 	return ret;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(quotactl_fd, unsigned int, fd, unsigned int, cmd,
 		qid_t, id, void __user *, addr)
 {
@@ -1012,4 +1009,3 @@ SYSCALL_DEFINE4(quotactl_fd, unsigned int, fd, unsigned int, cmd,
 		mnt_drop_write(fd_file(f)->f_path.mnt);
 	return ret;
 }
-#endif

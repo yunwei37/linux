@@ -146,12 +146,3 @@ obj-$(CONFIG_SHRINKER_DEBUG) += shrinker_debug.o
 obj-$(CONFIG_EXECMEM) += execmem.o
 obj-$(CONFIG_TMPFS_QUOTA) += shmem_quota.o
 obj-$(CONFIG_PT_RECLAIM) += pt_reclaim.o
-
-ifdef CONFIG_MODELOS_KERNEL_ONLY
-obj-y := $(filter-out filemap.o oom_kill.o fadvise.o page-writeback.o readahead.o swap.o truncate.o vmscan.o shmem.o backing-dev.o workingset.o gup.o mmap_lock.o vma_init.o memory.o mincore.o mlock.o mmap.o mmu_gather.o mprotect.o mremap.o msync.o page_vma_mapped.o pagewalk.o rmap.o vma.o vma_exec.o mseal.o interval_tree.o,$(obj-y))
-obj-y += modelos.o
-endif
-
-ifdef CONFIG_MODELOS_KERNEL_ONLY
-obj-y := $(filter-out folio-compat.o,$(obj-y))
-endif

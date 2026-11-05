@@ -303,7 +303,6 @@ static int do_signalfd4(int ufd, sigset_t *mask, int flags)
 	return ufd;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(signalfd4, int, ufd, sigset_t __user *, user_mask,
 		size_t, sizemask, int, flags)
 {
@@ -315,9 +314,7 @@ SYSCALL_DEFINE4(signalfd4, int, ufd, sigset_t __user *, user_mask,
 		return -EFAULT;
 	return do_signalfd4(ufd, &mask, flags);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(signalfd, int, ufd, sigset_t __user *, user_mask,
 		size_t, sizemask)
 {
@@ -329,7 +326,6 @@ SYSCALL_DEFINE3(signalfd, int, ufd, sigset_t __user *, user_mask,
 		return -EFAULT;
 	return do_signalfd4(ufd, &mask, 0);
 }
-#endif
 
 #ifdef CONFIG_COMPAT
 static long do_compat_signalfd4(int ufd,
@@ -345,7 +341,6 @@ static long do_compat_signalfd4(int ufd,
 	return do_signalfd4(ufd, &mask, flags);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(signalfd4, int, ufd,
 		     const compat_sigset_t __user *, user_mask,
 		     compat_size_t, sigsetsize,
@@ -353,14 +348,11 @@ COMPAT_SYSCALL_DEFINE4(signalfd4, int, ufd,
 {
 	return do_compat_signalfd4(ufd, user_mask, sigsetsize, flags);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(signalfd, int, ufd,
 		     const compat_sigset_t __user *, user_mask,
 		     compat_size_t, sigsetsize)
 {
 	return do_compat_signalfd4(ufd, user_mask, sigsetsize, 0);
 }
-#endif
 #endif

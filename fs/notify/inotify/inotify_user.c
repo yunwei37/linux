@@ -704,21 +704,16 @@ static int do_inotify_init(int flags)
 	return ret;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(inotify_init1, int, flags)
 {
 	return do_inotify_init(flags);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(inotify_init)
 {
 	return do_inotify_init(0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(inotify_add_watch, int, fd, const char __user *, pathname,
 		u32, mask)
 {
@@ -775,9 +770,7 @@ SYSCALL_DEFINE3(inotify_add_watch, int, fd, const char __user *, pathname,
 	path_put(&path);
 	return ret;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(inotify_rm_watch, int, fd, __s32, wd)
 {
 	struct fsnotify_group *group;
@@ -803,7 +796,6 @@ SYSCALL_DEFINE2(inotify_rm_watch, int, fd, __s32, wd)
 	fsnotify_put_mark(&i_mark->fsn_mark);
 	return 0;
 }
-#endif
 
 /*
  * inotify_user_setup - Our initialization function.  Note that we cannot return

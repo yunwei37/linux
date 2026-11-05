@@ -676,7 +676,6 @@ EXPORT_SYMBOL_GPL(kstrdup_quotable);
  * command line, with inter-argument NULLs replaced with spaces,
  * and other special characters escaped.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 char *kstrdup_quotable_cmdline(struct task_struct *task, gfp_t gfp)
 {
 	char *buffer, *quoted;
@@ -703,7 +702,6 @@ char *kstrdup_quotable_cmdline(struct task_struct *task, gfp_t gfp)
 	kfree(buffer);
 	return quoted;
 }
-#endif
 EXPORT_SYMBOL_GPL(kstrdup_quotable_cmdline);
 
 /*
@@ -711,7 +709,6 @@ EXPORT_SYMBOL_GPL(kstrdup_quotable_cmdline);
  * with special characters escaped, able to be safely logged. If
  * there is an error, the leading character will be "<".
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 char *kstrdup_quotable_file(struct file *file, gfp_t gfp)
 {
 	char *temp, *pathname;
@@ -733,7 +730,6 @@ char *kstrdup_quotable_file(struct file *file, gfp_t gfp)
 	kfree(temp);
 	return pathname;
 }
-#endif
 EXPORT_SYMBOL_GPL(kstrdup_quotable_file);
 
 /*

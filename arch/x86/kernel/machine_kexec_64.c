@@ -418,10 +418,6 @@ void __nocfi machine_kexec(struct kimage *image)
 	hw_breakpoint_disable();
 	cet_disable();
 
-#ifdef CONFIG_MODELOS_KEXEC_FREE_SNAPSHOT
-	if (!image->preserve_context && image->type != KEXEC_TYPE_CRASH)
-		modelos_kexec_snapshot_free();
-#endif
 
 
 	if (image->preserve_context) {

@@ -214,9 +214,7 @@ extern struct kobject *firmware_kobj;
 int kobject_uevent(struct kobject *kobj, enum kobject_action action);
 int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 			char *envp[]);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int kobject_synth_uevent(struct kobject *kobj, const char *buf, size_t count);
-#endif
 
 __printf(2, 3)
 int add_uevent_var(struct kobj_uevent_env *env, const char *format, ...);

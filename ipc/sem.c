@@ -621,12 +621,10 @@ long ksys_semget(key_t key, int nsems, int semflg)
 	return ipcget(ns, &sem_ids(ns), &sem_ops, &sem_params);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(semget, key_t, key, int, nsems, int, semflg)
 {
 	return ksys_semget(key, nsems, semflg);
 }
-#endif
 
 /**
  * perform_atomic_semop[_slow] - Attempt to perform semaphore
@@ -1704,12 +1702,10 @@ static long ksys_semctl(int semid, int semnum, int cmd, unsigned long arg, int v
 	}
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(semctl, int, semid, int, semnum, int, cmd, unsigned long, arg)
 {
 	return ksys_semctl(semid, semnum, cmd, arg, IPC_64);
 }
-#endif
 
 #ifdef CONFIG_ARCH_WANT_IPC_PARSE_VERSION
 long ksys_old_semctl(int semid, int semnum, int cmd, unsigned long arg)
@@ -1719,12 +1715,10 @@ long ksys_old_semctl(int semid, int semnum, int cmd, unsigned long arg)
 	return ksys_semctl(semid, semnum, cmd, arg, version);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(old_semctl, int, semid, int, semnum, int, cmd, unsigned long, arg)
 {
 	return ksys_old_semctl(semid, semnum, cmd, arg);
 }
-#endif
 #endif
 
 #ifdef CONFIG_COMPAT
@@ -1822,12 +1816,10 @@ static long compat_ksys_semctl(int semid, int semnum, int cmd, int arg, int vers
 	}
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(semctl, int, semid, int, semnum, int, cmd, int, arg)
 {
 	return compat_ksys_semctl(semid, semnum, cmd, arg, IPC_64);
 }
-#endif
 
 #ifdef CONFIG_ARCH_WANT_COMPAT_IPC_PARSE_VERSION
 long compat_ksys_old_semctl(int semid, int semnum, int cmd, int arg)
@@ -1837,12 +1829,10 @@ long compat_ksys_old_semctl(int semid, int semnum, int cmd, int arg)
 	return compat_ksys_semctl(semid, semnum, cmd, arg, version);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(old_semctl, int, semid, int, semnum, int, cmd, int, arg)
 {
 	return compat_ksys_old_semctl(semid, semnum, cmd, arg);
 }
-#endif
 #endif
 #endif
 
@@ -2275,13 +2265,11 @@ long ksys_semtimedop(int semid, struct sembuf __user *tsops,
 	return do_semtimedop(semid, tsops, nsops, NULL);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(semtimedop, int, semid, struct sembuf __user *, tsops,
 		unsigned int, nsops, const struct __kernel_timespec __user *, timeout)
 {
 	return ksys_semtimedop(semid, tsops, nsops, timeout);
 }
-#endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
 long compat_ksys_semtimedop(int semid, struct sembuf __user *tsems,
@@ -2297,7 +2285,6 @@ long compat_ksys_semtimedop(int semid, struct sembuf __user *tsems,
 	return do_semtimedop(semid, tsems, nsops, NULL);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(semtimedop_time32, int, semid, struct sembuf __user *, tsems,
 		       unsigned int, nsops,
 		       const struct old_timespec32 __user *, timeout)
@@ -2305,15 +2292,12 @@ SYSCALL_DEFINE4(semtimedop_time32, int, semid, struct sembuf __user *, tsems,
 	return compat_ksys_semtimedop(semid, tsems, nsops, timeout);
 }
 #endif
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(semop, int, semid, struct sembuf __user *, tsops,
 		unsigned, nsops)
 {
 	return do_semtimedop(semid, tsops, nsops, NULL);
 }
-#endif
 
 /* If CLONE_SYSVSEM is set, establish sharing of SEM_UNDO state between
  * parent and child tasks.

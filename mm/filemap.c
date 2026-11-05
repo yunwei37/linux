@@ -4665,7 +4665,6 @@ static inline bool can_do_cachestat(struct file *f)
  *  -EBADF      - invalid file descriptor
  *  -EOPNOTSUPP - file descriptor is of a hugetlbfs file
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(cachestat, unsigned int, fd,
 		struct cachestat_range __user *, cstat_range,
 		struct cachestat __user *, cstat, unsigned int, flags)
@@ -4705,5 +4704,4 @@ SYSCALL_DEFINE4(cachestat, unsigned int, fd,
 
 	return 0;
 }
-#endif
 #endif /* CONFIG_CACHESTAT_SYSCALL */

@@ -547,7 +547,6 @@ static int shstk_disable(void)
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(map_shadow_stack, unsigned long, addr, unsigned long, size, unsigned int, flags)
 {
 	bool set_tok = flags & SHADOW_STACK_SET_TOKEN;
@@ -577,7 +576,6 @@ SYSCALL_DEFINE3(map_shadow_stack, unsigned long, addr, unsigned long, size, unsi
 
 	return alloc_shstk(addr, aligned_size, size, set_tok);
 }
-#endif
 
 long shstk_prctl(struct task_struct *task, int option, unsigned long arg2)
 {

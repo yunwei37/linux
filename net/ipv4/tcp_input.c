@@ -6040,9 +6040,7 @@ static void tcp_check_urg(struct sock *sk, const struct tcphdr *th)
 		return;
 
 	/* Tell the world about our new urgent pointer. */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	sk_send_sigurg(sk);
-#endif
 
 	/* We may be adding urgent data when the last byte read was
 	 * urgent. To do this requires some care. We cannot just ignore

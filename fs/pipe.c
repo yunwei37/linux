@@ -1051,19 +1051,15 @@ static int do_pipe2(int __user *fildes, int flags)
 	return error;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(pipe2, int __user *, fildes, int, flags)
 {
 	return do_pipe2(fildes, flags);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(pipe, int __user *, fildes)
 {
 	return do_pipe2(fildes, 0);
 }
-#endif
 
 /*
  * This is the stupid "wait for pipe to be readable or writable"

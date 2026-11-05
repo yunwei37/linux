@@ -1238,7 +1238,6 @@ void __init cpuhp_threads_init(void)
  * Also note that the function uses a somewhat relaxed locking scheme, so it may
  * be called only for an already offlined CPU.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void clear_tasks_mm_cpumask(int cpu)
 {
 	struct task_struct *p;
@@ -1267,7 +1266,6 @@ void clear_tasks_mm_cpumask(int cpu)
 	}
 	rcu_read_unlock();
 }
-#endif
 
 /* Take this CPU down. */
 static int take_cpu_down(void *_param)
@@ -2654,9 +2652,7 @@ static void cpuhp_offline_cpu_device(unsigned int cpu)
 
 	dev->offline = true;
 	/* Tell user space about the state change */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->kobj, KOBJ_OFFLINE);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 }
 
 static void cpuhp_online_cpu_device(unsigned int cpu)
@@ -2665,9 +2661,7 @@ static void cpuhp_online_cpu_device(unsigned int cpu)
 
 	dev->offline = false;
 	/* Tell user space about the state change */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->kobj, KOBJ_ONLINE);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 }
 
 int cpuhp_smt_disable(enum cpuhp_smt_control ctrlval)

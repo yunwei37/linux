@@ -574,7 +574,6 @@ static int check_fcntl_cmd(unsigned cmd)
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(fcntl, unsigned int, fd, unsigned int, cmd, unsigned long, arg)
 {	
 	CLASS(fd_raw, f)(fd);
@@ -594,10 +593,8 @@ SYSCALL_DEFINE3(fcntl, unsigned int, fd, unsigned int, cmd, unsigned long, arg)
 
 	return err;
 }
-#endif
 
 #if BITS_PER_LONG == 32
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(fcntl64, unsigned int, fd, unsigned int, cmd,
 		unsigned long, arg)
 {	
@@ -643,7 +640,6 @@ SYSCALL_DEFINE3(fcntl64, unsigned int, fd, unsigned int, cmd,
 	}
 	return err;
 }
-#endif
 #endif
 
 #ifdef CONFIG_COMPAT
@@ -797,15 +793,12 @@ static long do_compat_fcntl64(unsigned int fd, unsigned int cmd,
 	return err;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(fcntl64, unsigned int, fd, unsigned int, cmd,
 		       compat_ulong_t, arg)
 {
 	return do_compat_fcntl64(fd, cmd, arg);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(fcntl, unsigned int, fd, unsigned int, cmd,
 		       compat_ulong_t, arg)
 {
@@ -820,7 +813,6 @@ COMPAT_SYSCALL_DEFINE3(fcntl, unsigned int, fd, unsigned int, cmd,
 	}
 	return do_compat_fcntl64(fd, cmd, arg);
 }
-#endif
 #endif
 
 /* Table to convert sigio signal codes into poll band bitmaps */

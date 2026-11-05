@@ -658,14 +658,11 @@ static __must_check int do_mlock(unsigned long start, size_t len, vm_flags_t fla
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(mlock, unsigned long, start, size_t, len)
 {
 	return do_mlock(start, len, VM_LOCKED);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(mlock2, unsigned long, start, size_t, len, int, flags)
 {
 	vm_flags_t vm_flags = VM_LOCKED;
@@ -678,9 +675,7 @@ SYSCALL_DEFINE3(mlock2, unsigned long, start, size_t, len, int, flags)
 
 	return do_mlock(start, len, vm_flags);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(munlock, unsigned long, start, size_t, len)
 {
 	int ret;
@@ -697,7 +692,6 @@ SYSCALL_DEFINE2(munlock, unsigned long, start, size_t, len)
 
 	return ret;
 }
-#endif
 
 /*
  * Take the MCL_* flags passed into mlockall (or 0 if called from munlockall)
@@ -750,7 +744,6 @@ out:
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(mlockall, int, flags)
 {
 	unsigned long lock_limit;
@@ -779,9 +772,7 @@ SYSCALL_DEFINE1(mlockall, int, flags)
 
 	return ret;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(munlockall)
 {
 	int ret;
@@ -792,7 +783,6 @@ SYSCALL_DEFINE0(munlockall)
 	mmap_write_unlock(current->mm);
 	return ret;
 }
-#endif
 
 /*
  * Objects with different lifetime than processes (SHM_LOCK and SHM_HUGETLB

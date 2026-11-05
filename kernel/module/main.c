@@ -773,7 +773,6 @@ EXPORT_SYMBOL(module_refcount);
 /* This exists whether we can unload or not */
 static void free_module(struct module *mod);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(delete_module, const char __user *, name_user,
 		unsigned int, flags)
 {
@@ -853,7 +852,6 @@ out:
 	mutex_unlock(&module_mutex);
 	return ret;
 }
-#endif
 
 void __symbol_put(const char *symbol)
 {
@@ -3585,7 +3583,6 @@ static int load_module(struct load_info *info, const char __user *uargs,
 	return err;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(init_module, void __user *, umod,
 		unsigned long, len, const char __user *, uargs)
 {
@@ -3608,7 +3605,6 @@ SYSCALL_DEFINE3(init_module, void __user *, umod,
 
 	return load_module(&info, uargs, 0);
 }
-#endif
 
 struct idempotent {
 	const void *cookie;
@@ -3741,7 +3737,6 @@ static int idempotent_init_module(struct file *f, const char __user * uargs, int
 	return idempotent_wait_for_completion(&idem);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(finit_module, int, fd, const char __user *, uargs, int, flags)
 {
 	int err = may_init_module();
@@ -3760,7 +3755,6 @@ SYSCALL_DEFINE3(finit_module, int, fd, const char __user *, uargs, int, flags)
 		return -EBADF;
 	return idempotent_init_module(fd_file(f), uargs, flags);
 }
-#endif
 
 /* Keep in sync with MODULE_FLAGS_BUF_SIZE !!! */
 char *module_flags(struct module *mod, char *buf, bool show_state)

@@ -80,9 +80,7 @@ static int report_error_detected(struct pci_dev *dev,
 		err_handler = pdrv->err_handler;
 		vote = err_handler->error_detected(dev, state);
 	}
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	pci_uevent_ers(dev, vote);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	*result = merge_result(*result, vote);
 	device_unlock(&dev->dev);
 	return 0;
@@ -123,9 +121,7 @@ static int report_perm_failure_detected(struct pci_dev *dev, void *data)
 	err_handler = pdrv->err_handler;
 	err_handler->error_detected(dev, pci_channel_io_perm_failure);
 out:
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	pci_uevent_ers(dev, PCI_ERS_RESULT_DISCONNECT);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	device_unlock(&dev->dev);
 	return 0;
 }
@@ -183,9 +179,7 @@ static int report_resume(struct pci_dev *dev, void *data)
 	err_handler = pdrv->err_handler;
 	err_handler->resume(dev);
 out:
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	pci_uevent_ers(dev, PCI_ERS_RESULT_RECOVERED);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	device_unlock(&dev->dev);
 	return 0;
 }

@@ -531,9 +531,7 @@ static void __init parse_setup_data(void)
  */
 static void __init parse_boot_params(void)
 {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	ROOT_DEV = old_decode_dev(boot_params.hdr.root_dev);
-#endif
 	screen_info = boot_params.screen_info;
 #if defined(CONFIG_FIRMWARE_EDID)
 	edid_info = boot_params.edid_info;
@@ -565,10 +563,8 @@ static void __init parse_boot_params(void)
 	}
 #endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!boot_params.hdr.root_flags)
 		root_mountflags &= ~MS_RDONLY;
-#endif
 }
 
 static void __init memblock_x86_reserve_range_setup_data(void)

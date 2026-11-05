@@ -2503,11 +2503,9 @@ static void toshiba_acpi_kbd_bl_work(struct work_struct *work)
 				LED_FULL : LED_OFF);
 
 	/* Emulate the keyboard backlight event */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_bus_generate_netlink_event(toshiba_acpi->acpi_dev->pnp.device_class,
 					dev_name(&toshiba_acpi->acpi_dev->dev),
 					0x92, 0);
-#endif
 }
 
 /*
@@ -3551,12 +3549,10 @@ static void toshiba_acpi_notify(struct acpi_device *acpi_dev, u32 event)
 		break;
 	}
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_bus_generate_netlink_event(acpi_dev->pnp.device_class,
 					dev_name(&acpi_dev->dev),
 					event, (event == 0x80) ?
 					dev->last_key_event : 0);
-#endif
 }
 
 #ifdef CONFIG_PM_SLEEP

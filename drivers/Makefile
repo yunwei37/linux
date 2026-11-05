@@ -197,6 +197,3 @@ obj-$(CONFIG_DPLL)		+= dpll/
 
 obj-$(CONFIG_DIBS)		+= dibs/
 obj-$(CONFIG_S390)		+= s390/
-
-obj-$(CONFIG_MODELOS_NVIDIA) += modelos-nvidia/
-obj-$(CONFIG_MODELOS_POLL_NET) += modelos-net/

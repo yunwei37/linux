@@ -14,59 +14,39 @@
 typedef struct {
 	union {
 		void		*kernel;
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		void __user	*user;
-#endif
 	};
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	bool		is_kernel : 1;
-#endif
 } sockptr_t;
 
 static inline bool sockptr_is_kernel(sockptr_t sockptr)
 {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	return true;
-#else
 	return sockptr.is_kernel;
-#endif
 }
 
 static inline sockptr_t KERNEL_SOCKPTR(void *p)
 {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	return (sockptr_t) { .kernel = p };
-#else
 	return (sockptr_t) { .kernel = p, .is_kernel = true };
-#endif
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static inline sockptr_t USER_SOCKPTR(void __user *p)
 {
 	return (sockptr_t) { .user = p };
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static inline bool sockptr_is_null(sockptr_t sockptr)
 {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	return !sockptr.kernel;
-#else
 	if (sockptr_is_kernel(sockptr))
 		return !sockptr.kernel;
 	return !sockptr.user;
-#endif
 }
 
 static inline int copy_from_sockptr_offset(void *dst, sockptr_t src,
 		size_t offset, size_t size)
 {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!sockptr_is_kernel(src))
 		return copy_from_user(dst, src.user + offset, size);
-#endif
 	memcpy(dst, src.kernel + offset, size);
 	return 0;
 }
@@ -111,10 +91,8 @@ static inline int copy_struct_from_sockptr(void *dst, size_t ksize,
 	size_t size = min(ksize, usize);
 	size_t rest = max(ksize, usize) - size;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!sockptr_is_kernel(src))
 		return copy_struct_from_user(dst, ksize, src.user, size);
-#endif
 
 	if (usize < ksize) {
 		memset(dst + size, 0, rest);
@@ -133,10 +111,8 @@ static inline int copy_struct_from_sockptr(void *dst, size_t ksize,
 static inline int copy_to_sockptr_offset(sockptr_t dst, size_t offset,
 		const void *src, size_t size)
 {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!sockptr_is_kernel(dst))
 		return copy_to_user(dst.user + offset, src, size);
-#endif
 	memcpy(dst.kernel + offset, src, size);
 	return 0;
 }
@@ -177,27 +153,21 @@ static inline void *memdup_sockptr_nul_noprof(sockptr_t src, size_t len)
 
 static inline long strncpy_from_sockptr(char *dst, sockptr_t src, size_t count)
 {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (sockptr_is_kernel(src))
-#endif
 	{
 		size_t len = min(strnlen(src.kernel, count - 1) + 1, count);
 
 		memcpy(dst, src.kernel, len);
 		return len;
 	}
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	return strncpy_from_user(dst, src.user, count);
-#endif
 }
 
 static inline int check_zeroed_sockptr(sockptr_t src, size_t offset,
 				       size_t size)
 {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!sockptr_is_kernel(src))
 		return check_zeroed_user(src.user + offset, size);
-#endif
 	return memchr_inv(src.kernel + offset, 0, size) == NULL;
 }
 

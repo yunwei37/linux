@@ -432,7 +432,6 @@ static void bsp_init_amd(struct cpuinfo_x86 *c)
 		}
 	}
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (c->x86 == 0x15) {
 		unsigned long upperbit;
 		u32 cpuid, assoc;
@@ -447,7 +446,6 @@ static void bsp_init_amd(struct cpuinfo_x86 *c)
 		/* A random value per boot for bit slice [12:upper_bit) */
 		va_align.bits = get_random_u32() & va_align.mask;
 	}
-#endif
 
 	if (cpu_has(c, X86_FEATURE_MWAITX))
 		use_mwaitx_delay();

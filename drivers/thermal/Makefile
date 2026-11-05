@@ -68,7 +68,3 @@ obj-$(CONFIG_SPRD_THERMAL)	+= sprd_thermal.o
 obj-$(CONFIG_KHADAS_MCU_FAN_THERMAL)	+= khadas_mcu_fan.o
 obj-$(CONFIG_LOONGSON2_THERMAL)	+= loongson2_thermal.o
 obj-$(CONFIG_THERMAL_CORE_TESTING)	+= testing/
-
-ifdef CONFIG_MODELOS_KERNEL_ONLY
-thermal_sys-y := $(filter-out thermal_sysfs.o thermal_thresholds.o,$(thermal_sys-y))
-endif

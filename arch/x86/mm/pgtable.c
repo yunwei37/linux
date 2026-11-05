@@ -18,16 +18,13 @@ pgtable_t pte_alloc_one(struct mm_struct *mm)
 	return __pte_alloc_one(mm, GFP_PGTABLE_USER);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void ___pte_free_tlb(struct mmu_gather *tlb, struct page *pte)
 {
 	paravirt_release_pte(page_to_pfn(pte));
 	tlb_remove_ptdesc(tlb, page_ptdesc(pte));
 }
-#endif
 
 #if CONFIG_PGTABLE_LEVELS > 2
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void ___pmd_free_tlb(struct mmu_gather *tlb, pmd_t *pmd)
 {
 	paravirt_release_pmd(__pa(pmd) >> PAGE_SHIFT);
@@ -40,25 +37,20 @@ void ___pmd_free_tlb(struct mmu_gather *tlb, pmd_t *pmd)
 #endif
 	tlb_remove_ptdesc(tlb, virt_to_ptdesc(pmd));
 }
-#endif
 
 #if CONFIG_PGTABLE_LEVELS > 3
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void ___pud_free_tlb(struct mmu_gather *tlb, pud_t *pud)
 {
 	paravirt_release_pud(__pa(pud) >> PAGE_SHIFT);
 	tlb_remove_ptdesc(tlb, virt_to_ptdesc(pud));
 }
-#endif
 
 #if CONFIG_PGTABLE_LEVELS > 4
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void ___p4d_free_tlb(struct mmu_gather *tlb, p4d_t *p4d)
 {
 	paravirt_release_p4d(__pa(p4d) >> PAGE_SHIFT);
 	tlb_remove_ptdesc(tlb, virt_to_ptdesc(p4d));
 }
-#endif
 #endif	/* CONFIG_PGTABLE_LEVELS > 4 */
 #endif	/* CONFIG_PGTABLE_LEVELS > 3 */
 #endif	/* CONFIG_PGTABLE_LEVELS > 2 */

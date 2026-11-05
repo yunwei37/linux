@@ -777,9 +777,7 @@ static void software_node_release(struct kobject *kobj)
 
 static const struct kobj_type software_node_type = {
 	.release = software_node_release,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops = &kobj_sysfs_ops,
-#endif
 };
 
 static struct fwnode_handle *
@@ -832,9 +830,7 @@ swnode_register(const struct software_node *node, struct swnode *parent,
 	if (parent)
 		list_add_tail(&swnode->entry, &parent->children);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&swnode->kobj, KOBJ_ADD);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	return &swnode->fwnode;
 }
 

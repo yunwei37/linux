@@ -102,9 +102,7 @@ void put_pid(struct pid *pid)
 	ns = pid->numbers[pid->level].ns;
 	if (refcount_dec_and_test(&pid->count)) {
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		pidfs_free_pid(pid);
-#endif
 		kmem_cache_free(ns->pid_cachep, pid);
 		put_pid_ns(ns);
 	}
@@ -146,9 +144,7 @@ void free_pid(struct pid *pid)
 		idr_remove(&ns->idr, upid->nr);
 	}
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	pidfs_remove_pid(pid);
-#endif
 	spin_unlock(&pidmap_lock);
 
 	call_rcu(&pid->rcu, delayed_put_pid);
@@ -282,9 +278,7 @@ struct pid *alloc_pid(struct pid_namespace *ns, pid_t *set_tid,
 	if (!(ns->pid_allocated & PIDNS_ADDING))
 		goto out_unlock;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	pidfs_add_pid(pid);
-#endif
 	for ( ; upid >= pid->numbers; --upid) {
 		/* Make the PID visible to find_pid_ns. */
 		idr_replace(&upid->ns->idr, pid, upid->nr);
@@ -549,7 +543,6 @@ struct pid *find_ge_pid(int nr, struct pid_namespace *ns)
 }
 EXPORT_SYMBOL_GPL(find_ge_pid);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 struct pid *pidfd_get_pid(unsigned int fd, unsigned int *flags)
 {
 	CLASS(fd, f)(fd);
@@ -565,7 +558,6 @@ struct pid *pidfd_get_pid(unsigned int fd, unsigned int *flags)
 	}
 	return pid;
 }
-#endif
 
 /**
  * pidfd_get_task() - Get the task associated with a pidfd
@@ -579,7 +571,6 @@ struct pid *pidfd_get_pid(unsigned int fd, unsigned int *flags)
  * Return: On success, the task_struct associated with the pidfd.
  *	   On error, a negative errno number will be returned.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 struct task_struct *pidfd_get_task(int pidfd, unsigned int *flags)
 {
 	unsigned int f_flags = 0;
@@ -612,7 +603,6 @@ struct task_struct *pidfd_get_task(int pidfd, unsigned int *flags)
 	*flags = f_flags;
 	return task;
 }
-#endif
 
 /**
  * pidfd_create() - Create a new pid file descriptor.
@@ -630,7 +620,6 @@ struct task_struct *pidfd_get_task(int pidfd, unsigned int *flags)
  * Return: On success, a cloexec pidfd is returned.
  *         On error, a negative errno number will be returned.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int pidfd_create(struct pid *pid, unsigned int flags)
 {
 	int pidfd;
@@ -643,7 +632,6 @@ static int pidfd_create(struct pid *pid, unsigned int flags)
 	fd_install(pidfd, pidfd_file);
 	return pidfd;
 }
-#endif
 
 /**
  * sys_pidfd_open() - Open new pid file descriptor.
@@ -658,7 +646,6 @@ static int pidfd_create(struct pid *pid, unsigned int flags)
  * Return: On success, a cloexec pidfd is returned.
  *         On error, a negative errno number will be returned.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(pidfd_open, pid_t, pid, unsigned int, flags)
 {
 	int fd;
@@ -679,7 +666,6 @@ SYSCALL_DEFINE2(pidfd_open, pid_t, pid, unsigned int, flags)
 	put_pid(p);
 	return fd;
 }
-#endif
 
 #ifdef CONFIG_SYSCTL
 static struct ctl_table_set *pid_table_root_lookup(struct ctl_table_root *root)
@@ -813,7 +799,6 @@ static __init int pid_namespace_sysctl_init(void)
 }
 subsys_initcall(pid_namespace_sysctl_init);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct file *__pidfd_fget(struct task_struct *task, int fd)
 {
 	struct file *file;
@@ -853,9 +838,7 @@ static struct file *__pidfd_fget(struct task_struct *task, int fd)
 
 	return file;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int pidfd_getfd(struct pid *pid, int fd)
 {
 	struct task_struct *task;
@@ -876,7 +859,6 @@ static int pidfd_getfd(struct pid *pid, int fd)
 
 	return ret;
 }
-#endif
 
 /**
  * sys_pidfd_getfd() - Get a file descriptor from another process
@@ -894,7 +876,6 @@ static int pidfd_getfd(struct pid *pid, int fd)
  * Return: On success, a cloexec file descriptor is returned.
  *         On error, a negative errno number will be returned.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(pidfd_getfd, int, pidfd, int, fd,
 		unsigned int, flags)
 {
@@ -914,4 +895,3 @@ SYSCALL_DEFINE3(pidfd_getfd, int, pidfd, int, fd,
 
 	return pidfd_getfd(pid, fd);
 }
-#endif

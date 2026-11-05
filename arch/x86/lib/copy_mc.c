@@ -81,7 +81,6 @@ unsigned long __must_check copy_mc_to_kernel(void *dst, const void *src, unsigne
 }
 EXPORT_SYMBOL_GPL(copy_mc_to_kernel);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 unsigned long __must_check copy_mc_to_user(void __user *dst, const void *src, unsigned len)
 {
 	unsigned long ret;
@@ -104,4 +103,3 @@ unsigned long __must_check copy_mc_to_user(void __user *dst, const void *src, un
 
 	return copy_user_generic((__force void *)dst, src, len);
 }
-#endif

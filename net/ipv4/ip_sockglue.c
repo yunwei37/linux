@@ -1652,12 +1652,10 @@ int do_ip_getsockopt(struct sock *sk, int level, int optname,
 			msg.msg_control_is_user = false;
 			msg.msg_control = optval.kernel;
 		}
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		else {
 			msg.msg_control_is_user = true;
 			msg.msg_control_user = optval.user;
 		}
-#endif
 		msg.msg_controllen = len;
 		msg.msg_flags = in_compat_syscall() ? MSG_CMSG_COMPAT : 0;
 
@@ -1760,7 +1758,6 @@ out:
 	return err;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int ip_getsockopt(struct sock *sk, int level,
 		  int optname, char __user *optval, int __user *optlen)
 {
@@ -1786,5 +1783,4 @@ int ip_getsockopt(struct sock *sk, int level,
 #endif
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL(ip_getsockopt);

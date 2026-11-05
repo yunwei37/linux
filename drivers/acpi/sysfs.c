@@ -546,11 +546,9 @@ static int acpi_tables_sysfs_init(void)
 		acpi_table_data_init(table_header);
 	}
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(tables_kobj, KOBJ_ADD);
 	kobject_uevent(tables_data_kobj, KOBJ_ADD);
 	kobject_uevent(dynamic_tables_kobj, KOBJ_ADD);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	return 0;
 err_dynamic_tables:
@@ -973,9 +971,7 @@ static struct attribute *hotplug_profile_attrs[] = {
 ATTRIBUTE_GROUPS(hotplug_profile);
 
 static const struct kobj_type acpi_hotplug_profile_ktype = {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.sysfs_ops = &kobj_sysfs_ops,
-#endif
 	.default_groups = hotplug_profile_groups,
 };
 
@@ -994,9 +990,7 @@ void acpi_sysfs_add_hotplug_profile(struct acpi_hotplug_profile *hotplug,
 		goto err_out;
 	}
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&hotplug->kobj, KOBJ_ADD);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	return;
 
  err_out:

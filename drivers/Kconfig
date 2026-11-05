@@ -251,6 +251,6 @@ source "drivers/hte/Kconfig"
 
 source "drivers/cdx/Kconfig"
 
-source "drivers/modelos-net/Kconfig"
+
 
 endmenu

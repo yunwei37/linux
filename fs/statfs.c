@@ -187,7 +187,6 @@ static int do_statfs64(struct kstatfs *st, struct statfs64 __user *p)
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(statfs, const char __user *, pathname, struct statfs __user *, buf)
 {
 	struct kstatfs st;
@@ -196,9 +195,7 @@ SYSCALL_DEFINE2(statfs, const char __user *, pathname, struct statfs __user *, b
 		error = do_statfs_native(&st, buf);
 	return error;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(statfs64, const char __user *, pathname, size_t, sz, struct statfs64 __user *, buf)
 {
 	struct kstatfs st;
@@ -210,9 +207,7 @@ SYSCALL_DEFINE3(statfs64, const char __user *, pathname, size_t, sz, struct stat
 		error = do_statfs64(&st, buf);
 	return error;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(fstatfs, unsigned int, fd, struct statfs __user *, buf)
 {
 	struct kstatfs st;
@@ -221,9 +216,7 @@ SYSCALL_DEFINE2(fstatfs, unsigned int, fd, struct statfs __user *, buf)
 		error = do_statfs_native(&st, buf);
 	return error;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(fstatfs64, unsigned int, fd, size_t, sz, struct statfs64 __user *, buf)
 {
 	struct kstatfs st;
@@ -237,7 +230,6 @@ SYSCALL_DEFINE3(fstatfs64, unsigned int, fd, size_t, sz, struct statfs64 __user 
 		error = do_statfs64(&st, buf);
 	return error;
 }
-#endif
 
 static int vfs_ustat(dev_t dev, struct kstatfs *sbuf)
 {
@@ -251,7 +243,6 @@ static int vfs_ustat(dev_t dev, struct kstatfs *sbuf)
 	return err;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(ustat, unsigned, dev, struct ustat __user *, ubuf)
 {
 	struct ustat tmp;
@@ -269,7 +260,6 @@ SYSCALL_DEFINE2(ustat, unsigned, dev, struct ustat __user *, ubuf)
 
 	return copy_to_user(ubuf, &tmp, sizeof(struct ustat)) ? -EFAULT : 0;
 }
-#endif
 
 #ifdef CONFIG_COMPAT
 static int put_compat_statfs(struct compat_statfs __user *ubuf, struct kstatfs *kbuf)
@@ -310,7 +300,6 @@ static int put_compat_statfs(struct compat_statfs __user *ubuf, struct kstatfs *
  * The following statfs calls are copies of code from fs/statfs.c and
  * should be checked against those from time to time
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(statfs, const char __user *, pathname, struct compat_statfs __user *, buf)
 {
 	struct kstatfs tmp;
@@ -319,9 +308,7 @@ COMPAT_SYSCALL_DEFINE2(statfs, const char __user *, pathname, struct compat_stat
 		error = put_compat_statfs(buf, &tmp);
 	return error;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(fstatfs, unsigned int, fd, struct compat_statfs __user *, buf)
 {
 	struct kstatfs tmp;
@@ -330,7 +317,6 @@ COMPAT_SYSCALL_DEFINE2(fstatfs, unsigned int, fd, struct compat_statfs __user *,
 		error = put_compat_statfs(buf, &tmp);
 	return error;
 }
-#endif
 
 static int put_compat_statfs64(struct compat_statfs64 __user *ubuf, struct kstatfs *kbuf)
 {
@@ -371,12 +357,10 @@ int kcompat_sys_statfs64(const char __user * pathname, compat_size_t sz, struct 
 	return error;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(statfs64, const char __user *, pathname, compat_size_t, sz, struct compat_statfs64 __user *, buf)
 {
 	return kcompat_sys_statfs64(pathname, sz, buf);
 }
-#endif
 
 int kcompat_sys_fstatfs64(unsigned int fd, compat_size_t sz, struct compat_statfs64 __user * buf)
 {
@@ -392,19 +376,16 @@ int kcompat_sys_fstatfs64(unsigned int fd, compat_size_t sz, struct compat_statf
 	return error;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(fstatfs64, unsigned int, fd, compat_size_t, sz, struct compat_statfs64 __user *, buf)
 {
 	return kcompat_sys_fstatfs64(fd, sz, buf);
 }
-#endif
 
 /*
  * This is a copy of sys_ustat, just dealing with a structure layout.
  * Given how simple this syscall is that apporach is more maintainable
  * than the various conversion hacks.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(ustat, unsigned, dev, struct compat_ustat __user *, u)
 {
 	struct compat_ustat tmp;
@@ -420,5 +401,4 @@ COMPAT_SYSCALL_DEFINE2(ustat, unsigned, dev, struct compat_ustat __user *, u)
 		return -EFAULT;
 	return 0;
 }
-#endif
 #endif

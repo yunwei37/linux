@@ -117,7 +117,6 @@ static int fscontext_alloc_log(struct fs_context *fc)
  * opened, thereby indicating which namespaces will be used (notably, which
  * network namespace will be used for network filesystems).
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(fsopen, const char __user *, _fs_name, unsigned int, flags)
 {
 	struct file_system_type *fs_type;
@@ -157,12 +156,10 @@ err_fc:
 	put_fs_context(fc);
 	return ret;
 }
-#endif
 
 /*
  * Pick a superblock into a context for reconfiguration.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(fspick, int, dfd, const char __user *, path, unsigned int, flags)
 {
 	struct fs_context *fc;
@@ -219,7 +216,6 @@ err_path:
 err:
 	return ret;
 }
-#endif
 
 static int vfs_cmd_create(struct fs_context *fc, bool exclusive)
 {
@@ -354,7 +350,6 @@ static int vfs_fsconfig_locked(struct fs_context *fc, int cmd,
  * (*) fsconfig_set_fd: An open file descriptor is specified.  @_value must be
  *     NULL and @aux indicates the file descriptor.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(fsconfig,
 		int, fd,
 		unsigned int, cmd,
@@ -507,4 +502,3 @@ out_key:
 	kfree(param.key);
 	return ret;
 }
-#endif

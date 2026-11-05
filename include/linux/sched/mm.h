@@ -51,10 +51,8 @@ static inline void mmdrop(struct mm_struct *mm)
 	 * required by the membarrier system call before returning to
 	 * user-space, after storing to rq->curr.
 	 */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (unlikely(atomic_dec_and_test(&mm->mm_count)))
 		__mmdrop(mm);
-#endif
 }
 
 #ifdef CONFIG_PREEMPT_RT

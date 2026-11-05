@@ -942,7 +942,6 @@ out_putname:
 	return fd;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(mq_open, const char __user *, u_name, int, oflag, umode_t, mode,
 		struct mq_attr __user *, u_attr)
 {
@@ -952,9 +951,7 @@ SYSCALL_DEFINE4(mq_open, const char __user *, u_name, int, oflag, umode_t, mode,
 
 	return do_mq_open(u_name, oflag, mode, u_attr ? &attr : NULL);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
 {
 	int err;
@@ -998,7 +995,6 @@ out_name:
 
 	return err;
 }
-#endif
 
 /* Pipelined send and receive functions.
  *
@@ -1259,7 +1255,6 @@ static int do_mq_timedreceive(mqd_t mqdes, char __user *u_msg_ptr,
 	return ret;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(mq_timedsend, mqd_t, mqdes, const char __user *, u_msg_ptr,
 		size_t, msg_len, unsigned int, msg_prio,
 		const struct __kernel_timespec __user *, u_abs_timeout)
@@ -1273,9 +1268,7 @@ SYSCALL_DEFINE5(mq_timedsend, mqd_t, mqdes, const char __user *, u_msg_ptr,
 	}
 	return do_mq_timedsend(mqdes, u_msg_ptr, msg_len, msg_prio, p);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(mq_timedreceive, mqd_t, mqdes, char __user *, u_msg_ptr,
 		size_t, msg_len, unsigned int __user *, u_msg_prio,
 		const struct __kernel_timespec __user *, u_abs_timeout)
@@ -1289,7 +1282,6 @@ SYSCALL_DEFINE5(mq_timedreceive, mqd_t, mqdes, char __user *, u_msg_ptr,
 	}
 	return do_mq_timedreceive(mqdes, u_msg_ptr, msg_len, u_msg_prio, p);
 }
-#endif
 
 /*
  * Notes: the case when user wants us to deregister (with NULL as pointer)
@@ -1405,7 +1397,6 @@ out:
 	return ret;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(mq_notify, mqd_t, mqdes,
 		const struct sigevent __user *, u_notification)
 {
@@ -1417,7 +1408,6 @@ SYSCALL_DEFINE2(mq_notify, mqd_t, mqdes,
 	}
 	return do_mq_notify(mqdes, p);
 }
-#endif
 
 static int do_mq_getsetattr(int mqdes, struct mq_attr *new, struct mq_attr *old)
 {
@@ -1459,7 +1449,6 @@ static int do_mq_getsetattr(int mqdes, struct mq_attr *new, struct mq_attr *old)
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(mq_getsetattr, mqd_t, mqdes,
 		const struct mq_attr __user *, u_mqstat,
 		struct mq_attr __user *, u_omqstat)
@@ -1484,7 +1473,6 @@ SYSCALL_DEFINE3(mq_getsetattr, mqd_t, mqdes,
 		return -EFAULT;
 	return 0;
 }
-#endif
 
 #ifdef CONFIG_COMPAT
 
@@ -1527,7 +1515,6 @@ static inline int put_compat_mq_attr(const struct mq_attr *attr,
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(mq_open, const char __user *, u_name,
 		       int, oflag, compat_mode_t, mode,
 		       struct compat_mq_attr __user *, u_attr)
@@ -1540,9 +1527,7 @@ COMPAT_SYSCALL_DEFINE4(mq_open, const char __user *, u_name,
 	}
 	return do_mq_open(u_name, oflag, mode, p);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(mq_notify, mqd_t, mqdes,
 		       const struct compat_sigevent __user *, u_notification)
 {
@@ -1556,9 +1541,7 @@ COMPAT_SYSCALL_DEFINE2(mq_notify, mqd_t, mqdes,
 	}
 	return do_mq_notify(mqdes, p);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(mq_getsetattr, mqd_t, mqdes,
 		       const struct compat_mq_attr __user *, u_mqstat,
 		       struct compat_mq_attr __user *, u_omqstat)
@@ -1584,7 +1567,6 @@ COMPAT_SYSCALL_DEFINE3(mq_getsetattr, mqd_t, mqdes,
 	return 0;
 }
 #endif
-#endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
 static int compat_prepare_timeout(const struct old_timespec32 __user *p,
@@ -1597,7 +1579,6 @@ static int compat_prepare_timeout(const struct old_timespec32 __user *p,
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(mq_timedsend_time32, mqd_t, mqdes,
 		const char __user *, u_msg_ptr,
 		unsigned int, msg_len, unsigned int, msg_prio,
@@ -1612,9 +1593,7 @@ SYSCALL_DEFINE5(mq_timedsend_time32, mqd_t, mqdes,
 	}
 	return do_mq_timedsend(mqdes, u_msg_ptr, msg_len, msg_prio, p);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(mq_timedreceive_time32, mqd_t, mqdes,
 		char __user *, u_msg_ptr,
 		unsigned int, msg_len, unsigned int __user *, u_msg_prio,
@@ -1629,7 +1608,6 @@ SYSCALL_DEFINE5(mq_timedreceive_time32, mqd_t, mqdes,
 	}
 	return do_mq_timedreceive(mqdes, u_msg_ptr, msg_len, u_msg_prio, p);
 }
-#endif
 #endif
 
 static const struct inode_operations mqueue_dir_inode_operations = {

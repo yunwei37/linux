@@ -223,7 +223,6 @@ static const struct pci_device_id *pci_match_device(struct pci_driver *drv,
 	return NULL;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 /**
  * new_id_store - sysfs frontend to pci_add_dynid()
  * @driver: target device driver
@@ -327,7 +326,6 @@ static struct attribute *pci_drv_attrs[] = {
 	NULL,
 };
 ATTRIBUTE_GROUPS(pci_drv);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 struct drv_dev_and_id {
 	struct pci_driver *drv;
@@ -528,15 +526,6 @@ static void pci_device_remove(struct device *dev)
 }
 
 
-#ifdef CONFIG_MODELOS_KEXEC_KEEP_GPU_MASTER
-static bool modelos_keep_gpu_master;
-static int __init modelos_keep_master_setup(char *unused)
-{
- modelos_keep_gpu_master = true;
- return 1;
-}
-__setup("modelos_keep_gpu_master", modelos_keep_master_setup);
-#endif
 
 static void pci_device_shutdown(struct device *dev)
 {
@@ -556,14 +545,6 @@ static void pci_device_shutdown(struct device *dev)
 	 * devices with big hammer and stop their DMA any way.
 	 */
 	if (kexec_in_progress && (pci_dev->current_state <= PCI_D3hot)) {
-#ifdef CONFIG_MODELOS_KEXEC_KEEP_GPU_MASTER
-                if (modelos_keep_gpu_master &&
-                    pci_dev->vendor == PCI_VENDOR_ID_NVIDIA &&
-                    (pci_dev->class >> 16) == PCI_BASE_CLASS_DISPLAY) {
-                        pci_info(pci_dev, "KEXEC_LIVE_KEEP_MASTER\n");
-                        return;
-                }
-#endif
 		pci_clear_master(pci_dev);
         }
 }
@@ -1603,7 +1584,6 @@ void pci_dev_put(struct pci_dev *dev)
 }
 EXPORT_SYMBOL(pci_dev_put);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int pci_uevent(const struct device *dev, struct kobj_uevent_env *env)
 {
 	const struct pci_dev *pdev;
@@ -1635,7 +1615,6 @@ static int pci_uevent(const struct device *dev, struct kobj_uevent_env *env)
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #if defined(CONFIG_PCIEAER) || defined(CONFIG_EEH) || defined(CONFIG_S390)
 /**
@@ -1643,7 +1622,6 @@ static int pci_uevent(const struct device *dev, struct kobj_uevent_env *env)
  * @pdev: PCI device undergoing error recovery
  * @err_type: type of error event
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void pci_uevent_ers(struct pci_dev *pdev, enum pci_ers_result err_type)
 {
 	int idx = 0;
@@ -1673,7 +1651,6 @@ void pci_uevent_ers(struct pci_dev *pdev, enum pci_ers_result err_type)
 		kobject_uevent_env(&pdev->dev.kobj, KOBJ_CHANGE, envp);
 	}
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 #endif
 
 static int pci_bus_num_vf(struct device *dev)
@@ -1750,18 +1727,14 @@ const struct bus_type pci_bus_type = {
 	.name		= "pci",
 	.driver_override = true,
 	.match		= pci_bus_match,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.uevent		= pci_uevent,
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	.probe		= pci_device_probe,
 	.remove		= pci_device_remove,
 	.shutdown	= pci_device_shutdown,
 	.irq_get_affinity = pci_device_irq_get_affinity,
 	.dev_groups	= pci_dev_groups,
 	.bus_groups	= pci_bus_groups,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.drv_groups	= pci_drv_groups,
-#endif
 	.pm		= PCI_PM_OPS_PTR,
 	.num_vf		= pci_bus_num_vf,
 	.dma_configure	= pci_dma_configure,

@@ -1442,9 +1442,7 @@ __be32 __init root_nfs_parse_addr(char *name)
 static int __init wait_for_devices(void)
 {
 	int i;
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	bool try_init_devs = true;
-#endif
 
 	for (i = 0; i < DEVICE_WAIT_MAX; i++) {
 		struct net_device *dev;
@@ -1463,13 +1461,11 @@ static int __init wait_for_devices(void)
 		rtnl_unlock();
 		if (found)
 			return 0;
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		if (try_init_devs &&
 		    (ROOT_DEV == Root_NFS || ROOT_DEV == Root_CIFS)) {
 			try_init_devs = false;
 			wait_for_init_devices_probe();
 		}
-#endif
 		ssleep(1);
 	}
 	return -ENODEV;

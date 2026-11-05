@@ -184,10 +184,8 @@ out:
 	return ret;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(mseal, unsigned long, start, size_t, len, unsigned long,
 		flags)
 {
 	return do_mseal(start, len, flags);
 }
-#endif

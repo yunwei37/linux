@@ -2109,14 +2109,11 @@ static int __init strict_iomem(char *str)
 	return 1;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int iomem_fs_init_fs_context(struct fs_context *fc)
 {
 	return init_pseudo(fc, DEVMEM_MAGIC) ? 0 : -ENOMEM;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct file_system_type iomem_fs_type = {
 	.name		= "iomem",
 	.owner		= THIS_MODULE,
@@ -2155,7 +2152,6 @@ static int __init iomem_init_inode(void)
 }
 
 fs_initcall(iomem_init_inode);
-#endif
 
 
 __setup("iomem=", strict_iomem);

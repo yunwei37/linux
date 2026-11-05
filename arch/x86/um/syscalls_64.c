@@ -40,12 +40,10 @@ long arch_prctl(struct task_struct *task, int option,
 	return ret;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(arch_prctl, int, option, unsigned long, arg2)
 {
 	return arch_prctl(current, option, (unsigned long __user *) arg2);
 }
-#endif
 
 void arch_switch_to(struct task_struct *to)
 {
@@ -55,7 +53,6 @@ void arch_switch_to(struct task_struct *to)
 	 */
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(mmap, unsigned long, addr, unsigned long, len,
 		unsigned long, prot, unsigned long, flags,
 		unsigned long, fd, unsigned long, off)
@@ -65,4 +62,3 @@ SYSCALL_DEFINE6(mmap, unsigned long, addr, unsigned long, len,
 
 	return ksys_mmap_pgoff(addr, len, prot, flags, fd, off >> PAGE_SHIFT);
 }
-#endif

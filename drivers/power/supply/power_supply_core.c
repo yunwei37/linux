@@ -27,9 +27,7 @@
 
 static const struct class power_supply_class = {
 	.name = "power_supply",
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.dev_uevent = power_supply_uevent,
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 };
 
 static BLOCKING_NOTIFIER_HEAD(power_supply_notifier);
@@ -111,9 +109,7 @@ static void power_supply_changed_work(struct work_struct *work)
 		power_supply_update_leds(psy);
 		blocking_notifier_call_chain(&power_supply_notifier,
 				PSY_EVENT_PROP_CHANGED, psy);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		kobject_uevent(&psy->dev.kobj, KOBJ_CHANGE);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 		spin_lock_irqsave(&psy->changed_lock, flags);
 	}
 

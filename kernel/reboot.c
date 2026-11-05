@@ -102,9 +102,7 @@ void kernel_restart_prepare(char *cmd)
 {
 	blocking_notifier_call_chain(&reboot_notifier_list, SYS_RESTART, cmd);
 	system_state = SYSTEM_RESTART;
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	usermodehelper_disable();
-#endif
 	device_shutdown();
 }
 
@@ -307,9 +305,7 @@ static void kernel_shutdown_prepare(enum system_states state)
 	blocking_notifier_call_chain(&reboot_notifier_list,
 		(state == SYSTEM_HALT) ? SYS_HALT : SYS_POWER_OFF, NULL);
 	system_state = state;
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	usermodehelper_disable();
-#endif
 	device_shutdown();
 }
 /**
@@ -730,7 +726,6 @@ DEFINE_MUTEX(system_transition_mutex);
  *
  * reboot doesn't sync: do that yourself before calling this.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 		void __user *, arg)
 {
@@ -820,7 +815,6 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 	mutex_unlock(&system_transition_mutex);
 	return ret;
 }
-#endif
 
 static void deferred_cad(struct work_struct *dummy)
 {
@@ -839,25 +833,9 @@ void ctrl_alt_del(void)
 	if (C_A_D)
 		schedule_work(&cad_work);
 	else
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		kill_cad_pid(SIGINT, 1);
-#else
-		schedule_work(&cad_work);
-#endif
 }
 
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-static int __orderly_reboot(void)
-{
-	kernel_restart(NULL);
-	return 0;
-}
-static int __orderly_poweroff(bool force)
-{
-	kernel_power_off();
-	return 0;
-}
-#else
 #define POWEROFF_CMD_PATH_LEN  256
 static char poweroff_cmd[POWEROFF_CMD_PATH_LEN] = "/sbin/poweroff";
 static const char reboot_cmd[] = "/sbin/reboot";
@@ -890,9 +868,7 @@ static int __orderly_reboot(void)
 
 	if (ret) {
 		pr_warn("Failed to start orderly reboot: forcing the issue\n");
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		emergency_sync();
-#endif
 		kernel_restart(NULL);
 	}
 
@@ -913,16 +889,13 @@ static int __orderly_poweroff(bool force)
 		 * poweroff asap.  Or not even bother syncing if we're doing an
 		 * emergency shutdown?
 		 */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		emergency_sync();
-#endif
 		kernel_power_off();
 	}
 
 	return ret;
 }
 
-#endif
 
 static bool poweroff_force;
 

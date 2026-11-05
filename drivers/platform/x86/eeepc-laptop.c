@@ -1213,11 +1213,9 @@ static void eeepc_acpi_notify(struct acpi_device *device, u32 event)
 	if (event > ACPI_MAX_SYS_NOTIFY)
 		return;
 	count = eeepc->event_count[event % 128]++;
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	acpi_bus_generate_netlink_event(device->pnp.device_class,
 					dev_name(&device->dev), event,
 					count);
-#endif
 
 	/* Brightness events are special */
 	if (event < NOTIFY_BRN_MIN || event > NOTIFY_BRN_MAX) {

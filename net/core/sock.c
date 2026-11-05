@@ -172,10 +172,8 @@ static void sock_def_write_space(struct sock *sk);
 bool sk_ns_capable(const struct sock *sk,
 		   struct user_namespace *user_ns, int cap)
 {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!file_ns_capable(sk->sk_socket->file, user_ns, cap))
 		return false;
-#endif
 	return ns_capable(user_ns, cap);
 }
 EXPORT_SYMBOL(sk_ns_capable);
@@ -1449,7 +1447,6 @@ set_sndbuf:
 			WRITE_ONCE(sk->sk_rcvlowat, val ? : 1);
 		break;
 		}
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	case SO_ATTACH_FILTER: {
 		struct sock_fprog fprog;
 
@@ -1497,7 +1494,6 @@ set_sndbuf:
 		}
 		break;
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	case SO_DETACH_REUSEPORT_BPF:
 		ret = reuseport_detach_prog(sk);
@@ -1584,7 +1580,6 @@ set_sndbuf:
 			dst_negative_advice(sk);
 		break;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	case SO_ZEROCOPY:
 		if (sk->sk_family == PF_INET || sk->sk_family == PF_INET6) {
 			if (!(sk_is_tcp(sk) ||
@@ -1602,7 +1597,6 @@ set_sndbuf:
 		}
 		break;
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	case SO_TXTIME:
 		if (optlen != sizeof(struct sock_txtime)) {
@@ -1908,7 +1902,6 @@ int sk_getsockopt(struct sock *sk, int level, int optname,
 		goto lenout;
 	}
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	case SO_PEERPIDFD:
 	{
 		struct pid *peer_pid;
@@ -1950,7 +1943,6 @@ int sk_getsockopt(struct sock *sk, int level, int optname,
 		return 0;
 	}
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	case SO_PEERGROUPS:
 	{
@@ -2041,7 +2033,6 @@ int sk_getsockopt(struct sock *sk, int level, int optname,
 	case SO_BINDTODEVICE:
 		return sock_getbindtodevice(sk, optval, optlen, len);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	case SO_GET_FILTER:
 		len = sk_get_filter(sk, optval, len);
 		if (len < 0)
@@ -2049,7 +2040,6 @@ int sk_getsockopt(struct sock *sk, int level, int optname,
 
 		goto lenout;
 
-#endif
 	case SO_LOCK_FILTER:
 		v.val = sock_flag(sk, SOCK_FILTER_LOCKED);
 		break;
@@ -2417,11 +2407,9 @@ static void __sk_free(struct sock *sk)
 	if (likely(sk->sk_net_refcnt))
 		sock_inuse_add(sock_net(sk), -1);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (unlikely(sk->sk_net_refcnt && sock_diag_has_destroy_listeners(sk)))
 		sock_diag_broadcast_destroy(sk);
 	else
-#endif
 		sk_destruct(sk);
 }
 
@@ -3629,14 +3617,12 @@ static void sock_def_destruct(struct sock *sk)
 {
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void sk_send_sigurg(struct sock *sk)
 {
 	if (sk->sk_socket && sk->sk_socket->file)
 		if (send_sigurg(sk->sk_socket->file))
 			sk_wake_async(sk, SOCK_WAKE_URG, POLL_PRI);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL(sk_send_sigurg);
 
 void sk_reset_timer(struct sock *sk, struct timer_list* timer,
@@ -3805,7 +3791,6 @@ bool __lock_sock_fast(struct sock *sk) __acquires(&sk->sk_lock.slock)
 }
 EXPORT_SYMBOL(__lock_sock_fast);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int sock_gettstamp(struct socket *sock, void __user *userstamp,
 		   bool timeval, bool time32)
 {
@@ -3850,7 +3835,6 @@ int sock_gettstamp(struct socket *sock, void __user *userstamp,
 #endif
 	return put_timespec64(&ts, userstamp);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL(sock_gettstamp);
 
 void sock_enable_timestamp(struct sock *sk, enum sock_flags flag)
@@ -4434,7 +4418,6 @@ static int sock_ioctl_out(struct sock *sk, unsigned int cmd, void __user *arg)
  * The main motivation for this function is to pass kernel memory to the
  * protocol ioctl callbacks, instead of userspace memory.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int sk_ioctl(struct sock *sk, unsigned int cmd, void __user *arg)
 {
 	int rc = 1;
@@ -4453,7 +4436,6 @@ int sk_ioctl(struct sock *sk, unsigned int cmd, void __user *arg)
 	/* Otherwise call the default handler */
 	return sock_ioctl_out(sk, cmd, arg);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL(sk_ioctl);
 
 static int __init sock_struct_check(void)

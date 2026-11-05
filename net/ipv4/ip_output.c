@@ -1029,7 +1029,6 @@ static int __ip_append_data(struct sock *sk,
 				uarg = msg->msg_ubuf;
 			}
 		}
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		else if (sock_flag(sk, SOCK_ZEROCOPY)) {
 			uarg = msg_zerocopy_realloc(sk, length, skb_zcopy(skb),
 						    false);
@@ -1045,7 +1044,6 @@ static int __ip_append_data(struct sock *sk,
 				skb_zcopy_set(skb, uarg, &extra_uref);
 			}
 		}
-#endif
 
 	} else if ((flags & MSG_SPLICE_PAGES) && length) {
 		if (inet_test_bit(HDRINCL, sk))

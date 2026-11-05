@@ -996,9 +996,7 @@ struct proto ping_prot = {
 	.connect =	ip4_datagram_connect,
 	.disconnect =	__udp_disconnect,
 	.setsockopt =	ip_setsockopt,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt =	ip_getsockopt,
-#endif
 	.sendmsg =	ping_v4_sendmsg,
 	.recvmsg =	ping_recvmsg,
 	.bind =		ping_bind,

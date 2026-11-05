@@ -186,7 +186,6 @@ unsigned int __kfifo_out(struct __kfifo *fifo,
 }
 EXPORT_SYMBOL(__kfifo_out);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static unsigned long kfifo_copy_from_user(struct __kfifo *fifo,
 	const void __user *from, unsigned int len, unsigned int off,
 	unsigned int *copied)
@@ -221,9 +220,7 @@ static unsigned long kfifo_copy_from_user(struct __kfifo *fifo,
 	/* return the number of elements which are not copied */
 	return ret;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int __kfifo_from_user(struct __kfifo *fifo, const void __user *from,
 		unsigned long len, unsigned int *copied)
 {
@@ -248,10 +245,8 @@ int __kfifo_from_user(struct __kfifo *fifo, const void __user *from,
 	fifo->in += len;
 	return err;
 }
-#endif
 EXPORT_SYMBOL(__kfifo_from_user);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static unsigned long kfifo_copy_to_user(struct __kfifo *fifo, void __user *to,
 		unsigned int len, unsigned int off, unsigned int *copied)
 {
@@ -285,9 +280,7 @@ static unsigned long kfifo_copy_to_user(struct __kfifo *fifo, void __user *to,
 	/* return the number of elements which are not copied */
 	return ret;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int __kfifo_to_user(struct __kfifo *fifo, void __user *to,
 		unsigned long len, unsigned int *copied)
 {
@@ -311,7 +304,6 @@ int __kfifo_to_user(struct __kfifo *fifo, void __user *to,
 	fifo->out += len;
 	return err;
 }
-#endif
 EXPORT_SYMBOL(__kfifo_to_user);
 
 static unsigned int setup_sgl_buf(struct __kfifo *fifo, struct scatterlist *sgl,
@@ -513,7 +505,6 @@ void __kfifo_skip_r(struct __kfifo *fifo, size_t recsize)
 }
 EXPORT_SYMBOL(__kfifo_skip_r);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int __kfifo_from_user_r(struct __kfifo *fifo, const void __user *from,
 	unsigned long len, unsigned int *copied, size_t recsize)
 {
@@ -536,10 +527,8 @@ int __kfifo_from_user_r(struct __kfifo *fifo, const void __user *from,
 	fifo->in += len + recsize;
 	return 0;
 }
-#endif
 EXPORT_SYMBOL(__kfifo_from_user_r);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int __kfifo_to_user_r(struct __kfifo *fifo, void __user *to,
 	unsigned long len, unsigned int *copied, size_t recsize)
 {
@@ -563,7 +552,6 @@ int __kfifo_to_user_r(struct __kfifo *fifo, void __user *to,
 	fifo->out += n + recsize;
 	return 0;
 }
-#endif
 EXPORT_SYMBOL(__kfifo_to_user_r);
 
 unsigned int __kfifo_dma_in_prepare_r(struct __kfifo *fifo,
@@ -604,4 +592,3 @@ unsigned int __kfifo_dma_out_prepare_r(struct __kfifo *fifo,
 	return setup_sgl(fifo, sgl, nents, len, fifo->out + recsize, dma);
 }
 EXPORT_SYMBOL(__kfifo_dma_out_prepare_r);
-

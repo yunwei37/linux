@@ -371,7 +371,6 @@ int ioctl_fssetxattr(struct file *file, void __user *argp)
 }
 EXPORT_SYMBOL(ioctl_fssetxattr);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(file_getattr, int, dfd, const char __user *, filename,
 		struct file_attr __user *, ufattr, size_t, usize,
 		unsigned int, at_flags)
@@ -428,9 +427,7 @@ SYSCALL_DEFINE5(file_getattr, int, dfd, const char __user *, filename,
 
 	return error;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(file_setattr, int, dfd, const char __user *, filename,
 		struct file_attr __user *, ufattr, size_t, usize,
 		unsigned int, at_flags)
@@ -495,4 +492,3 @@ SYSCALL_DEFINE5(file_setattr, int, dfd, const char __user *, filename,
 
 	return error;
 }
-#endif

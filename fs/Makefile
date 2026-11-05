@@ -129,12 +129,3 @@ obj-$(CONFIG_VBOXSF_FS)		+= vboxsf/
 obj-$(CONFIG_ZONEFS_FS)		+= zonefs/
 obj-$(CONFIG_BPF_LSM)		+= bpf_fs_kfuncs.o
 obj-$(CONFIG_RESCTRL_FS)	+= resctrl/
-
-ifdef CONFIG_MODELOS_KERNEL_ONLY
-obj-y := $(filter-out exec.o,$(obj-y))
-endif
-
-ifdef CONFIG_MODELOS_KERNEL_ONLY
-# No inode, fd, mount, exec, char-device, procfs or file-page-cache consumer.
-obj-y :=
-endif

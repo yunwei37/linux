@@ -21,7 +21,6 @@ static const struct vm_operations_struct pci_phys_vm_ops = {
 #endif
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int pci_mmap_resource_range(struct pci_dev *pdev, int bar,
 			    struct vm_area_struct *vma,
 			    enum pci_mmap_state mmap_state, int write_combine)
@@ -51,7 +50,6 @@ int pci_mmap_resource_range(struct pci_dev *pdev, int bar,
 				  vma->vm_end - vma->vm_start,
 				  vma->vm_page_prot);
 }
-#endif
 
 #endif
 

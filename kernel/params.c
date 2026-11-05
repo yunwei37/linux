@@ -801,9 +801,7 @@ static void __init kernel_add_sysfs_param(const char *name,
 	BUG_ON(err);
 	err = sysfs_create_group(&mk->kobj, &mk->mp->grp);
 	BUG_ON(err);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&mk->kobj, KOBJ_ADD);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	kobject_put(&mk->kobj);
 }
 
@@ -865,9 +863,7 @@ static void __init version_sysfs_builtin(void)
 		if (mk) {
 			err = sysfs_create_file(&mk->kobj, &vattr->mattr.attr);
 			WARN_ON_ONCE(err);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 			kobject_uevent(&mk->kobj, KOBJ_ADD);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 			kobject_put(&mk->kobj);
 		}
 	}

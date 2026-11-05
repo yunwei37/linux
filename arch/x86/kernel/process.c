@@ -148,7 +148,6 @@ void exit_thread(struct task_struct *tsk)
 	fpu__drop(tsk);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int set_new_tls(struct task_struct *p, unsigned long tls)
 {
 	struct user_desc __user *utls = (struct user_desc __user *)tls;
@@ -158,17 +157,12 @@ static int set_new_tls(struct task_struct *p, unsigned long tls)
 	else
 		return do_set_thread_area_64(p, ARCH_SET_FS, tls);
 }
-#endif
 
 __visible void ret_from_fork(struct task_struct *prev, struct pt_regs *regs,
 				     int (*fn)(void *), void *fn_arg)
 {
 	schedule_tail(prev);
 
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	fn(fn_arg);
-	do_exit(0);
-#else
 	/* Is this a kernel thread? */
 	if (unlikely(fn)) {
 		fn(fn_arg);
@@ -181,23 +175,18 @@ __visible void ret_from_fork(struct task_struct *prev, struct pt_regs *regs,
 	}
 
 	syscall_exit_to_user_mode(regs);
-#endif
 }
 
 int copy_thread(struct task_struct *p, const struct kernel_clone_args *args)
 {
 	u64 clone_flags = args->flags;
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	unsigned long sp = args->stack;
 	unsigned long tls = args->tls;
-#endif
 	struct inactive_task_frame *frame;
 	struct fork_frame *fork_frame;
 	struct pt_regs *childregs;
 	unsigned long new_ssp;
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	int ret = 0;
-#endif
 
 	childregs = task_pt_regs(p);
 	fork_frame = container_of(childregs, struct fork_frame, regs);
@@ -246,12 +235,6 @@ int copy_thread(struct task_struct *p, const struct kernel_clone_args *args)
 
 	fpu_clone(p, clone_flags, args->fn, new_ssp);
 
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	p->thread.pkru = pkru_get_init_value();
-	memset(childregs, 0, sizeof(struct pt_regs));
-	kthread_frame_init(frame, args->fn, args->fn_arg);
-	return 0;
-#else
 	/* Kernel thread ? */
 	if (unlikely(p->flags & PF_KTHREAD)) {
 		p->thread.pkru = pkru_get_init_value();
@@ -297,10 +280,8 @@ int copy_thread(struct task_struct *p, const struct kernel_clone_args *args)
 		io_bitmap_share(p);
 
 	return ret;
-#endif
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void pkru_flush_thread(void)
 {
 	/*
@@ -321,9 +302,7 @@ void flush_thread(void)
 	pkru_flush_thread();
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void disable_TSC(void)
 {
 	preempt_disable();
@@ -372,11 +351,9 @@ int set_tsc_mode(unsigned int val)
 	return 0;
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 DEFINE_PER_CPU(u64, msr_misc_features_shadow);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void set_cpuid_faulting(bool on)
 {
 
@@ -464,7 +441,6 @@ void arch_setup_new_exec(void)
 	mm_reset_untag_mask(current->mm);
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #ifdef CONFIG_X86_IOPL_IOPERM
 static inline void switch_to_bitmap(unsigned long tifp)
@@ -773,13 +749,11 @@ void __switch_to_xtra(struct task_struct *prev_p, struct task_struct *next_p)
 		wrmsrq(MSR_IA32_DEBUGCTLMSR, debugctl);
 	}
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if ((tifp ^ tifn) & _TIF_NOTSC)
 		cr4_toggle_bits_irqsoff(X86_CR4_TSD);
 
 	if ((tifp ^ tifn) & _TIF_NOCPUID)
 		set_cpuid_faulting(!!(tifn & _TIF_NOCPUID));
-#endif
 
 	if (likely(!((tifp | tifn) & _TIF_SPEC_FORCE_UPDATE))) {
 		__speculation_ctrl_update(tifp, tifn);
@@ -1055,14 +1029,12 @@ static int __init idle_setup(char *str)
 }
 early_param("idle", idle_setup);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 unsigned long arch_align_stack(unsigned long sp)
 {
 	if (!(current->personality & ADDR_NO_RANDOMIZE) && randomize_va_space)
 		sp -= get_random_u32_below(8192);
 	return sp & ~0xf;
 }
-#endif
 
 unsigned long arch_randomize_brk(struct mm_struct *mm)
 {
@@ -1101,7 +1073,6 @@ unsigned long __get_wchan(struct task_struct *p)
 	return addr;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(arch_prctl, int, option, unsigned long, arg2)
 {
 	switch (option) {
@@ -1122,11 +1093,8 @@ SYSCALL_DEFINE2(arch_prctl, int, option, unsigned long, arg2)
 
 	return -EINVAL;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(ni_syscall)
 {
 	return -ENOSYS;
 }
-#endif

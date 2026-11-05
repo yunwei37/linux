@@ -2090,7 +2090,6 @@ void hrtimer_setup_sleeper_on_stack(struct hrtimer_sleeper *sl,
 }
 EXPORT_SYMBOL_GPL(hrtimer_setup_sleeper_on_stack);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int nanosleep_copyout(struct restart_block *restart, struct timespec64 *ts)
 {
 	switch(restart->nanosleep.type) {
@@ -2185,11 +2184,9 @@ out:
 	return ret;
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 #ifdef CONFIG_64BIT
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(nanosleep, struct __kernel_timespec __user *, rqtp,
 		struct __kernel_timespec __user *, rmtp)
 {
@@ -2207,13 +2204,11 @@ SYSCALL_DEFINE2(nanosleep, struct __kernel_timespec __user *, rqtp,
 	return hrtimer_nanosleep(timespec64_to_ktime(tu), HRTIMER_MODE_REL,
 				 CLOCK_MONOTONIC);
 }
-#endif
 
 #endif
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(nanosleep_time32, struct old_timespec32 __user *, rqtp,
 		       struct old_timespec32 __user *, rmtp)
 {
@@ -2231,7 +2226,6 @@ SYSCALL_DEFINE2(nanosleep_time32, struct old_timespec32 __user *, rqtp,
 	return hrtimer_nanosleep(timespec64_to_ktime(tu), HRTIMER_MODE_REL,
 				 CLOCK_MONOTONIC);
 }
-#endif
 #endif
 
 /*

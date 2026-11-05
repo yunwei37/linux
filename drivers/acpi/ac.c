@@ -141,11 +141,9 @@ static void acpi_ac_notify(acpi_handle handle, u32 event, void *data)
 			msleep(ac_sleep_before_get_state_ms);
 
 		acpi_ac_get_state(ac);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		acpi_bus_generate_netlink_event(adev->pnp.device_class,
 						  dev_name(&adev->dev), event,
 						  (u32) ac->state);
-#endif
 		acpi_notifier_call_chain(adev, event, (u32) ac->state);
 		power_supply_changed(ac->charger);
 	}

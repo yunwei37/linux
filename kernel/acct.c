@@ -292,7 +292,6 @@ static DEFINE_MUTEX(acct_on_mutex);
  *
  * Returns: 0 for success or negative errno values for failure.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(acct, const char __user *, name)
 {
 	int error = 0;
@@ -311,7 +310,6 @@ SYSCALL_DEFINE1(acct, const char __user *, name)
 
 	return error;
 }
-#endif
 
 void acct_exit_ns(struct pid_namespace *ns)
 {

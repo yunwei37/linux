@@ -247,14 +247,12 @@ do_trap(int trapnr, int signr, char *str, struct pt_regs *regs,
 	if (!do_trap_no_signal(tsk, trapnr, str, regs, error_code))
 		return;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	show_signal(tsk, signr, "trap ", str, regs, error_code);
 
 	if (!sicode)
 		force_sig(signr);
 	else
 		force_sig_fault(signr, sicode, addr);
-#endif
 }
 NOKPROBE_SYMBOL(do_trap);
 
@@ -1173,7 +1171,6 @@ out:
 	local_db_restore(dr7);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static noinstr void exc_debug_user(struct pt_regs *regs, unsigned long dr6)
 {
 	bool icebp;
@@ -1245,7 +1242,6 @@ out:
 	instrumentation_end();
 	irqentry_exit_to_user_mode(regs);
 }
-#endif
 
 #ifdef CONFIG_X86_64
 /* IST stack entry */
@@ -1255,12 +1251,10 @@ DEFINE_IDTENTRY_DEBUG(exc_debug)
 }
 
 /* User entry, runs on regular task stack */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 DEFINE_IDTENTRY_DEBUG_USER(exc_debug)
 {
 	exc_debug_user(regs, debug_read_reset_dr6());
 }
-#endif
 
 #ifdef CONFIG_X86_FRED
 /*

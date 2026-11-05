@@ -117,7 +117,6 @@ unsigned int sysctl_net_busy_read __read_mostly;
 unsigned int sysctl_net_busy_poll __read_mostly;
 #endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t sock_read_iter(struct kiocb *iocb, struct iov_iter *to);
 static ssize_t sock_write_iter(struct kiocb *iocb, struct iov_iter *from);
 static int sock_mmap(struct file *file, struct vm_area_struct *vma);
@@ -173,7 +172,6 @@ static const struct file_operations socket_file_ops = {
 	.show_fdinfo =	sock_show_fdinfo,
 };
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static const char * const pf_family_names[] = {
 	[PF_UNSPEC]	= "PF_UNSPEC",
@@ -248,7 +246,6 @@ static const struct net_proto_family __rcu *net_families[NPROTO] __read_mostly;
  *	invalid addresses -EFAULT is returned. On a success 0 is returned.
  */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int move_addr_to_kernel(void __user *uaddr, int ulen, struct sockaddr_storage *kaddr)
 {
 	if (ulen < 0 || ulen > sizeof(struct sockaddr_storage))
@@ -317,44 +314,7 @@ efault_end:
 	return -EFAULT;
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-/* Kernel sockets retain inode-shaped identity fields for SOCK_INODE readers,
- * but own no VFS object, file, fd, mount or filesystem. Socket wait queues
- * can still be observed by packet IRQs, so defer storage release through RCU.
- */
-static atomic_long_t modelos_socket_ids = ATOMIC_LONG_INIT(0);
-
-struct socket *sock_alloc(void)
-{
-	struct socket_alloc *ei = kzalloc(sizeof(*ei), GFP_KERNEL);
-	if (!ei)
-		return NULL;
-	init_waitqueue_head(&ei->socket.wq.wait);
-	ei->socket.state = SS_UNCONNECTED;
-	ei->vfs_inode.i_ino = atomic_long_inc_return(&modelos_socket_ids);
-	ei->vfs_inode.i_uid = current_fsuid();
-	ei->vfs_inode.i_gid = current_fsgid();
-	ei->vfs_inode.i_mode = S_IFSOCK | S_IRWXUGO;
-	return &ei->socket;
-}
-EXPORT_SYMBOL(sock_alloc);
-
-void sock_release(struct socket *sock)
-{
-	const struct proto_ops *ops = READ_ONCE(sock->ops);
-	struct socket_alloc *ei = container_of(sock, struct socket_alloc, socket);
-	if (ops) {
-		ops->release(sock);
-		sock->sk = NULL;
-		sock->ops = NULL;
-		module_put(ops->owner);
-	}
-	kfree_rcu(ei, vfs_inode.i_rcu);
-}
-EXPORT_SYMBOL(sock_release);
-#else
 static struct kmem_cache *sock_inode_cachep __ro_after_init;
 
 static struct inode *sock_alloc_inode(struct super_block *sb)
@@ -733,7 +693,6 @@ void sock_release(struct socket *sock)
 }
 EXPORT_SYMBOL(sock_release);
 
-#endif /* CONFIG_MODELOS_KERNEL_ONLY */
 
 void __sock_tx_timestamp(__u32 tsflags, __u8 *tx_flags)
 {
@@ -1171,7 +1130,6 @@ int kernel_recvmsg(struct socket *sock, struct msghdr *msg,
 }
 EXPORT_SYMBOL(kernel_recvmsg);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static ssize_t sock_splice_read(struct file *file, loff_t *ppos,
 				struct pipe_inode_info *pipe, size_t len,
 				unsigned int flags)
@@ -1437,7 +1395,6 @@ static long sock_ioctl(struct file *file, unsigned cmd, unsigned long arg)
  *	This function internally uses GFP_KERNEL.
  */
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 int sock_create_lite(int family, int type, int protocol, struct socket **res)
 {
@@ -1470,7 +1427,6 @@ out_release:
 EXPORT_SYMBOL(sock_create_lite);
 
 /* No kernel lock held - perfect */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static __poll_t sock_poll(struct file *file, poll_table *wait)
 {
 	struct socket *sock = file->private_data;
@@ -1580,7 +1536,6 @@ EXPORT_SYMBOL(sock_wake_async);
  *	This function internally uses GFP_KERNEL.
  */
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 int __sock_create(struct net *net, int family, int type, int protocol,
 			 struct socket **res, int kern)
@@ -1709,12 +1664,10 @@ EXPORT_SYMBOL(__sock_create);
  *	Returns 0 or an error. This function internally uses GFP_KERNEL.
  */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int sock_create(int family, int type, int protocol, struct socket **res)
 {
 	return __sock_create(current->nsproxy->net_ns, family, type, protocol, res, 0);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 EXPORT_SYMBOL(sock_create);
 
 /**
@@ -1735,7 +1688,6 @@ int sock_create_kern(struct net *net, int family, int type, int protocol, struct
 }
 EXPORT_SYMBOL(sock_create_kern);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct socket *__sys_socket_create(int family, int type, int protocol)
 {
 	struct socket *sock;
@@ -3300,7 +3252,6 @@ SYSCALL_DEFINE2(socketcall, int, call, unsigned long __user *, args)
  *	socket interface. The value ops->family corresponds to the
  *	socket system call protocol family.
  */
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 int sock_register(const struct net_proto_family *ops)
 {
@@ -3377,7 +3328,6 @@ static int __init sock_init(void)
 	 *      Initialize the protocols module.
 	 */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	init_inodecache();
 
 	err = register_filesystem(&sock_fs_type);
@@ -3389,7 +3339,6 @@ static int __init sock_init(void)
 		goto out_mount;
 	}
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 	/* The real protocol initialization is performed in later initcalls.
 	 */
@@ -3405,11 +3354,9 @@ static int __init sock_init(void)
 out:
 	return err;
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 out_mount:
 	unregister_filesystem(&sock_fs_type);
 	goto out;
-#endif
 }
 
 core_initcall(sock_init);	/* early initcall */
@@ -3431,7 +3378,6 @@ void socket_seq_show(struct seq_file *seq)
  * the next page isn't readable/writable, we get a fault. To prevent
  * that, copy back and forth to the full size.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int get_user_ifreq(struct ifreq *ifr, void __user **ifrdata, void __user *arg)
 {
 	if (in_compat_syscall()) {
@@ -3645,7 +3591,6 @@ static long compat_sock_ioctl(struct file *file, unsigned int cmd,
  *	Returns 0 or an error.
  */
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 int kernel_bind(struct socket *sock, struct sockaddr_unsized *addr, int addrlen)
 {

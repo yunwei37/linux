@@ -420,17 +420,12 @@ err:
 	return fd;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(eventfd2, unsigned int, count, int, flags)
 {
 	return do_eventfd(count, flags);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(eventfd, unsigned int, count)
 {
 	return do_eventfd(count, 0);
 }
-#endif
-

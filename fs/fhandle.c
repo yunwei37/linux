@@ -127,7 +127,6 @@ static long do_sys_name_to_handle(const struct path *path,
  * enough space, the field is updated to return the minimum
  * value required.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(name_to_handle_at, int, dfd, const char __user *, name,
 		struct file_handle __user *, handle, void __user *, mnt_id,
 		int, flag)
@@ -169,7 +168,6 @@ SYSCALL_DEFINE5(name_to_handle_at, int, dfd, const char __user *, name,
 	}
 	return err;
 }
-#endif
 
 static int get_path_anchor(int fd, struct path *root)
 {
@@ -457,7 +455,6 @@ static long do_handle_open(int mountdirfd, struct file_handle __user *ufh,
  * to the vfsmount pointed by the @mountdirfd. @flags
  * value is same as the open(2) flags.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(open_by_handle_at, int, mountdirfd,
 		struct file_handle __user *, handle,
 		int, flags)
@@ -470,18 +467,15 @@ SYSCALL_DEFINE3(open_by_handle_at, int, mountdirfd,
 	ret = do_handle_open(mountdirfd, handle, flags);
 	return ret;
 }
-#endif
 
 #ifdef CONFIG_COMPAT
 /*
  * Exactly like fs/open.c:sys_open_by_handle_at(), except that it
  * doesn't set the O_LARGEFILE flag.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(open_by_handle_at, int, mountdirfd,
 			     struct file_handle __user *, handle, int, flags)
 {
 	return do_handle_open(mountdirfd, handle, flags);
 }
-#endif
 #endif

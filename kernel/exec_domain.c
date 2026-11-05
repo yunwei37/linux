@@ -35,7 +35,6 @@ static int __init proc_execdomains_init(void)
 module_init(proc_execdomains_init);
 #endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(personality, unsigned int, personality)
 {
 	unsigned int old = current->personality;
@@ -45,4 +44,3 @@ SYSCALL_DEFINE1(personality, unsigned int, personality)
 
 	return old;
 }
-#endif

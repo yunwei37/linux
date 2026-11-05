@@ -409,7 +409,6 @@ static void get_fs_root_and_pwd_rcu(struct fs_struct *fs, struct path *root,
  *		return NULL;
  *	}
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(getcwd, char __user *, buf, unsigned long, size)
 {
 	int error;
@@ -447,4 +446,3 @@ SYSCALL_DEFINE2(getcwd, char __user *, buf, unsigned long, size)
 	__putname(page);
 	return error;
 }
-#endif

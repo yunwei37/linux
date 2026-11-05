@@ -12615,9 +12615,7 @@ int __dev_change_net_namespace(struct net_device *dev, struct net *net,
 	dev_mc_flush(dev);
 
 	/* Send a netdev-removed uevent to the old namespace */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->dev.kobj, KOBJ_REMOVE);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	netdev_adjacent_del_links(dev);
 
 	/* Move per-net netdevice notifiers that are following the netdevice */
@@ -12637,19 +12635,13 @@ int __dev_change_net_namespace(struct net_device *dev, struct net *net,
 	}
 
 	/* Fixup kobjects */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	dev_set_uevent_suppress(&dev->dev, 1);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	err = device_rename(&dev->dev, dev->name);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	dev_set_uevent_suppress(&dev->dev, 0);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	WARN_ON(err);
 
 	/* Send a netdev-add uevent to the new namespace */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	kobject_uevent(&dev->dev.kobj, KOBJ_ADD);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	netdev_adjacent_add_links(dev);
 
 	/* Adapt owner in case owning user namespace of target network

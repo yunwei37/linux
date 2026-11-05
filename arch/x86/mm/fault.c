@@ -1204,7 +1204,6 @@ NOKPROBE_SYMBOL(do_kern_addr_fault);
  * The one exception is AC flag handling, which is, per the x86
  * architecture, special for WRUSS.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static inline
 void do_user_addr_fault(struct pt_regs *regs,
 			unsigned long error_code,
@@ -1448,7 +1447,6 @@ done:
 			BUG();
 	}
 }
-#endif
 NOKPROBE_SYMBOL(do_user_addr_fault);
 
 static __always_inline void
@@ -1474,11 +1472,7 @@ handle_page_fault(struct pt_regs *regs, unsigned long error_code,
 	if (unlikely(fault_in_kernel_space(address))) {
 		do_kern_addr_fault(regs, error_code, address);
 	} else {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-		do_kern_addr_fault(regs, error_code, address);
-#else
 		do_user_addr_fault(regs, error_code, address);
-#endif
 	}
 	/*
 	 * page fault handling might have reenabled interrupts,
@@ -1487,22 +1481,9 @@ handle_page_fault(struct pt_regs *regs, unsigned long error_code,
 	local_irq_disable();
 }
 
-#if defined(CONFIG_MODELOS_L1_TCP) && defined(CONFIG_MODELOS_L1_LAUNCH)
-#include <linux/modelos_gpu.h>
-static DEFINE_PER_CPU(unsigned long, modelos_pf_entries);
-u64 modelos_kernel_faults(void)
-{
- u64 total=0;int cpu;
- for_each_possible_cpu(cpu)total+=READ_ONCE(per_cpu(modelos_pf_entries,cpu));
- return total;
-}
-#endif
 
 DEFINE_IDTENTRY_RAW_ERRORCODE(exc_page_fault)
 {
-#if defined(CONFIG_MODELOS_L1_TCP) && defined(CONFIG_MODELOS_L1_LAUNCH)
- raw_cpu_inc(modelos_pf_entries);
-#endif
 	irqentry_state_t state;
 	unsigned long address;
 

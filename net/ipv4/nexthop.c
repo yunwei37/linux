@@ -401,7 +401,6 @@ static int call_nexthop_res_bucket_notifiers(struct net *net, u32 nhg_id,
 						   force, oldi, newi, extack);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int call_nexthop_res_table_notifiers(struct net *net, struct nexthop *nh,
 					    struct netlink_ext_ack *extack)
 {
@@ -436,7 +435,6 @@ static int call_nexthop_res_table_notifiers(struct net *net, struct nexthop *nh,
 
 	return notifier_to_errno(err);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int call_nexthop_notifier(struct notifier_block *nb, struct net *net,
 				 enum nexthop_event_type event_type,
@@ -468,7 +466,6 @@ static unsigned int nh_dev_hashfn(unsigned int val)
 		(val >> (NH_DEV_HASHBITS * 2))) & mask;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void nexthop_devhash_add(struct net *net, struct nh_info *nhi)
 {
 	struct net_device *dev = nhi->fib_nhc.nhc_dev;
@@ -481,7 +478,6 @@ static void nexthop_devhash_add(struct net *net, struct nh_info *nhi)
 	head = &net->nexthop.devhash[hash];
 	hlist_add_head(&nhi->dev_hash, head);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void nexthop_free_group(struct nexthop *nh)
 {
@@ -535,7 +531,6 @@ void nexthop_free_rcu(struct rcu_head *head)
 }
 EXPORT_SYMBOL_GPL(nexthop_free_rcu);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct nexthop *nexthop_alloc(void)
 {
 	struct nexthop *nh;
@@ -550,9 +545,7 @@ static struct nexthop *nexthop_alloc(void)
 	}
 	return nh;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct nh_group *nexthop_grp_alloc(u16 num_nh)
 {
 	struct nh_group *nhg;
@@ -563,11 +556,9 @@ static struct nh_group *nexthop_grp_alloc(u16 num_nh)
 
 	return nhg;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void nh_res_table_upkeep_dw(struct work_struct *work);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct nh_res_table *
 nexthop_res_table_alloc(struct net *net, u32 nhg_id, struct nh_config *cfg)
 {
@@ -589,7 +580,6 @@ nexthop_res_table_alloc(struct net *net, u32 nhg_id, struct nh_config *cfg)
 	res_table->num_nh_buckets = num_nh_buckets;
 	return res_table;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void nh_base_seq_inc(struct net *net)
 {
@@ -624,7 +614,6 @@ struct nexthop *nexthop_find_by_id(struct net *net, u32 id)
 EXPORT_SYMBOL_GPL(nexthop_find_by_id);
 
 /* used for auto id allocation; called with rtnl held */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static u32 nh_find_unused_id(struct net *net)
 {
 	u32 id_start = net->nexthop.last_id_allocated;
@@ -639,7 +628,6 @@ static u32 nh_find_unused_id(struct net *net)
 	}
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void nh_res_time_set_deadline(unsigned long next_time,
 				     unsigned long *deadline)
@@ -1240,7 +1228,6 @@ errout:
 	rtnl_set_sk_err(nh->net, RTNLGRP_NEXTHOP, err);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static bool valid_group_nh(struct nexthop *nh, unsigned int npaths,
 			   bool *is_fdb, struct netlink_ext_ack *extack)
 {
@@ -1272,9 +1259,7 @@ static bool valid_group_nh(struct nexthop *nh, unsigned int npaths,
 
 	return true;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int nh_check_attr_fdb_group(struct nexthop *nh, u8 *nh_family,
 				   struct netlink_ext_ack *extack)
 {
@@ -1296,9 +1281,7 @@ static int nh_check_attr_fdb_group(struct nexthop *nh, u8 *nh_family,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int nh_check_attr_group(struct net *net,
 			       struct nlattr *tb[], size_t tb_size,
 			       u16 nh_grp_type, struct netlink_ext_ack *extack)
@@ -1357,9 +1340,7 @@ static int nh_check_attr_group(struct net *net,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int nh_check_attr_group_rtnl(struct net *net, struct nlattr *tb[],
 				    struct netlink_ext_ack *extack)
 {
@@ -1396,7 +1377,6 @@ static int nh_check_attr_group_rtnl(struct net *net, struct nlattr *tb[],
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static bool ipv6_good_nh(const struct fib6_nh *nh)
 {
@@ -1616,7 +1596,6 @@ EXPORT_SYMBOL_GPL(fib6_check_nexthop);
 /* if existing nexthop has ipv6 routes linked to it, need
  * to verify this new spec works with ipv6
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int fib6_check_nh_list(struct nexthop *old, struct nexthop *new,
 			      struct netlink_ext_ack *extack)
 {
@@ -1639,7 +1618,6 @@ static int fib6_check_nh_list(struct nexthop *old, struct nexthop *new,
 
 	return fib6_check_nexthop(new, NULL, extack);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int nexthop_check_scope(struct nh_info *nhi, u8 scope,
 			       struct netlink_ext_ack *extack)
@@ -1701,7 +1679,6 @@ out:
 	return err;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int fib_check_nh_list(struct nexthop *old, struct nexthop *new,
 			     struct netlink_ext_ack *extack)
 {
@@ -1716,7 +1693,6 @@ static int fib_check_nh_list(struct nexthop *old, struct nexthop *new,
 	}
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static bool nh_res_nhge_is_balanced(const struct nh_grp_entry *nhge)
 {
@@ -1933,7 +1909,6 @@ static void nh_res_table_upkeep(struct nh_res_table *res_table,
 	}
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void nh_res_table_upkeep_dw(struct work_struct *work)
 {
 	struct delayed_work *dw = to_delayed_work(work);
@@ -1942,7 +1917,6 @@ static void nh_res_table_upkeep_dw(struct work_struct *work)
 	res_table = container_of(dw, struct nh_res_table, upkeep_dw);
 	nh_res_table_upkeep(res_table, true, true);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void nh_res_table_cancel_upkeep(struct nh_res_table *res_table)
 {
@@ -2249,7 +2223,6 @@ static void remove_nexthop(struct net *net, struct nexthop *nh,
 /* if any FIB entries reference this nexthop, any dst entries
  * need to be regenerated
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void nh_rt_cache_flush(struct net *net, struct nexthop *nh,
 			      struct nexthop *replaced_nh)
 {
@@ -2281,9 +2254,7 @@ static void nh_rt_cache_flush(struct net *net, struct nexthop *nh,
 			ipv6_stub->fib6_nh_release_dsts(&nhi->fib6_nh);
 	}
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int replace_nexthop_grp(struct net *net, struct nexthop *old,
 			       struct nexthop *new, const struct nh_config *cfg,
 			       struct netlink_ext_ack *extack)
@@ -2370,9 +2341,7 @@ static int replace_nexthop_grp(struct net *net, struct nexthop *old,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void nh_group_v4_update(struct nh_group *nhg)
 {
 	struct nh_grp_entry *nhges;
@@ -2389,9 +2358,7 @@ static void nh_group_v4_update(struct nh_group *nhg)
 	}
 	nhg->has_v4 = has_v4;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int replace_nexthop_single_notify_res(struct net *net,
 					     struct nh_res_table *res_table,
 					     struct nexthop *old,
@@ -2433,9 +2400,7 @@ err_notify:
 	}
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int replace_nexthop_single_notify(struct net *net,
 					 struct nexthop *group_nh,
 					 struct nexthop *old,
@@ -2458,9 +2423,7 @@ static int replace_nexthop_single_notify(struct net *net,
 
 	return -EINVAL;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int replace_nexthop_single(struct net *net, struct nexthop *old,
 				  struct nexthop *new,
 				  struct netlink_ext_ack *extack)
@@ -2546,9 +2509,7 @@ err_notify:
 	call_nexthop_notifiers(net, NEXTHOP_EVENT_REPLACE, old, extack);
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void __nexthop_replace_notify(struct net *net, struct nexthop *nh,
 				     struct nl_info *info)
 {
@@ -2575,13 +2536,11 @@ static void __nexthop_replace_notify(struct net *net, struct nexthop *nh,
 		ipv6_stub->fib6_rt_update(net, f6i, info);
 	spin_unlock_bh(&nh->lock);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* send RTM_NEWROUTE with REPLACE flag set for all FIB entries
  * linked to this nexthop and for all groups that the nexthop
  * is a member of
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void nexthop_replace_notify(struct net *net, struct nexthop *nh,
 				   struct nl_info *info)
 {
@@ -2592,9 +2551,7 @@ static void nexthop_replace_notify(struct net *net, struct nexthop *nh,
 	list_for_each_entry(nhge, &nh->grp_list, nh_list)
 		__nexthop_replace_notify(net, nhge->nh_parent, info);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int replace_nexthop(struct net *net, struct nexthop *old,
 			   struct nexthop *new, const struct nh_config *cfg,
 			   struct netlink_ext_ack *extack)
@@ -2653,10 +2610,8 @@ static int replace_nexthop(struct net *net, struct nexthop *old,
 
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* called with rtnl_lock held */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int insert_nexthop(struct net *net, struct nexthop *new_nh,
 			  struct nh_config *cfg, struct netlink_ext_ack *extack)
 {
@@ -2748,7 +2703,6 @@ out:
 
 	return rc;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* rtnl */
 /* remove all nexthops tied to a device being deleted */
@@ -2786,7 +2740,6 @@ static void flush_all_nexthops(struct net *net)
 	}
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct nexthop *nexthop_create_group(struct net *net,
 					    struct nh_config *cfg)
 {
@@ -2893,9 +2846,7 @@ out_no_nh:
 
 	return ERR_PTR(err);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int nh_create_ipv4(struct net *net, struct nexthop *nh,
 			  struct nh_info *nhi, struct nh_config *cfg,
 			  struct netlink_ext_ack *extack)
@@ -2934,9 +2885,7 @@ static int nh_create_ipv4(struct net *net, struct nexthop *nh,
 out:
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int nh_create_ipv6(struct net *net,  struct nexthop *nh,
 			  struct nh_info *nhi, struct nh_config *cfg,
 			  struct netlink_ext_ack *extack)
@@ -2971,9 +2920,7 @@ static int nh_create_ipv6(struct net *net,  struct nexthop *nh,
 out:
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct nexthop *nexthop_create(struct net *net, struct nh_config *cfg,
 				      struct netlink_ext_ack *extack)
 {
@@ -3029,10 +2976,8 @@ static struct nexthop *nexthop_create(struct net *net, struct nh_config *cfg,
 
 	return nh;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* called with rtnl lock held */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct nexthop *nexthop_add(struct net *net, struct nh_config *cfg,
 				   struct netlink_ext_ack *extack)
 {
@@ -3069,9 +3014,7 @@ static struct nexthop *nexthop_add(struct net *net, struct nh_config *cfg,
 
 	return nh;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_nh_get_timer(struct nlattr *attr, unsigned long fallback,
 			    unsigned long *timer_p, bool *has_p,
 			    struct netlink_ext_ack *extack)
@@ -3096,9 +3039,7 @@ static int rtm_nh_get_timer(struct nlattr *attr, unsigned long fallback,
 	*has_p = true;
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_to_nh_config_grp_res(struct nlattr *res, struct nh_config *cfg,
 				    struct netlink_ext_ack *extack)
 {
@@ -3137,9 +3078,7 @@ static int rtm_to_nh_config_grp_res(struct nlattr *res, struct nh_config *cfg,
 				&cfg->nh_grp_res_has_unbalanced_timer,
 				extack);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_to_nh_config(struct net *net, struct sk_buff *skb,
 			    struct nlmsghdr *nlh, struct nlattr **tb,
 			    struct nh_config *cfg,
@@ -3306,9 +3245,7 @@ static int rtm_to_nh_config(struct net *net, struct sk_buff *skb,
 out:
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_to_nh_config_rtnl(struct net *net, struct nlattr **tb,
 				 struct nh_config *cfg,
 				 struct netlink_ext_ack *extack)
@@ -3339,10 +3276,8 @@ static int rtm_to_nh_config_rtnl(struct net *net, struct nlattr **tb,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* rtnl */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_new_nexthop(struct sk_buff *skb, struct nlmsghdr *nlh,
 			   struct netlink_ext_ack *extack)
 {
@@ -3383,9 +3318,7 @@ unlock:
 out:
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int nh_valid_get_del_req(const struct nlmsghdr *nlh,
 				struct nlattr **tb, u32 *id, u32 *op_flags,
 				struct netlink_ext_ack *extack)
@@ -3413,10 +3346,8 @@ static int nh_valid_get_del_req(const struct nlmsghdr *nlh,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* rtnl */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_del_nexthop(struct sk_buff *skb, struct nlmsghdr *nlh,
 			   struct netlink_ext_ack *extack)
 {
@@ -3453,10 +3384,8 @@ static int rtm_del_nexthop(struct sk_buff *skb, struct nlmsghdr *nlh,
 
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* rtnl */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_get_nexthop(struct sk_buff *in_skb, struct nlmsghdr *nlh,
 			   struct netlink_ext_ack *extack)
 {
@@ -3502,7 +3431,6 @@ errout_free:
 	kfree_skb(skb);
 	goto out;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 struct nh_dump_filter {
 	u32 nh_id;
@@ -3514,7 +3442,6 @@ struct nh_dump_filter {
 	u32 op_flags;
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static bool nh_dump_filtered(struct nexthop *nh,
 			     struct nh_dump_filter *filter, u8 family)
 {
@@ -3551,9 +3478,7 @@ static bool nh_dump_filtered(struct nexthop *nh,
 
 	return false;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int __nh_valid_dump_req(const struct nlmsghdr *nlh, struct nlattr **tb,
 			       struct nh_dump_filter *filter,
 			       struct netlink_ext_ack *extack)
@@ -3588,9 +3513,7 @@ static int __nh_valid_dump_req(const struct nlmsghdr *nlh, struct nlattr **tb,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int nh_valid_dump_req(const struct nlmsghdr *nlh,
 			     struct nh_dump_filter *filter,
 			     struct netlink_callback *cb)
@@ -3608,13 +3531,11 @@ static int nh_valid_dump_req(const struct nlmsghdr *nlh,
 
 	return __nh_valid_dump_req(nlh, tb, filter, cb->extack);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 struct rtm_dump_nh_ctx {
 	u32 idx;
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct rtm_dump_nh_ctx *
 rtm_dump_nh_ctx(struct netlink_callback *cb)
 {
@@ -3623,9 +3544,7 @@ rtm_dump_nh_ctx(struct netlink_callback *cb)
 	BUILD_BUG_ON(sizeof(*ctx) > sizeof(cb->ctx));
 	return ctx;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_dump_walk_nexthops(struct sk_buff *skb,
 				  struct netlink_callback *cb,
 				  struct rb_root *root,
@@ -3685,9 +3604,7 @@ static int rtm_dump_walk_nexthops(struct sk_buff *skb,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_dump_nexthop_cb(struct sk_buff *skb, struct netlink_callback *cb,
 			       struct nexthop *nh, void *data)
 {
@@ -3701,10 +3618,8 @@ static int rtm_dump_nexthop_cb(struct sk_buff *skb, struct netlink_callback *cb,
 			    NETLINK_CB(cb->skb).portid,
 			    cb->nlh->nlmsg_seq, NLM_F_MULTI, filter->op_flags);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* rtnl */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_dump_nexthop(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	struct rtm_dump_nh_ctx *ctx = rtm_dump_nh_ctx(cb);
@@ -3724,9 +3639,7 @@ static int rtm_dump_nexthop(struct sk_buff *skb, struct netlink_callback *cb)
 	nl_dump_check_consistent(cb, nlmsg_hdr(skb));
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct nexthop *
 nexthop_find_group_resilient(struct net *net, u32 id,
 			     struct netlink_ext_ack *extack)
@@ -3751,9 +3664,7 @@ nexthop_find_group_resilient(struct net *net, u32 id,
 
 	return nh;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int nh_valid_dump_nhid(struct nlattr *attr, u32 *nh_id_p,
 			      struct netlink_ext_ack *extack)
 {
@@ -3772,9 +3683,7 @@ static int nh_valid_dump_nhid(struct nlattr *attr, u32 *nh_id_p,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int nh_valid_dump_bucket_req(const struct nlmsghdr *nlh,
 				    struct nh_dump_filter *filter,
 				    struct netlink_callback *cb)
@@ -3812,14 +3721,12 @@ static int nh_valid_dump_bucket_req(const struct nlmsghdr *nlh,
 
 	return __nh_valid_dump_req(nlh, tb, filter, cb->extack);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 struct rtm_dump_res_bucket_ctx {
 	struct rtm_dump_nh_ctx nh;
 	u16 bucket_index;
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct rtm_dump_res_bucket_ctx *
 rtm_dump_res_bucket_ctx(struct netlink_callback *cb)
 {
@@ -3828,14 +3735,12 @@ rtm_dump_res_bucket_ctx(struct netlink_callback *cb)
 	BUILD_BUG_ON(sizeof(*ctx) > sizeof(cb->ctx));
 	return ctx;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 struct rtm_dump_nexthop_bucket_data {
 	struct rtm_dump_res_bucket_ctx *ctx;
 	struct nh_dump_filter filter;
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_dump_nexthop_bucket_nh(struct sk_buff *skb,
 				      struct netlink_callback *cb,
 				      struct nexthop *nh,
@@ -3878,9 +3783,7 @@ static int rtm_dump_nexthop_bucket_nh(struct sk_buff *skb,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_dump_nexthop_bucket_cb(struct sk_buff *skb,
 				      struct netlink_callback *cb,
 				      struct nexthop *nh, void *data)
@@ -3897,10 +3800,8 @@ static int rtm_dump_nexthop_bucket_cb(struct sk_buff *skb,
 
 	return rtm_dump_nexthop_bucket_nh(skb, cb, nh, dd);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* rtnl */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_dump_nexthop_bucket(struct sk_buff *skb,
 				   struct netlink_callback *cb)
 {
@@ -3931,9 +3832,7 @@ static int rtm_dump_nexthop_bucket(struct sk_buff *skb,
 	nl_dump_check_consistent(cb, nlmsg_hdr(skb));
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int nh_valid_get_bucket_req_res_bucket(struct nlattr *res,
 					      u16 *bucket_index,
 					      struct netlink_ext_ack *extack)
@@ -3954,9 +3853,7 @@ static int nh_valid_get_bucket_req_res_bucket(struct nlattr *res,
 	*bucket_index = nla_get_u16(tb[NHA_RES_BUCKET_INDEX]);
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int nh_valid_get_bucket_req(const struct nlmsghdr *nlh,
 				   u32 *id, u16 *bucket_index,
 				   struct netlink_ext_ack *extack)
@@ -3986,10 +3883,8 @@ static int nh_valid_get_bucket_req(const struct nlmsghdr *nlh,
 
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* rtnl */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_get_nexthop_bucket(struct sk_buff *in_skb, struct nlmsghdr *nlh,
 				  struct netlink_ext_ack *extack)
 {
@@ -4036,7 +3931,6 @@ errout_free:
 	kfree_skb(skb);
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void nexthop_sync_mtu(struct net_device *dev, u32 orig_mtu)
 {
@@ -4266,7 +4160,6 @@ static struct pernet_operations nexthop_net_ops = {
 	.exit_rtnl = nexthop_net_exit_rtnl,
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct rtnl_msg_handler nexthop_rtnl_msg_handlers[] __initconst = {
 	{.msgtype = RTM_NEWNEXTHOP, .doit = rtm_new_nexthop,
 	 .flags = RTNL_FLAG_DOIT_PERNET},
@@ -4285,7 +4178,6 @@ static const struct rtnl_msg_handler nexthop_rtnl_msg_handlers[] __initconst = {
 	{.protocol = PF_INET6, .msgtype = RTM_GETNEXTHOP,
 	 .dumpit = rtm_dump_nexthop},
 };
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int __init nexthop_init(void)
 {
@@ -4293,9 +4185,7 @@ static int __init nexthop_init(void)
 
 	register_netdevice_notifier(&nh_netdev_notifier);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	rtnl_register_many(nexthop_rtnl_msg_handlers);
-#endif
 
 	return 0;
 }

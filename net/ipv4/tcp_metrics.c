@@ -613,7 +613,6 @@ void tcp_fastopen_cache_set(struct sock *sk, u16 mss,
 	rcu_read_unlock();
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct genl_family tcp_metrics_nl_family;
 
 static const struct nla_policy tcp_metrics_nl_policy[TCP_METRICS_ATTR_MAX + 1] = {
@@ -896,7 +895,6 @@ out_free:
 	return ret;
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static void tcp_metrics_flush_all(struct net *net)
 {
@@ -928,7 +926,6 @@ static void tcp_metrics_flush_all(struct net *net)
 	}
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int tcp_metrics_nl_cmd_del(struct sk_buff *skb, struct genl_info *info)
 {
 	struct tcpm_hash_bucket *hb;
@@ -1002,7 +999,6 @@ static struct genl_family tcp_metrics_nl_family __ro_after_init = {
 	.resv_start_op	= TCP_METRICS_CMD_DEL + 1,
 };
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static unsigned int tcpmhash_entries __initdata;
 static int __init set_tcpmhash_entries(char *str)
@@ -1059,9 +1055,7 @@ void __init tcp_metrics_init(void)
 	if (ret < 0)
 		panic("Could not register tcp_net_metrics_ops\n");
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	ret = genl_register_family(&tcp_metrics_nl_family);
 	if (ret < 0)
 		panic("Could not register tcp_metrics generic netlink\n");
-#endif
 }

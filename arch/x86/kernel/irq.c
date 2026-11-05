@@ -65,7 +65,6 @@ void ack_bad_irq(unsigned int irq)
 /*
  * /proc/interrupts printing for arch specific interrupts
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int arch_show_interrupts(struct seq_file *p, int prec)
 {
 	int j;
@@ -201,7 +200,6 @@ int arch_show_interrupts(struct seq_file *p, int prec)
 #endif
 	return 0;
 }
-#endif
 
 /*
  * /proc/stat helpers

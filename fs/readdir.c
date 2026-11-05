@@ -215,7 +215,6 @@ efault:
 	return false;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(old_readdir, unsigned int, fd,
 		struct old_linux_dirent __user *, dirent, unsigned int, count)
 {
@@ -236,7 +235,6 @@ SYSCALL_DEFINE3(old_readdir, unsigned int, fd,
 
 	return error;
 }
-#endif
 
 #endif /* __ARCH_WANT_OLD_READDIR */
 
@@ -311,7 +309,6 @@ efault:
 	return false;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(getdents, unsigned int, fd,
 		struct linux_dirent __user *, dirent, unsigned int, count)
 {
@@ -341,7 +338,6 @@ SYSCALL_DEFINE3(getdents, unsigned int, fd,
 	}
 	return error;
 }
-#endif
 
 struct getdents_callback64 {
 	struct dir_context ctx;
@@ -398,7 +394,6 @@ efault:
 	return false;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(getdents64, unsigned int, fd,
 		struct linux_dirent64 __user *, dirent, unsigned int, count)
 {
@@ -429,7 +424,6 @@ SYSCALL_DEFINE3(getdents64, unsigned int, fd,
 	}
 	return error;
 }
-#endif
 
 #ifdef CONFIG_COMPAT
 struct compat_old_linux_dirent {
@@ -483,7 +477,6 @@ efault:
 	return false;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(old_readdir, unsigned int, fd,
 		struct compat_old_linux_dirent __user *, dirent, unsigned int, count)
 {
@@ -504,7 +497,6 @@ COMPAT_SYSCALL_DEFINE3(old_readdir, unsigned int, fd,
 
 	return error;
 }
-#endif
 
 struct compat_linux_dirent {
 	compat_ulong_t	d_ino;
@@ -572,7 +564,6 @@ efault:
 	return false;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE3(getdents, unsigned int, fd,
 		struct compat_linux_dirent __user *, dirent, unsigned int, count)
 {
@@ -602,5 +593,4 @@ COMPAT_SYSCALL_DEFINE3(getdents, unsigned int, fd,
 	}
 	return error;
 }
-#endif
 #endif

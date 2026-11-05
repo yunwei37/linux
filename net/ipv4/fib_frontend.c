@@ -538,13 +538,8 @@ static int rtentry_to_fib_config(struct net *net, int cmd, struct rtentry *rt,
 		struct net_device *dev;
 		char devname[IFNAMSIZ];
 
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-		/* ip_auto_config passes a kernel rtentry; no user ioctl frontend. */
-		strscpy(devname, (const char __force *)rt->rt_dev, sizeof(devname));
-#else
 		if (copy_from_user(devname, rt->rt_dev, IFNAMSIZ-1))
 			return -EFAULT;
-#endif
 
 		devname[IFNAMSIZ-1] = 0;
 		colon = strchr(devname, ':');
@@ -736,7 +731,6 @@ int fib_gw_from_via(struct fib_config *cfg, struct nlattr *nla,
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int rtm_to_fib_config(struct net *net, struct sk_buff *skb,
 			     struct nlmsghdr *nlh, struct fib_config *cfg,
 			     struct netlink_ext_ack *extack)
@@ -878,9 +872,7 @@ static int rtm_to_fib_config(struct net *net, struct sk_buff *skb,
 errout:
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_rtm_delroute(struct sk_buff *skb, struct nlmsghdr *nlh,
 			     struct netlink_ext_ack *extack)
 {
@@ -914,9 +906,7 @@ unlock:
 errout:
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_rtm_newroute(struct sk_buff *skb, struct nlmsghdr *nlh,
 			     struct netlink_ext_ack *extack)
 {
@@ -946,7 +936,6 @@ unlock:
 errout:
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 int ip_valid_fib_dump_req(struct net *net, const struct nlmsghdr *nlh,
 			  struct fib_dump_filter *filter,
@@ -1026,7 +1015,6 @@ int ip_valid_fib_dump_req(struct net *net, const struct nlmsghdr *nlh,
 }
 EXPORT_SYMBOL_GPL(ip_valid_fib_dump_req);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int inet_dump_fib(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	struct fib_dump_filter filter = {
@@ -1101,7 +1089,6 @@ unlock:
 	rcu_read_unlock();
 	return err;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 /* Prepare and feed intra-kernel routing request.
  * Really, it should be netlink message, but :-( netlink
@@ -1704,7 +1691,6 @@ static struct pernet_operations fib_net_ops = {
 	.exit_batch = fib_net_exit_batch,
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static const struct rtnl_msg_handler fib_rtnl_msg_handlers[] __initconst = {
 	{.protocol = PF_INET, .msgtype = RTM_NEWROUTE,
 	 .doit = inet_rtm_newroute, .flags = RTNL_FLAG_DOIT_PERNET},
@@ -1713,7 +1699,6 @@ static const struct rtnl_msg_handler fib_rtnl_msg_handlers[] __initconst = {
 	{.protocol = PF_INET, .msgtype = RTM_GETROUTE, .dumpit = inet_dump_fib,
 	 .flags = RTNL_FLAG_DUMP_UNLOCKED | RTNL_FLAG_DUMP_SPLIT_NLM_DONE},
 };
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 void __init ip_fib_init(void)
 {
@@ -1724,7 +1709,5 @@ void __init ip_fib_init(void)
 	register_netdevice_notifier(&fib_netdev_notifier);
 	register_inetaddr_notifier(&fib_inetaddr_notifier);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	rtnl_register_many(fib_rtnl_msg_handlers);
-#endif
 }

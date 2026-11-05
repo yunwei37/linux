@@ -27,9 +27,6 @@ static inline int kallsyms_for_perf(void)
  */
 bool kallsyms_show_value(const struct cred *cred)
 {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	return true;
-#else
 	switch (kptr_restrict) {
 	case 0:
 		if (kallsyms_for_perf())
@@ -43,5 +40,4 @@ bool kallsyms_show_value(const struct cred *cred)
 	default:
 		return false;
 	}
-#endif
 }

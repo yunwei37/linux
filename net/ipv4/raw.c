@@ -869,7 +869,6 @@ static int do_raw_getsockopt(struct sock *sk, int optname,
 	return -ENOPROTOOPT;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int raw_getsockopt(struct sock *sk, int level, int optname,
 			  char __user *optval, int __user *optlen)
 {
@@ -877,7 +876,6 @@ static int raw_getsockopt(struct sock *sk, int level, int optname,
 		return ip_getsockopt(sk, level, optname, optval, optlen);
 	return do_raw_getsockopt(sk, optname, optval, optlen);
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static int raw_ioctl(struct sock *sk, int cmd, int *karg)
 {
@@ -946,14 +944,10 @@ struct proto raw_prot = {
 	.destroy	   = raw_destroy,
 	.connect	   = ip4_datagram_connect,
 	.disconnect	   = __udp_disconnect,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.ioctl		   = raw_ioctl,
-#endif
 	.init		   = raw_sk_init,
 	.setsockopt	   = raw_setsockopt,
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.getsockopt	   = raw_getsockopt,
-#endif
 	.sendmsg	   = raw_sendmsg,
 	.recvmsg	   = raw_recvmsg,
 	.bind		   = raw_bind,
@@ -966,9 +960,7 @@ struct proto raw_prot = {
 	.usersize	   = sizeof_field(struct raw_sock, filter),
 	.h.raw_hash	   = &raw_v4_hashinfo,
 #ifdef CONFIG_COMPAT
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.compat_ioctl	   = compat_raw_ioctl,
-#endif
 #endif
 	.diag_destroy	   = raw_abort,
 };

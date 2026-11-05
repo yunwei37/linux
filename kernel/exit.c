@@ -143,12 +143,8 @@ static void __unhash_process(struct release_task_post *post, struct task_struct 
 
 	if (group_dead) {
 		detach_pid(post->pids, p, PIDTYPE_TGID);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		detach_pid(post->pids, p, PIDTYPE_PGID);
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 		detach_pid(post->pids, p, PIDTYPE_SID);
-#endif
 
 		list_del_rcu(&p->tasks);
 		list_del_init(&p->sibling);
@@ -254,24 +250,18 @@ void release_task(struct task_struct *p)
 {
 	struct release_task_post post;
 	struct pid *thread_pid;
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	struct task_struct *leader;
 	int zap_leader;
 repeat:
-#endif
 	memset(&post, 0, sizeof(post));
 
 	/* don't need to get the RCU readlock here - the process is dead and
 	 * can't be modifying its own credentials. But shut RCU-lockdep up */
 	rcu_read_lock();
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	dec_rlimit_ucounts(task_ucounts(p), UCOUNT_RLIMIT_NPROC, 1);
-#endif
 	rcu_read_unlock();
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	pidfs_exit(p);
-#endif
 	cgroup_release(p);
 
 	/*
@@ -281,9 +271,7 @@ repeat:
 	thread_pid = get_pid(task_pid(p));
 
 	write_lock_irq(&tasklist_lock);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	ptrace_release_task(p);
-#endif
 	__exit_signal(&post, p);
 
 	/*
@@ -291,7 +279,6 @@ repeat:
 	 * group, and the leader is zombie, then notify the
 	 * group leader's parent process. (if it wants notification.)
 	 */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	zap_leader = 0;
 	leader = p->group_leader;
 	if (leader != p && thread_group_empty(leader)
@@ -309,7 +296,6 @@ repeat:
 			leader->exit_state = EXIT_DEAD;
 	}
 
-#endif
 	write_unlock_irq(&tasklist_lock);
 	proc_flush_pid(thread_pid);
 	put_pid(thread_pid);
@@ -330,11 +316,9 @@ repeat:
 
 	put_task_struct_rcu_user(p);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	p = leader;
 	if (unlikely(zap_leader))
 		goto repeat;
-#endif
 }
 
 int rcuwait_wake_up(struct rcuwait *w)
@@ -374,7 +358,6 @@ EXPORT_SYMBOL_GPL(rcuwait_wake_up);
  *
  * "I ask you, have you ever known what it is to be an orphan?"
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int will_become_orphaned_pgrp(struct pid *pgrp,
 					struct task_struct *ignored_task)
 {
@@ -393,9 +376,7 @@ static int will_become_orphaned_pgrp(struct pid *pgrp,
 
 	return 1;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int is_current_pgrp_orphaned(void)
 {
 	int retval;
@@ -406,9 +387,7 @@ int is_current_pgrp_orphaned(void)
 
 	return retval;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static bool has_stopped_jobs(struct pid *pgrp)
 {
 	struct task_struct *p;
@@ -420,14 +399,12 @@ static bool has_stopped_jobs(struct pid *pgrp)
 
 	return false;
 }
-#endif
 
 /*
  * Check to see if any process groups have become orphaned as
  * a result of our exiting, and if they have any stopped jobs,
  * send them a SIGHUP and then a SIGCONT. (POSIX 3.2.2.2)
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void
 kill_orphaned_pgrp(struct task_struct *tsk, struct task_struct *parent)
 {
@@ -453,7 +430,6 @@ kill_orphaned_pgrp(struct task_struct *tsk, struct task_struct *parent)
 		__kill_pgrp_info(SIGCONT, SEND_SIG_PRIV, pgrp);
 	}
 }
-#endif
 
 static void coredump_task_exit(struct task_struct *tsk,
 			       struct core_state *core_state)
@@ -581,7 +557,6 @@ void mm_update_next_owner(struct mm_struct *mm)
  * Turn us into a lazy TLB process if we
  * aren't already..
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void exit_mm(void)
 {
 	struct mm_struct *mm = current->mm;
@@ -618,9 +593,7 @@ static void exit_mm(void)
 	if (test_thread_flag(TIF_MEMDIE))
 		exit_oom_victim();
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static struct task_struct *find_alive_thread(struct task_struct *p)
 {
 	struct task_struct *t;
@@ -767,7 +740,6 @@ static void forget_original_parent(struct task_struct *father,
 	list_splice_tail_init(&father->children, &reaper->children);
 }
 
-#endif
 
 /*
  * Send signals to all our closest relatives so that they know
@@ -775,12 +747,6 @@ static void forget_original_parent(struct task_struct *father,
  */
 static void exit_notify(struct task_struct *tsk, int group_dead)
 {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	write_lock_irq(&tasklist_lock);
-	tsk->exit_state = EXIT_DEAD;
-	write_unlock_irq(&tasklist_lock);
-	release_task(tsk);
-#else
 	bool autoreap;
 	struct task_struct *p, *n;
 	LIST_HEAD(dead);
@@ -822,7 +788,6 @@ static void exit_notify(struct task_struct *tsk, int group_dead)
 		list_del_init(&p->ptrace_entry);
 		release_task(p);
 	}
-#endif
 }
 
 #ifdef CONFIG_DEBUG_STACK_USAGE
@@ -957,18 +922,12 @@ void __noreturn do_exit(long code)
 	kmsan_task_exit(tsk);
 
 	synchronize_group_exit(tsk, code);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	ptrace_event(PTRACE_EVENT_EXIT, code);
-#endif
 	user_events_exit(tsk);
 
 	io_uring_files_cancel();
 	sched_mm_cid_exit(tsk);
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	tsk->flags |= PF_EXITING;
-#else
 	exit_signals(tsk);  /* sets PF_EXITING */
-#endif
 
 	seccomp_filter_release(tsk);
 
@@ -1009,36 +968,19 @@ void __noreturn do_exit(long code)
 	 */
 	perf_event_exit_task(tsk);
 
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	/* Extracted from mm_release: kernel thread lifetime, no mm or user TID. */
-	task_lock(tsk);
-	if (tsk->vfork_done) {
-		struct completion *exited = tsk->vfork_done;
-		tsk->vfork_done = NULL;
-		complete(exited);
-	}
-	task_unlock(tsk);
-#else
 	exit_mm();
-#endif
 
 	if (group_dead)
 		acct_process();
 
 	exit_sem(tsk);
 	exit_shm(tsk);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	exit_files(tsk);
-#endif
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	exit_fs(tsk);
-#endif
 	if (group_dead)
 		disassociate_ctty(1);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	exit_nsproxy_namespaces(tsk);
-#endif
 	exit_task_work(tsk);
 	exit_thread(tsk);
 
@@ -1066,10 +1008,8 @@ void __noreturn do_exit(long code)
 	if (tsk->io_context)
 		exit_io_context(tsk);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (tsk->splice_pipe)
 		free_pipe_info(tsk->splice_pipe);
-#endif
 
 	if (tsk->task_frag.page)
 		put_page(tsk->task_frag.page);
@@ -1078,10 +1018,8 @@ void __noreturn do_exit(long code)
 
 	check_stack_usage();
 	preempt_disable();
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (tsk->nr_dirtied)
 		__this_cpu_add(dirty_throttle_leaks, tsk->nr_dirtied);
-#endif
 	exit_rcu();
 	exit_tasks_rcu_finish();
 
@@ -1151,18 +1089,15 @@ void __noreturn make_task_dead(int signr)
 	do_exit(signr);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(exit, int, error_code)
 {
 	do_exit((error_code&0xff)<<8);
 }
-#endif
 
 /*
  * Take down every thread in the group.  This is called by fatal signals
  * as well as by sys_exit_group (below).
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 void __noreturn
 do_group_exit(int exit_code)
 {
@@ -1192,23 +1127,19 @@ do_group_exit(int exit_code)
 	do_exit(exit_code);
 	/* NOTREACHED */
 }
-#endif
 
 /*
  * this kills every thread in the thread group. Note that any externally
  * wait4()-ing process will get the correct exit code - even if this
  * thread is not the thread group leader.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(exit_group, int, error_code)
 {
 	do_group_exit((error_code & 0xff) << 8);
 	/* NOTREACHED */
 	return 0;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int eligible_pid(struct wait_opts *wo, struct task_struct *p)
 {
 	return	wo->wo_type == PIDTYPE_MAX ||
@@ -1810,7 +1741,6 @@ static long do_wait(struct wait_opts *wo)
 	return retval;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 int kernel_waitid_prepare(struct wait_opts *wo, int which, pid_t upid,
 			  struct waitid_info *infop, int options,
 			  struct rusage *ru)
@@ -1870,7 +1800,6 @@ int kernel_waitid_prepare(struct wait_opts *wo, int which, pid_t upid,
 
 	return 0;
 }
-#endif
 
 static long kernel_waitid(int which, pid_t upid, struct waitid_info *infop,
 			  int options, struct rusage *ru)
@@ -1890,7 +1819,6 @@ static long kernel_waitid(int which, pid_t upid, struct waitid_info *infop,
 	return ret;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(waitid, int, which, pid_t, upid, struct siginfo __user *,
 		infop, int, options, struct rusage __user *, ru)
 {
@@ -1923,7 +1851,6 @@ Efault:
 	user_write_access_end();
 	return -EFAULT;
 }
-#endif
 
 long kernel_wait4(pid_t upid, int __user *stat_addr, int options,
 		  struct rusage *ru)
@@ -1984,7 +1911,6 @@ int kernel_wait(pid_t pid, int *stat)
 	return ret;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(wait4, pid_t, upid, int __user *, stat_addr,
 		int, options, struct rusage __user *, ru)
 {
@@ -1997,7 +1923,6 @@ SYSCALL_DEFINE4(wait4, pid_t, upid, int __user *, stat_addr,
 	}
 	return err;
 }
-#endif
 
 #ifdef __ARCH_WANT_SYS_WAITPID
 
@@ -2005,17 +1930,14 @@ SYSCALL_DEFINE4(wait4, pid_t, upid, int __user *, stat_addr,
  * sys_waitpid() remains for compatibility. waitpid() should be
  * implemented by calling sys_wait4() from libc.a.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(waitpid, pid_t, pid, int __user *, stat_addr, int, options)
 {
 	return kernel_wait4(pid, stat_addr, options, NULL);
 }
-#endif
 
 #endif
 
 #ifdef CONFIG_COMPAT
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(wait4,
 	compat_pid_t, pid,
 	compat_uint_t __user *, stat_addr,
@@ -2030,9 +1952,7 @@ COMPAT_SYSCALL_DEFINE4(wait4,
 	}
 	return err;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(waitid,
 		int, which, compat_pid_t, pid,
 		struct compat_siginfo __user *, infop, int, options,
@@ -2075,7 +1995,6 @@ Efault:
 	return -EFAULT;
 }
 #endif
-#endif
 
 /*
  * This needs to be __function_aligned as GCC implicitly makes any
@@ -2092,5 +2011,3 @@ __weak __function_aligned void abort(void)
 	panic("Oops failed to kill thread");
 }
 EXPORT_SYMBOL(abort);
-
-#endif

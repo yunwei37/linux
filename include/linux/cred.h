@@ -261,13 +261,8 @@ static inline void put_cred_many(const struct cred *_cred, int nr)
 	struct cred *cred = (struct cred *) _cred;
 
 	if (cred) {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-		/* All credentials are the immortal fixed kernel identity. */
-		atomic_long_sub(nr, &cred->usage);
-#else
 		if (atomic_long_sub_and_test(nr, &cred->usage))
 			__put_cred(cred);
-#endif
 	}
 }
 

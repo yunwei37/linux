@@ -61,30 +61,11 @@ include/generated/utsversion.h: FORCE
 $(obj)/version-timestamp.o: include/generated/utsversion.h
 CFLAGS_version-timestamp.o := -include include/generated/utsversion.h
 
-obj-$(CONFIG_MODELOS) += modelos.o
-obj-$(CONFIG_MODELOS_RUST) += modelos_rust.o
 
-ifdef CONFIG_MODELOS_KERNEL_ONLY
-obj-y := $(filter-out mounts.o noinitramfs.o initramfs.o,$(obj-y))
-endif
-obj-$(CONFIG_MODELOS_L1) += modelos_l1/
 
-obj-$(CONFIG_MODELOS_KEXEC_TEST) += modelos_kho_check.o
-obj-$(CONFIG_MODELOS_SERVE) += modelos_serve/
 
-obj-$(CONFIG_MODELOS_KEXEC_RESIDENT) += modelos_resident.o
 
-ifdef CONFIG_MODELOS_KEXEC_TCP
-obj-y += modelos_kexec_tcp.o
-else
-ifdef CONFIG_MODELOS_KEXEC_DPS_REQUEST
-obj-y += modelos_dps_request.o
-else
-obj-$(CONFIG_MODELOS_KEXEC_DPS) += modelos_dps.o
-endif
-endif
 
-obj-$(CONFIG_MODELOS_KEXEC_DPS) += modelos_buddy_arena.o
 
 ifeq ($(CONFIG_MODELOS_ROLE_BOOT),y)
 obj-y := main.o modelos_role/

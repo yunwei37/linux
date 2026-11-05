@@ -158,7 +158,6 @@ error:
 
 EXPORT_SYMBOL(set_current_groups);
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(getgroups, int, gidsetsize, gid_t __user *, grouplist)
 {
 	const struct cred *cred = current_cred();
@@ -182,7 +181,6 @@ SYSCALL_DEFINE2(getgroups, int, gidsetsize, gid_t __user *, grouplist)
 out:
 	return i;
 }
-#endif
 
 bool may_setgroups(void)
 {
@@ -197,7 +195,6 @@ bool may_setgroups(void)
  *	without another task interfering.
  */
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(setgroups, int, gidsetsize, gid_t __user *, grouplist)
 {
 	struct group_info *group_info;
@@ -223,7 +220,6 @@ SYSCALL_DEFINE2(setgroups, int, gidsetsize, gid_t __user *, grouplist)
 
 	return retval;
 }
-#endif
 
 /*
  * Check whether we're fsgid/egid or in the supplemental group..

@@ -527,7 +527,6 @@ void x86_gsbase_write_task(struct task_struct *task, unsigned long gsbase)
 	task->thread.gsbase = gsbase;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static void
 start_thread_common(struct pt_regs *regs, unsigned long new_ip,
 		    unsigned long new_sp,
@@ -597,7 +596,6 @@ void compat_start_thread(struct pt_regs *regs, u32 new_ip, u32 new_sp, bool x32)
 }
 #endif
 
-#endif
 
 /*
  *	switch_to(x,y) should switch tasks from x to y.
@@ -867,7 +865,6 @@ static int prctl_enable_tagged_addr(struct mm_struct *mm, unsigned long nr_bits)
 }
 #endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 long do_arch_prctl_64(struct task_struct *task, int option, unsigned long arg2)
 {
 	int ret = 0;
@@ -985,4 +982,3 @@ long do_arch_prctl_64(struct task_struct *task, int option, unsigned long arg2)
 
 	return ret;
 }
-#endif

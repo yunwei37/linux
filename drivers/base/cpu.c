@@ -362,7 +362,6 @@ static ssize_t print_cpu_modalias(struct device *dev,
 	return len;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static int cpu_uevent(const struct device *dev, struct kobj_uevent_env *env)
 {
 	char *buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
@@ -373,7 +372,6 @@ static int cpu_uevent(const struct device *dev, struct kobj_uevent_env *env)
 	}
 	return 0;
 }
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 #endif
 
 const struct bus_type cpu_subsys = {
@@ -385,9 +383,7 @@ const struct bus_type cpu_subsys = {
 	.offline = cpu_subsys_offline,
 #endif
 #ifdef CONFIG_GENERIC_CPU_AUTOPROBE
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	.uevent = cpu_uevent,
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 #endif
 };
 EXPORT_SYMBOL_GPL(cpu_subsys);

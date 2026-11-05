@@ -157,9 +157,7 @@ static int thermal_cdev_set_cur_state(struct thermal_cooling_device *cdev, int s
 		return ret;
 
 	thermal_notify_cdev_state_update(cdev, state);
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	thermal_cooling_device_stats_update(cdev, state);
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 	thermal_debug_cdev_state_update(cdev, state);
 
 	return 0;

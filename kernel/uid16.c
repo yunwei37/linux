@@ -20,64 +20,47 @@
 
 #include "uid16.h"
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(chown16, const char __user *, filename, old_uid_t, user, old_gid_t, group)
 {
 	return ksys_chown(filename, low2highuid(user), low2highgid(group));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(lchown16, const char __user *, filename, old_uid_t, user, old_gid_t, group)
 {
 	return ksys_lchown(filename, low2highuid(user), low2highgid(group));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(fchown16, unsigned int, fd, old_uid_t, user, old_gid_t, group)
 {
 	return ksys_fchown(fd, low2highuid(user), low2highgid(group));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(setregid16, old_gid_t, rgid, old_gid_t, egid)
 {
 	return __sys_setregid(low2highgid(rgid), low2highgid(egid));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(setgid16, old_gid_t, gid)
 {
 	return __sys_setgid(low2highgid(gid));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(setreuid16, old_uid_t, ruid, old_uid_t, euid)
 {
 	return __sys_setreuid(low2highuid(ruid), low2highuid(euid));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(setuid16, old_uid_t, uid)
 {
 	return __sys_setuid(low2highuid(uid));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(setresuid16, old_uid_t, ruid, old_uid_t, euid, old_uid_t, suid)
 {
 	return __sys_setresuid(low2highuid(ruid), low2highuid(euid),
 				 low2highuid(suid));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(getresuid16, old_uid_t __user *, ruidp, old_uid_t __user *, euidp, old_uid_t __user *, suidp)
 {
 	const struct cred *cred = current_cred();
@@ -94,17 +77,13 @@ SYSCALL_DEFINE3(getresuid16, old_uid_t __user *, ruidp, old_uid_t __user *, euid
 
 	return retval;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(setresgid16, old_gid_t, rgid, old_gid_t, egid, old_gid_t, sgid)
 {
 	return __sys_setresgid(low2highgid(rgid), low2highgid(egid),
 				 low2highgid(sgid));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(getresgid16, old_gid_t __user *, rgidp, old_gid_t __user *, egidp, old_gid_t __user *, sgidp)
 {
 	const struct cred *cred = current_cred();
@@ -121,21 +100,16 @@ SYSCALL_DEFINE3(getresgid16, old_gid_t __user *, rgidp, old_gid_t __user *, egid
 
 	return retval;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(setfsuid16, old_uid_t, uid)
 {
 	return __sys_setfsuid(low2highuid(uid));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE1(setfsgid16, old_gid_t, gid)
 {
 	return __sys_setfsgid(low2highgid(gid));
 }
-#endif
 
 static int groups16_to_user(old_gid_t __user *grouplist,
     struct group_info *group_info)
@@ -177,7 +151,6 @@ static int groups16_from_user(struct group_info *group_info,
 	return 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(getgroups16, int, gidsetsize, old_gid_t __user *, grouplist)
 {
 	const struct cred *cred = current_cred();
@@ -200,9 +173,7 @@ SYSCALL_DEFINE2(getgroups16, int, gidsetsize, old_gid_t __user *, grouplist)
 out:
 	return i;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(setgroups16, int, gidsetsize, old_gid_t __user *, grouplist)
 {
 	struct group_info *group_info;
@@ -228,32 +199,23 @@ SYSCALL_DEFINE2(setgroups16, int, gidsetsize, old_gid_t __user *, grouplist)
 
 	return retval;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(getuid16)
 {
 	return high2lowuid(from_kuid_munged(current_user_ns(), current_uid()));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(geteuid16)
 {
 	return high2lowuid(from_kuid_munged(current_user_ns(), current_euid()));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(getgid16)
 {
 	return high2lowgid(from_kgid_munged(current_user_ns(), current_gid()));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE0(getegid16)
 {
 	return high2lowgid(from_kgid_munged(current_user_ns(), current_egid()));
 }
-#endif

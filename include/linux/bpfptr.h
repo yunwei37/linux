@@ -18,7 +18,6 @@ static inline bpfptr_t KERNEL_BPFPTR(void *p)
 	return KERNEL_SOCKPTR(p);
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 static inline bpfptr_t USER_BPFPTR(void __user *p)
 {
 	return (bpfptr_t) { .user = p };
@@ -32,7 +31,6 @@ static inline bpfptr_t make_bpfptr(u64 addr, bool is_kernel)
 		return USER_BPFPTR(u64_to_user_ptr(addr));
 }
 
-#endif /* !CONFIG_MODELOS_KERNEL_ONLY */
 
 static inline bool bpfptr_is_null(bpfptr_t bpfptr)
 {
@@ -41,23 +39,17 @@ static inline bool bpfptr_is_null(bpfptr_t bpfptr)
 
 static inline void bpfptr_add(bpfptr_t *bpfptr, size_t val)
 {
-#ifdef CONFIG_MODELOS_KERNEL_ONLY
-	bpfptr->kernel += val;
-#else
 	if (bpfptr_is_kernel(*bpfptr))
 		bpfptr->kernel += val;
 	else
 		bpfptr->user += val;
-#endif
 }
 
 static inline int copy_from_bpfptr_offset(void *dst, bpfptr_t src,
 					  size_t offset, size_t size)
 {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!bpfptr_is_kernel(src))
 		return copy_from_user(dst, src.user + offset, size);
-#endif
 	return copy_from_kernel_nofault(dst, src.kernel + offset, size);
 }
 
@@ -88,10 +80,8 @@ static inline void *kvmemdup_bpfptr_noprof(bpfptr_t src, size_t len)
 
 static inline long strncpy_from_bpfptr(char *dst, bpfptr_t src, size_t count)
 {
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 	if (!bpfptr_is_kernel(src))
 		return strncpy_from_user(dst, src.user, count);
-#endif
 	return strncpy_from_kernel_nofault(dst, src.kernel, count);
 }
 

@@ -51,48 +51,39 @@
 
 #define AA(__x)		((unsigned long)(__x))
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(ia32_truncate64, const char __user *, filename,
 		unsigned long, offset_low, unsigned long, offset_high)
 {
 	return ksys_truncate(filename,
 			    ((loff_t) offset_high << 32) | offset_low);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(ia32_ftruncate64, unsigned int, fd,
 		unsigned long, offset_low, unsigned long, offset_high)
 {
 	return ksys_ftruncate(fd, ((loff_t) offset_high << 32) | offset_low);
 }
-#endif
 
 /* warning: next two assume little endian */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(ia32_pread64, unsigned int, fd, char __user *, ubuf,
 		u32, count, u32, poslo, u32, poshi)
 {
 	return ksys_pread64(fd, ubuf, count,
 			    ((loff_t)AA(poshi) << 32) | AA(poslo));
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(ia32_pwrite64, unsigned int, fd, const char __user *, ubuf,
 		u32, count, u32, poslo, u32, poshi)
 {
 	return ksys_pwrite64(fd, ubuf, count,
 			     ((loff_t)AA(poshi) << 32) | AA(poslo));
 }
-#endif
 
 
 /*
  * Some system calls that need sign extended arguments. This could be
  * done by a generic wrapper.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(ia32_fadvise64_64, int, fd, __u32, offset_low,
 		__u32, offset_high, __u32, len_low, __u32, len_high,
 		int, advice)
@@ -102,17 +93,13 @@ SYSCALL_DEFINE6(ia32_fadvise64_64, int, fd, __u32, offset_low,
 				 (((u64)len_high)<<32) | len_low,
 				 advice);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(ia32_readahead, int, fd, unsigned int, off_lo,
 		unsigned int, off_hi, size_t, count)
 {
 	return ksys_readahead(fd, ((u64)off_hi << 32) | off_lo, count);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(ia32_sync_file_range, int, fd, unsigned int, off_low,
 		unsigned int, off_hi, unsigned int, n_low,
 		unsigned int, n_hi, int, flags)
@@ -121,18 +108,14 @@ SYSCALL_DEFINE6(ia32_sync_file_range, int, fd, unsigned int, off_low,
 				    ((u64)off_hi << 32) | off_low,
 				    ((u64)n_hi << 32) | n_low, flags);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(ia32_fadvise64, int, fd, unsigned int, offset_lo,
 		unsigned int, offset_hi, size_t, len, int, advice)
 {
 	return ksys_fadvise64_64(fd, ((u64)offset_hi << 32) | offset_lo,
 				 len, advice);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(ia32_fallocate, int, fd, int, mode,
 		unsigned int, offset_lo, unsigned int, offset_hi,
 		unsigned int, len_lo, unsigned int, len_hi)
@@ -140,7 +123,6 @@ SYSCALL_DEFINE6(ia32_fallocate, int, fd, int, mode,
 	return ksys_fallocate(fd, mode, ((u64)offset_hi << 32) | offset_lo,
 			      ((u64)len_hi << 32) | len_lo);
 }
-#endif
 
 #ifdef CONFIG_IA32_EMULATION
 /*
@@ -179,7 +161,6 @@ Efault:
 	return -EFAULT;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(ia32_stat64, const char __user *, filename,
 		       struct stat64 __user *, statbuf)
 {
@@ -190,9 +171,7 @@ COMPAT_SYSCALL_DEFINE2(ia32_stat64, const char __user *, filename,
 		ret = cp_stat64(statbuf, &stat);
 	return ret;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(ia32_lstat64, const char __user *, filename,
 		       struct stat64 __user *, statbuf)
 {
@@ -202,9 +181,7 @@ COMPAT_SYSCALL_DEFINE2(ia32_lstat64, const char __user *, filename,
 		ret = cp_stat64(statbuf, &stat);
 	return ret;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(ia32_fstat64, unsigned int, fd,
 		       struct stat64 __user *, statbuf)
 {
@@ -214,9 +191,7 @@ COMPAT_SYSCALL_DEFINE2(ia32_fstat64, unsigned int, fd,
 		ret = cp_stat64(statbuf, &stat);
 	return ret;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(ia32_fstatat64, unsigned int, dfd,
 		       const char __user *, filename,
 		       struct stat64 __user *, statbuf, int, flag)
@@ -229,7 +204,6 @@ COMPAT_SYSCALL_DEFINE4(ia32_fstatat64, unsigned int, dfd,
 		return error;
 	return cp_stat64(statbuf, &stat);
 }
-#endif
 
 /*
  * Linux/i386 didn't use to be able to handle more than
@@ -246,7 +220,6 @@ struct mmap_arg_struct32 {
 	unsigned int offset;
 };
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE1(ia32_mmap, struct mmap_arg_struct32 __user *, arg)
 {
 	struct mmap_arg_struct32 a;
@@ -260,12 +233,10 @@ COMPAT_SYSCALL_DEFINE1(ia32_mmap, struct mmap_arg_struct32 __user *, arg)
 	return ksys_mmap_pgoff(a.addr, a.len, a.prot, a.flags, a.fd,
 			       a.offset>>PAGE_SHIFT);
 }
-#endif
 
 /*
  * The 32-bit clone ABI is CONFIG_CLONE_BACKWARDS
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE5(ia32_clone, unsigned long, clone_flags,
 		       unsigned long, newsp, int __user *, parent_tidptr,
 		       unsigned long, tls_val, int __user *, child_tidptr)
@@ -282,5 +253,4 @@ COMPAT_SYSCALL_DEFINE5(ia32_clone, unsigned long, clone_flags,
 
 	return kernel_clone(&args);
 }
-#endif
 #endif /* CONFIG_IA32_EMULATION */

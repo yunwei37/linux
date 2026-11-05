@@ -323,12 +323,3 @@ source "drivers/pci/switch/Kconfig"
 source "drivers/pci/pwrctrl/Kconfig"
 
 endif
-
-config MODELOS_KEXEC_KEEP_GPU_MASTER
- bool "Experimental NVIDIA display DMA continuity across kexec"
- depends on KEXEC_CORE
- help
-   With modelos_keep_gpu_master on the command line, leave bus mastering
-   enabled for NVIDIA display functions during kexec device shutdown.
-   Guest-only live handover experiment: the next kernel must quarantine
-   all old DMA RAM. This does not skip the NVIDIA driver's own shutdown.

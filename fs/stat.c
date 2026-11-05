@@ -421,7 +421,6 @@ static int cp_old_stat(struct kstat *stat, struct __old_kernel_stat __user * sta
 	return copy_to_user(statbuf,&tmp,sizeof(tmp)) ? -EFAULT : 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(stat, const char __user *, filename,
 		struct __old_kernel_stat __user *, statbuf)
 {
@@ -434,9 +433,7 @@ SYSCALL_DEFINE2(stat, const char __user *, filename,
 
 	return cp_old_stat(&stat, statbuf);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(lstat, const char __user *, filename,
 		struct __old_kernel_stat __user *, statbuf)
 {
@@ -449,9 +446,7 @@ SYSCALL_DEFINE2(lstat, const char __user *, filename,
 
 	return cp_old_stat(&stat, statbuf);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(fstat, unsigned int, fd, struct __old_kernel_stat __user *, statbuf)
 {
 	struct kstat stat;
@@ -463,7 +458,6 @@ SYSCALL_DEFINE2(fstat, unsigned int, fd, struct __old_kernel_stat __user *, stat
 
 	return cp_old_stat(&stat, statbuf);
 }
-#endif
 
 #endif /* __ARCH_WANT_OLD_STAT */
 
@@ -512,7 +506,6 @@ static int cp_new_stat(struct kstat *stat, struct stat __user *statbuf)
 	return copy_to_user(statbuf,&tmp,sizeof(tmp)) ? -EFAULT : 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(newstat, const char __user *, filename,
 		struct stat __user *, statbuf)
 {
@@ -525,9 +518,7 @@ SYSCALL_DEFINE2(newstat, const char __user *, filename,
 
 	return cp_new_stat(&stat, statbuf);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(newlstat, const char __user *, filename,
 		struct stat __user *, statbuf)
 {
@@ -540,10 +531,8 @@ SYSCALL_DEFINE2(newlstat, const char __user *, filename,
 
 	return cp_new_stat(&stat, statbuf);
 }
-#endif
 
 #if !defined(__ARCH_WANT_STAT64) || defined(__ARCH_WANT_SYS_NEWFSTATAT)
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
 		struct stat __user *, statbuf, int, flag)
 {
@@ -557,9 +546,7 @@ SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
 	return cp_new_stat(&stat, statbuf);
 }
 #endif
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(newfstat, unsigned int, fd, struct stat __user *, statbuf)
 {
 	struct kstat stat;
@@ -571,7 +558,6 @@ SYSCALL_DEFINE2(newfstat, unsigned int, fd, struct stat __user *, statbuf)
 
 	return cp_new_stat(&stat, statbuf);
 }
-#endif
 #endif
 
 static int do_readlinkat(int dfd, const char __user *pathname,
@@ -615,21 +601,17 @@ retry:
 	return error;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
 		char __user *, buf, int, bufsiz)
 {
 	return do_readlinkat(dfd, pathname, buf, bufsiz);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE3(readlink, const char __user *, path, char __user *, buf,
 		int, bufsiz)
 {
 	return do_readlinkat(AT_FDCWD, path, buf, bufsiz);
 }
-#endif
 
 
 /* ---------- LFS-64 ----------- */
@@ -674,7 +656,6 @@ static long cp_new_stat64(struct kstat *stat, struct stat64 __user *statbuf)
 	return copy_to_user(statbuf,&tmp,sizeof(tmp)) ? -EFAULT : 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(stat64, const char __user *, filename,
 		struct stat64 __user *, statbuf)
 {
@@ -686,9 +667,7 @@ SYSCALL_DEFINE2(stat64, const char __user *, filename,
 
 	return error;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(lstat64, const char __user *, filename,
 		struct stat64 __user *, statbuf)
 {
@@ -700,9 +679,7 @@ SYSCALL_DEFINE2(lstat64, const char __user *, filename,
 
 	return error;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE2(fstat64, unsigned long, fd, struct stat64 __user *, statbuf)
 {
 	struct kstat stat;
@@ -713,9 +690,7 @@ SYSCALL_DEFINE2(fstat64, unsigned long, fd, struct stat64 __user *, statbuf)
 
 	return error;
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE4(fstatat64, int, dfd, const char __user *, filename,
 		struct stat64 __user *, statbuf, int, flag)
 {
@@ -727,7 +702,6 @@ SYSCALL_DEFINE4(fstatat64, int, dfd, const char __user *, filename,
 		return error;
 	return cp_new_stat64(&stat, statbuf);
 }
-#endif
 #endif /* __ARCH_WANT_STAT64 || __ARCH_WANT_COMPAT_STAT64 */
 
 static noinline_for_stack int
@@ -835,7 +809,6 @@ int do_statx_fd(int fd, unsigned int flags, unsigned int mask,
  * supplying "" (or preferably NULL) as the filename and setting AT_EMPTY_PATH
  * in the flags.
  */
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE5(statx,
 		int, dfd, const char __user *, filename, unsigned, flags,
 		unsigned int, mask,
@@ -852,7 +825,6 @@ SYSCALL_DEFINE5(statx,
 
 	return ret;
 }
-#endif
 
 #if defined(CONFIG_COMPAT) && defined(__ARCH_WANT_COMPAT_STAT)
 static int cp_compat_stat(struct kstat *stat, struct compat_stat __user *ubuf)
@@ -890,7 +862,6 @@ static int cp_compat_stat(struct kstat *stat, struct compat_stat __user *ubuf)
 	return copy_to_user(ubuf, &tmp, sizeof(tmp)) ? -EFAULT : 0;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(newstat, const char __user *, filename,
 		       struct compat_stat __user *, statbuf)
 {
@@ -902,9 +873,7 @@ COMPAT_SYSCALL_DEFINE2(newstat, const char __user *, filename,
 		return error;
 	return cp_compat_stat(&stat, statbuf);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(newlstat, const char __user *, filename,
 		       struct compat_stat __user *, statbuf)
 {
@@ -916,10 +885,8 @@ COMPAT_SYSCALL_DEFINE2(newlstat, const char __user *, filename,
 		return error;
 	return cp_compat_stat(&stat, statbuf);
 }
-#endif
 
 #ifndef __ARCH_WANT_STAT64
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE4(newfstatat, unsigned int, dfd,
 		       const char __user *, filename,
 		       struct compat_stat __user *, statbuf, int, flag)
@@ -933,9 +900,7 @@ COMPAT_SYSCALL_DEFINE4(newfstatat, unsigned int, dfd,
 	return cp_compat_stat(&stat, statbuf);
 }
 #endif
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 COMPAT_SYSCALL_DEFINE2(newfstat, unsigned int, fd,
 		       struct compat_stat __user *, statbuf)
 {
@@ -946,7 +911,6 @@ COMPAT_SYSCALL_DEFINE2(newfstat, unsigned int, fd,
 		error = cp_compat_stat(&stat, statbuf);
 	return error;
 }
-#endif
 #endif
 
 /* Caller is here responsible for sufficient locking (ie. inode->i_lock) */

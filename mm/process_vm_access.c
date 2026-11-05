@@ -289,16 +289,13 @@ free_iov_l:
 	return rc;
 }
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(process_vm_readv, pid_t, pid, const struct iovec __user *, lvec,
 		unsigned long, liovcnt, const struct iovec __user *, rvec,
 		unsigned long, riovcnt,	unsigned long, flags)
 {
 	return process_vm_rw(pid, lvec, liovcnt, rvec, riovcnt, flags, 0);
 }
-#endif
 
-#ifndef CONFIG_MODELOS_KERNEL_ONLY
 SYSCALL_DEFINE6(process_vm_writev, pid_t, pid,
 		const struct iovec __user *, lvec,
 		unsigned long, liovcnt, const struct iovec __user *, rvec,
@@ -306,4 +303,3 @@ SYSCALL_DEFINE6(process_vm_writev, pid_t, pid,
 {
 	return process_vm_rw(pid, lvec, liovcnt, rvec, riovcnt, flags, 1);
 }
-#endif
