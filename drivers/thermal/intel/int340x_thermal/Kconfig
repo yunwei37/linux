@@ -6,7 +6,7 @@
 config INT340X_THERMAL
 	tristate "ACPI INT340X thermal drivers"
 	depends on  X86_64 && ACPI && PCI && NET
-	select THERMAL_NETLINK if !MODELOS_KERNEL_ONLY
+	select THERMAL_NETLINK
 	select ACPI_THERMAL_REL
 	select ACPI_FAN
 	select ACPI_THERMAL_LIB

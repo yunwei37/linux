@@ -110,7 +110,7 @@ config KEXEC_HANDOVER
 
 config KEXEC_HANDOVER_RECEIVER
 	bool "Receive KHO state without outgoing kexec support"
-	depends on KEXEC_HANDOVER && MODELOS_KERNEL_ONLY
+	depends on KEXEC_HANDOVER
 	select RELOCATABLE
 	help
 	  Recover the incoming kho-v1 FDT, preserved physical pages and

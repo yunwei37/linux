@@ -522,7 +522,6 @@ config FAILOVER
 
 config ETHTOOL_NETLINK
 	bool "Netlink interface for ethtool"
-	depends on !MODELOS_KERNEL_ONLY
 	select DIMLIB
 	default y
 	help
