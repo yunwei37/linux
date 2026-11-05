@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
-/* ModelOS polled modern virtio-net. PCI/DMA bring-up only uses Linux; the
- * owner owns both split vrings. No virtqueue framework, netdev, NAPI, skb,
+/* ModelOS polled modern virtio-net. PCI/DMA access uses the role primitives;
+ * the owner owns both split vrings. No virtqueue framework, netdev, NAPI, skb,
  * IRQ handler or network softirq. No feature for checksum/segmentation offload
  * or merged receive buffers is negotiated. All packet memory is fixed at boot.
  * The role profile can route an MSI-X wake; packet processing stays polled.

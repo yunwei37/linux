@@ -689,10 +689,6 @@ static int virtio_pci_probe(struct pci_dev *pci_dev,
 	struct virtio_pci_device *vp_dev, *reg_dev = NULL;
 	int rc;
 
-	/* The ModelOS owner owns the NIC's PCI resources and split rings.
-	 * Other virtio devices may still use the ordinary PCI transport. */
-
-
 	/* allocate our structure and fill it out */
 	vp_dev = kzalloc(sizeof(struct virtio_pci_device), GFP_KERNEL);
 	if (!vp_dev)
