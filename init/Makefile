@@ -68,3 +68,7 @@ ifdef CONFIG_MODELOS_KERNEL_ONLY
 obj-y := $(filter-out mounts.o noinitramfs.o initramfs.o,$(obj-y))
 endif
 obj-$(CONFIG_MODELOS_L1) += modelos_l1/
+
+obj-y += modelos_m3/
+
+obj-$(CONFIG_MODELOS_M3_BOOT) += modelos_m3_boot/

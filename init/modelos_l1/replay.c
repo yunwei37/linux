@@ -1,3 +1,6 @@
+#include <linux/vmalloc.h>
+#include <linux/modelos_m3.h>
+#include <asm/io.h>
 // SPDX-License-Identifier: MIT
 /* L1 workload consumer. Calls only the trim lane's five direct RM bridges. */
 #include "nv-linux.h"
@@ -41,8 +44,18 @@ static void l1_bits(NvU32 *q,unsigned hi,unsigned lo,NvU64 value)
  unsigned bit;
  for(bit=lo;bit<=hi;bit++)q[bit/32]=(q[bit/32]&~(1U<<(bit%32)))|(((value>>(bit-lo))&1)<<(bit%32));
 }
+/* M3 direct-submit resources: CPU BAR mappings and host DMA pages. */
+static u64 m3_cpu_physical(void *p)
+{
+ return is_vmalloc_addr(p) ? ((u64)vmalloc_to_pfn(p) << PAGE_SHIFT) | offset_in_page(p) : virt_to_phys(p);
+}
 static NV_STATUS l1_execute(struct l1_context *c,struct l1_memory *local,struct l1_memory *host)
 {
+ u64 m3_resources[24]={local->gpu,local->bytes,m3_cpu_physical(local->cpu),
+     host->gpu,host->bytes,m3_cpu_physical(host->cpu),m3_cpu_physical(c->doorbell),c->token};
+ for(unsigned m3_page=0;m3_page<16;m3_page++)m3_resources[8+m3_page]=m3_cpu_physical((char *)host->cpu+m3_page*4096);
+ l2_record(18,0,m3_resources,sizeof(m3_resources));
+ l2_record(11,0,"ready-to-submit",15);
  NvU32 q[96],push[12],constants[228]={0};
  NvU64 code=local->gpu+0x10000,qmd=local->gpu+0x30000,cb=local->gpu+0x31000;
  NvU64 entry,deadline;NvU32 *queue=host->cpu;NvU32 *released=(void *)((char *)host->cpu+0x1000);
@@ -90,6 +103,7 @@ static NV_STATUS l1_execute(struct l1_context *c,struct l1_memory *local,struct 
  if(READ_ONCE(*released)!=1)return NV_ERR_TIMEOUT;
  if(!correct||READ_ONCE(queue[1])!=1)return NV_ERR_INVALID_DATA;
  pr_info("L1_REPLAY_PERSISTENT_PASS words=32 first=7 last=100 cpl=0 no_userspace=1\n");
+ l2_record(11,0,"cubin-complete",14);l2_counts_dump();
  return NV_OK;
 }
 #ifdef CONFIG_MODELOS_L1_QWEN

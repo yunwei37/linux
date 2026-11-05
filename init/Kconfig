@@ -2249,3 +2249,13 @@ config MODELOS_L1
 config MODELOS_L1_QWEN
 	bool "Run the L1 persistent Qwen GPU validation"
 	depends on MODELOS_L1
+
+config MODELOS_M3_BOOT
+ bool "M3 RM-free boot replay diagnostic"
+ depends on MODELOS_KERNEL_ONLY && PCI
+
+
+config MODELOS_M3_RUNTIME_OBJECTS
+ bool "M3 owner VRAM/PTE hardware fixture"
+ depends on MODELOS_M3_BOOT
+
