@@ -1,0 +1,152 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Entered by the unchanged Linux x86 decompressor, with boot_params in RSI. */
+.section .head.text,"ax"
+.code64
+.globl startup_64
+startup_64:
+ cli
+ cld
+ mov %rsi,%r15
+ lea role_boot_stack_end(%rip),%rsp
+ lea __bss_start(%rip),%rdi
+ lea _end(%rip),%rcx
+ sub %rdi,%rcx
+ xor %eax,%eax
+ rep stosb
+ /* Static bootstrap mappings: first 4GiB, identity + direct + kernel alias.
+  * Filled using RIP-relative addresses while executing at physical addresses. */
+ lea role_pml4(%rip),%rdi
+ lea role_pud(%rip),%rax
+ or $3,%rax
+ mov %rax,0(%rdi)
+ mov %rax,2184(%rdi) /* direct map PML4[273] */
+ lea role_high_pud(%rip),%rax
+ or $3,%rax
+ mov %rax,4088(%rdi)
+ lea role_pmd(%rip),%rax
+ or $3,%rax
+ lea role_high_pud(%rip),%rdi
+ mov %rax,4080(%rdi)
+ lea role_pud(%rip),%rdi
+ mov $4,%ecx
+1: mov %rax,(%rdi)
+ add $4096,%rax
+ add $8,%rdi
+ loop 1b
+ lea role_pmd(%rip),%rdi
+ mov $2048,%ecx
+ mov $0x83,%eax
+2: mov %rax,(%rdi)
+ add $0x200000,%rax
+ add $8,%rdi
+ loop 2b
+ lea role_pml4(%rip),%rax
+ mov %rax,%cr3
+ movabs $3f,%rax
+ jmp *%rax
+3: movabs $role_boot_stack_end,%rsp
+ xor %ebp,%ebp
+ mov %r15,%rdi
+ call start_kernel
+ ud2
+.section .bss,"aw",@nobits
+.balign 4096
+.globl role_pml4
+role_pml4: .skip 4096
+role_pud: .skip 4096
+role_high_pud: .skip 4096
+role_pmd: .skip 16384
+.balign 16
+role_boot_stack: .skip 1048576
+role_boot_stack_end:
+
+/* Linux INIT/SIPI startup sequence, specialized for fixed roles and stacks.
+ * Copied below 1MiB. Parameters are written by the BSP before each SIPI. */
+.section .rodata.role_ap,"a"
+.globl role_ap_begin,role_ap_end
+role_ap_begin:
+.code16
+ cli
+ cld
+ xor %ax,%ax
+ mov %ax,%ds
+ mov %ax,%es
+ mov %ax,%ss
+ lgdtl 0x8000+(role_ap_gdtr-role_ap_begin)
+ mov %cr0,%eax
+ or $1,%eax
+ mov %eax,%cr0
+ ljmpl $8,$0x8000+(role_ap_32-role_ap_begin)
+.code32
+role_ap_32:
+ mov $16,%ax
+ mov %ax,%ds
+ mov %ax,%es
+ mov %ax,%ss
+ mov $0x20,%eax
+ mov %eax,%cr4
+ mov 0x8f00,%eax
+ mov %eax,%cr3
+ mov $0xc0000080,%ecx
+ rdmsr
+ or $0x100,%eax
+ wrmsr
+ mov %cr0,%eax
+ or $0x80000001,%eax
+ mov %eax,%cr0
+ ljmpl $24,$0x8000+(role_ap_64-role_ap_begin)
+.code64
+role_ap_64:
+ mov 0x8f08,%rsp
+ mov 0x8f18,%edi
+ mov 0x8f10,%rax
+ jmp *%rax
+.balign 8
+role_ap_gdt:
+ .quad 0,0x00cf9a000000ffff,0x00cf92000000ffff,0x00af9a000000ffff
+role_ap_gdtr:
+ .word 31
+ .long 0x8000+(role_ap_gdt-role_ap_begin)
+role_ap_end:
+
+.section .text,"ax"
+.code64
+.globl role_wake_isr
+role_wake_isr:
+ push %rax
+ push %rdx
+ mov $0x2f9,%dx
+ xor %al,%al
+ out %al,%dx
+ mov $0x20,%al
+ out %al,$0x20
+ mov $0xfee000b0,%eax
+ movl $0,(%rax)
+ pop %rdx
+ pop %rax
+ iretq
+.balign 16
+.globl role_fault_stubs
+role_fault_stubs:
+.altmacro
+.macro role_vector n
+.balign 16
+ /* No error code for these vectors. Normalize frame to vector,error,RIP. */
+ .if (\n!=8)&&(\n!=10)&&(\n!=11)&&(\n!=12)&&(\n!=13)&&(\n!=14)&&(\n!=17)&&(\n!=21)&&(\n!=29)&&(\n!=30)
+ pushq $0
+ .endif
+ pushq $\n
+ jmp role_fault_common
+.endm
+.set vector,0
+.rept 32
+ role_vector %vector
+ .set vector,vector+1
+.endr
+role_fault_common:
+ cli
+ mov %rsp,%rdi
+ and $-16,%rsp
+ call role_fault
+ ud2
+.section .note.GNU-stack,"",@progbits
