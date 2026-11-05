@@ -1,3 +1,5 @@
+#include "role-step.h"
+#include "strata-role.h"
 /* SPDX-License-Identifier: GPL-2.0 */
 #include "role.h"
 #include <linux/string.h>
@@ -79,6 +81,10 @@ void __attribute__((noreturn)) role_ap_entry(unsigned slot)
    else if(m->operation==2&&m->role==ROLE_CPU)memcpy(role_va(m->destination),role_va(m->source),m->bytes);
    else role_runtime_fault();
    __atomic_store_n(&m->done,posted,__ATOMIC_RELEASE);
+  }else if(m->role==ROLE_CPU){
+   if(slot==1||mos_strata_role_phase_stopped())mos_core_role_worker_poll();
+   else if(slot==2||slot==3){if(mos_strata_role_worker_poll(slot-2)<0)role_runtime_fault();}
+   else role_runtime_fault();
   }else asm volatile("sti; hlt":::"memory");
  }
 
@@ -144,11 +150,15 @@ int role_cpu_copy(unsigned cpu,u64 source,u64 destination,u64 bytes,u64 boundary
  if(!role_ram_contains(source,bytes)||!role_ram_contains(destination,bytes))return -22;
  return role_command(cpu,2,source,destination,bytes,boundary);
 }
+extern const void *mos_role_move_current(void);
 void role_step_boundary(void)
 {
- static u64 boundary;u64 move[3],free_before=mos_role_memory_free_bytes();boundary++;unsigned cpu=1+(boundary-1)%(role_cpus-1);
- if(mos_role_move_begin(move)||role_reconfigure(cpu,ROLE_CPU,boundary)||
-    role_cpu_copy(cpu,move[0],move[1],move[2],boundary)||mos_role_move_finish()||
-    role_reconfigure(cpu,ROLE_IDLE,boundary)||mos_role_memory_free_bytes()!=free_before)role_runtime_fault();
- role_puts("ROLE_OBJECT_MOVE_PASS bytes=137 freed=1 cpu_op=1\n");
+ static u64 boundary;u64 move[3],free_before=mos_role_memory_free_bytes();boundary++;
+ unsigned cpu=1+(boundary-1)%(role_cpus-1);
+ if(mos_role_move_begin(move)||role_reconfigure(cpu,ROLE_CPU,boundary))role_runtime_fault();
+ const void *plan=mos_role_move_current();
+ if(!plan||mos_core_role_moves_post(boundary+1,&plan,1))role_runtime_fault();
+ int ret;do{ret=mos_core_role_disk_poll();if(!ret)role_pause();}while(!ret);
+ if(ret!=1||mos_role_move_finish()||role_reconfigure(cpu,ROLE_IDLE,boundary)||mos_role_memory_free_bytes()!=free_before)role_runtime_fault();
+ role_puts("ROLE_OBJECT_MOVE_PASS bytes=137 freed=1 cpu_op=1 runtime_step=1 shared_object_memory=1\n");
 }

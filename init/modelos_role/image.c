@@ -1,5 +1,9 @@
+#include "role-step.h"
 // SPDX-License-Identifier: GPL-2.0
 #include "image.h"
+extern u64 mos_core_role_expert_bind(const void *,u64);
+extern int mos_core_role_expert_check(void);
+static u64 expert_args;
 #include <linux/string.h>
 #include "strata-storage.h"
 u64 role_linear_phys,role_table_phys,role_tokenizer_phys,role_tokenizer_bytes;
@@ -29,7 +33,7 @@ int role_image_load(void)
  ret=mos_strata_disk_open("vda",&disk);if(ret)return ret;
  ret=mos_strata_disk_read(disk,0,&image,sizeof(image));if(ret)goto out;
  crc=image.crc32;image.crc32=0;
- if(memcmp(image.magic,"MOSROLE1",8)||image.version!=1||image.segments!=2||image.arenas!=2||
+ if(memcmp(image.magic,"MOSROLE1",8)||image.version!=1||image.segments!=3||image.arenas!=2||
     image.cpus!=role_cpus||image.reserved||image_crc(&image,sizeof(image))!=crc){ret=-22;goto out;}
  role_memory_init();
  /* Validate every destination before permitting any Image DMA. */
@@ -48,11 +52,23 @@ int role_image_load(void)
   if(mos_role_memory_import(s->physical,(s->bytes+511)&~511UL,4)){ret=-22;goto out;}
   if(s->kind==1&&!role_tokenizer_phys){role_tokenizer_phys=s->physical;role_tokenizer_bytes=s->bytes;}
   else if(s->kind==2&&!role_fixture_input)role_fixture_input=role_va(s->physical);
+  else if(s->kind==3&&!expert_args)expert_args=mos_core_role_expert_bind(role_va(s->physical),s->bytes);
   else{ret=-22;goto out;}
  }
+ struct mos_core_disk_segment transfers[4];
+ for(i=0;i<image.segments;i++){
+  struct role_image_segment *s=&image.segment[i];
+  transfers[i]=(struct mos_core_disk_segment){s->sector,(u64)role_va(s->physical),s->bytes};
+ }
+ ret=mos_core_role_disk_bind(disk);if(ret)goto out;
+ if(!expert_args){ret=-22;goto out;}
+ if(role_reconfigure(1,ROLE_CPU,0)){ret=-5;goto out;}
+ ret=mos_core_role_disk_cpu_post(1,transfers,image.segments,1,expert_args,0,1);if(ret)goto out;
+ do{ret=mos_core_role_disk_poll();if(!ret)role_pause();}while(!ret);
+ if(ret<0)goto out;ret=0;
+ role_puts("ROLE_STEP_ACTIVATION disk_ops=post_poll full_fence=1 segments=");role_hex(image.segments);role_puts("\n");
  for(i=0;i<image.segments;i++){
   struct role_image_segment *s=&image.segment[i];void *target=role_va(s->physical);
-  ret=mos_strata_disk_read(disk,s->sector,target,(s->bytes+511)&~511UL);if(ret)goto out;
   if(image_crc(target,s->bytes)!=s->crc32){ret=-5;goto out;}
   if(s->kind==2){
    u32 *data=target;
@@ -60,9 +76,14 @@ int role_image_load(void)
    role_fixture_inputs=data[0];role_fixture_outputs=data[1];role_fixture_input=data+2;role_fixture_output=data+2+data[0];
   }
  }
+ if(role_reconfigure(1,ROLE_IDLE,0)){ret=-5;goto out;}
+ ret=mos_core_role_expert_check();if(ret)goto out;
+ role_puts("ROLE_STEP_CPU_EXPERT production_rows=source_exact fixed_workers=2 fpu=left_on\n");
  struct mos_strata_io_stats stats;mos_strata_disk_stats(disk,&stats);
  role_puts("ROLE_IMAGE disk=virtio-blk CRC32=pass bytes=");role_hex(stats.read_bytes);role_puts(" reads=");role_hex(stats.read_requests);role_puts("\n");
  role_puts("ROLE_LAYOUT E820 validated; Image initial placement; object allocator over E820; no Linux allocator\n");
 out:
- mos_strata_disk_close(disk);return ret;
+ if(ret)mos_strata_disk_close(disk);return ret;
 }
+
+void __attribute__((noreturn)) mos_core_role_panic(void){role_puts("ROLE_STEP_PANIC\n");role_halt();}
