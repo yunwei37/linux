@@ -119,7 +119,14 @@ void role_start_aps(void)
 }
 /* Freestanding byte adapters; no runtime allocation. */
 void *memcpy(void *d,const void *s,size_t n){u8 *p=d;const u8 *q=s;while(n--)*p++=*q++;return d;}
-void *memset(void *d,int c,size_t n){u8 *p=d;while(n--)*p++=c;return d;}
+void *memset(void *d,int c,size_t n)
+{
+ void *result=d;u64 word=(u8)c;word*=0x0101010101010101UL;
+ size_t head=(-(u64)d)&7;if(head>n)head=n;size_t count=head;
+ asm volatile("rep stosb":"+D"(d),"+c"(count):"a"((u8)c):"memory");
+ n-=head;count=n/8;asm volatile("rep stosq":"+D"(d),"+c"(count):"a"(word):"memory");
+ count=n&7;asm volatile("rep stosb":"+D"(d),"+c"(count):"a"((u8)c):"memory");return result;
+}
 int memcmp(const void *a,const void *b,size_t n){const u8 *p=a,*q=b;while(n--){if(*p!=*q)return *p-*q;p++;q++;}return 0;}
 
 void __attribute__((noreturn)) role_runtime_fault(void){role_puts("ROLE_RUNTIME_ERROR\n");role_halt();}
@@ -192,9 +199,25 @@ u64 role_net_wait(u64 deadline_ns)
  role_nic_disarm();return role_tsc()-begin;
 }
 
-/* Boot-time cache attributes on the already allocated large-page map. */
-void *role_mmio_map(u64 p,u64 bytes,bool wc){
+/* Boot-only device cache attributes. A doorbell and framebuffer can share
+ * one 1GiB aperture; split that interval using a fixed table pool so UC MMIO
+ * never changes the adjacent 2MiB WC framebuffer mappings. No page allocator. */
+static u64 mmio_pmd[128][512] __attribute__((aligned(4096)));
+static unsigned mmio_pmd_used;
+void *role_mmio_map(u64 p,u64 bytes,bool wc)
+{
  extern u64 role_puds[];if(!bytes||p>=ROLE_DIRECT_LIMIT||bytes>ROLE_DIRECT_LIMIT-p)return NULL;
- for(u64 i=p>>30;i<=((p+bytes-1)>>30);i++){u64 entry=role_puds[i];role_puds[i]=(entry&~(0x18UL|0x1000UL))|(wc?0x1000UL:0x18UL);}
+ u64 last=p+bytes-1;
+ for(u64 i=p>>30;i<=(last>>30);i++){
+  if(role_puds[i]&0x80){
+   if(mmio_pmd_used==128)return NULL;
+   u64 *table=mmio_pmd[mmio_pmd_used++],base=i<<30;
+   for(unsigned j=0;j<512;j++)table[j]=base+((u64)j<<21)|0x83;
+   asm volatile("mfence":::"memory");role_puds[i]=role_pa(table)|3;
+  }
+  u64 *table=role_va(role_puds[i]&~4095UL);
+  unsigned begin=i==(p>>30)?(p>>21)&511:0,end=i==(last>>30)?(last>>21)&511:511;
+  for(unsigned j=begin;j<=end;j++)table[j]=(table[j]&~(0x18UL|0x1000UL))|(wc?0x1000UL:0x18UL);
+ }
  asm volatile("mov %0,%%cr3"::"r"(role_pa(role_pml4)):"memory");return role_va(p);
 }
