@@ -2315,3 +2315,7 @@ config MODELOS_ROLE_BOOT
    Runtime model objects and mailbox role changes; no generic initcalls,
    Linux tasks/allocators or IRQ/timer services.
    CPU-only qualification profile; not an RM compatibility profile.
+
+config MODELOS_ROLE_GPU
+ bool "ModelOS RM-free GPU owner on role boot"
+ depends on MODELOS_ROLE_BOOT

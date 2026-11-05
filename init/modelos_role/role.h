@@ -15,6 +15,7 @@ static inline __attribute__((noreturn)) void role_halt(void) { asm volatile("cli
 void start_kernel(void *) __attribute__((noreturn));
 void role_fault(u64 *) __attribute__((noreturn));
 void role_ap_entry(unsigned) __attribute__((noreturn));
+void *role_mmio_map(u64,u64,bool);
 int role_nic_arm(void);
 void role_nic_disarm(void);
 u64 role_now_ns(void);

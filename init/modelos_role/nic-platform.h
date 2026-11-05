@@ -13,8 +13,10 @@
 #define PCI_CAP_ID_VNDR 9
 #define PCI_STD_NUM_BARS 6
 typedef u64 dma_addr_t;
-struct pci_dev {u32 bdf;u64 bar[6],length[6];u32 flags[6];unsigned dev;};
+struct pci_bus {unsigned number;};
+struct pci_dev {u16 vendor,device;unsigned devfn;struct pci_bus *bus;u32 bdf;u64 bar[6],length[6];u32 flags[6];unsigned dev;};
 static struct pci_dev role_nic_device;
+static struct pci_bus role_pci_bus;
 u64 mos_role_dma_alloc(u64,u64);
 int mos_role_dma_free(u64);
 static u32 role_cfg_read(u32 bdf,unsigned off)
@@ -35,7 +37,7 @@ static struct pci_dev *pci_get_device(u16 vendor,u16 device,void *unused)
 {
  struct pci_dev *p=&role_nic_device;u32 bdf;
  for(bdf=0;bdf<65536;bdf++)if(role_cfg_read(bdf,0)==((u32)device<<16|vendor))break;
- if(bdf==65536)return NULL;memset(p,0,sizeof(*p));p->bdf=bdf;
+ if(bdf==65536)return NULL;memset(p,0,sizeof(*p));p->bdf=bdf;p->vendor=vendor;p->device=device;p->devfn=bdf&255;role_pci_bus.number=bdf>>8;p->bus=&role_pci_bus;
  u32 command=role_cfg_read(bdf,4)&0xffff;role_cfg_write(bdf,4,command&~3U);
  for(unsigned i=0;i<6;i++){
   unsigned off=16+i*4;u32 low=role_cfg_read(bdf,off);if(!low)continue;
@@ -71,7 +73,7 @@ static void *role_pci_iomap_range(struct pci_dev *p,unsigned bar,u64 offset,u64 
   role_puts("ROLE_NIC_BAR_REJECT base/length/offset/bytes=");role_hex(p->bar[bar]);role_hex(p->length[bar]);role_hex(offset);role_hex(bytes);role_puts("\n");return NULL;
  }
  role_puts("ROLE_NIC_BAR address=");role_hex(p->bar[bar]+offset);role_puts(" bytes=");role_hex(bytes);role_puts("\n");
- return role_va(p->bar[bar]+offset);
+ return role_mmio_map(p->bar[bar]+offset,bytes,false);
 }
 static volatile u32 *role_msix_table;
 static int role_nic_msix_prepare(struct pci_dev *p)
