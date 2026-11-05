@@ -2,6 +2,8 @@
 OUTPUT_FORMAT(elf64-x86-64)
 OUTPUT_ARCH(i386:x86-64)
 ENTRY(phys_startup_64)
+/* Public single-owner runtime API, callable after Image placement changes. */
+EXTERN(mos_role_memory_add_vram mos_role_gpu_init mos_role_vram_alloc mos_role_object_free mos_role_object_location mos_role_gpu_map mos_role_gpu_unmap mos_role_gpu_poll m3_gpu_root m3_gsp_post m3_gsp_poll)
 PHDRS { text PT_LOAD FLAGS(7); }
 SECTIONS {
  . = 0xffffffff81000000;
