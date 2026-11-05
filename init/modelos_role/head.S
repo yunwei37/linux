@@ -7,6 +7,12 @@ startup_64:
  cli
  cld
  mov %rsi,%r15
+ /* EFI may relocate the physical image even without virtual KASLR. */
+ lea startup_64(%rip),%r14
+ movabs $(startup_64-0xffffffff80000000),%rax
+ sub %rax,%r14
+ lea role_phys_delta(%rip),%rax
+ mov %r14,(%rax)
  lea role_boot_stack_end(%rip),%rsp
  /* One direct map through 64TiB (also covers QEMU's high PCI aperture).
   * 1GiB direct-map pages; separate 2MiB pages for the kernel text alias. */
@@ -51,7 +57,13 @@ startup_64:
  lea role_kernel_pmd(%rip),%rdi
  mov $512,%ecx
  mov $0x83,%eax
-2: mov %rax,(%rdi)
+ add %r14,%rax
+2: test %rax,%rax
+ js 5f
+ mov %rax,(%rdi)
+ jmp 6f
+5: movq $0,(%rdi)
+6:
  add $0x200000,%rax
  add $8,%rdi
  loop 2b
@@ -80,6 +92,9 @@ startup_64:
 .balign 4096
 .globl role_pml4
 role_pml4: .skip 4096
+.globl role_phys_delta
+role_phys_delta: .quad 0
+.balign 4096
 .globl role_puds
 role_puds: .skip 524288
 role_high_pud: .skip 4096

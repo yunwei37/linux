@@ -5,8 +5,9 @@
 #define ROLE_DIRECT 0xffff888000000000UL
 #define ROLE_MAX_CPUS 32
 #define ROLE_DIRECT_LIMIT (64UL<<40)
+extern u64 role_phys_delta;
 static inline void *role_va(u64 p) { return (void *)(ROLE_DIRECT+p); }
-static inline u64 role_pa(const void *p) { u64 a=(u64)p; return a>=0xffffffff80000000UL?a-0xffffffff80000000UL:a-ROLE_DIRECT; }
+static inline u64 role_pa(const void *p) { u64 a=(u64)p; return a>=0xffffffff80000000UL?a-0xffffffff80000000UL+role_phys_delta:a-ROLE_DIRECT; }
 static inline u8 role_in(u16 port) { u8 v; asm volatile("inb %1,%0":"=a"(v):"Nd"(port)); return v; }
 static inline void role_out(u16 port,u8 v) { asm volatile("outb %0,%1"::"a"(v),"Nd"(port)); }
 static inline u64 role_tsc(void) { u32 l,h; asm volatile("rdtsc":"=a"(l),"=d"(h)); return ((u64)h<<32)|l; }

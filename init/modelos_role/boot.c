@@ -17,14 +17,14 @@ int role_ram_contains(u64 start,u64 bytes)
 static u64 highest_ram;
 void role_memory_init(void)
 {
- extern char _end[];unsigned i;u64 kernel_end=role_pa(_end);
+ extern char _end[],_text[];unsigned i;u64 kernel_end=role_pa(_end),kernel_begin=role_pa(_text);
  for(i=0;i<role_boot_params.e820_entries;i++){
   const struct boot_e820_entry *e=&role_boot_params.e820_table[i];
   if(e->type!=1||e->addr>=ROLE_DIRECT_LIMIT)continue;
   u64 end=e->size>ROLE_DIRECT_LIMIT-e->addr?ROLE_DIRECT_LIMIT:e->addr+e->size;
   if(end>highest_ram)highest_ram=end;
   u64 begin=e->addr<0x100000?0x100000:e->addr;
-  if(begin<0x1000000UL&&end>begin){u64 n=end<0x1000000UL?end:0x1000000UL;if(mos_role_memory_add_ram(begin,n-begin))role_runtime_fault();}
+  if(begin<kernel_begin&&end>begin){u64 n=end<kernel_begin?end:kernel_begin;if(mos_role_memory_add_ram(begin,n-begin))role_runtime_fault();}
   if(end>kernel_end){begin=begin<kernel_end?kernel_end:begin;if(begin<end&&mos_role_memory_add_ram(begin,end-begin))role_runtime_fault();}
  }
  if(highest_ram>0x100000000UL){
