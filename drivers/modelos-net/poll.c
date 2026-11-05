@@ -6,17 +6,7 @@
  * The role profile can route an MSI-X wake; packet processing stays polled.
  * Ring structs/layout come from the existing BSD-licensed virtio_ring.h.
  */
-#ifdef CONFIG_MODELOS_ROLE_BOOT
 #include "../../init/modelos_role/nic-platform.h"
-#else
-#include <linux/delay.h>
-#include <linux/dma-mapping.h>
-#include <linux/io.h>
-#include <linux/ktime.h>
-#include <linux/modelos_net.h>
-#include <linux/pci.h>
-#include <linux/virtio_config.h>
-#endif
 #include <uapi/linux/virtio_net.h>
 #include <uapi/linux/virtio_pci.h>
 #include <uapi/linux/virtio_ring.h>
@@ -49,11 +39,7 @@ static void put64(void __iomem *where,u64 value)
 {writel(lower_32_bits(value),where);writel(upper_32_bits(value),where+4);}
 static u64 nic_clock_ns(void)
 {
-#ifdef CONFIG_MODELOS_ROLE_BOOT
  return role_now_ns();
-#else
- return ktime_get_ns();
-#endif
 }
 static void kick(unsigned index)
 { /* Publish ring descriptors before MMIO notification. */
@@ -138,12 +124,8 @@ static void cleanup(void)
 {
  if(common){
   status(0);
-#ifdef CONFIG_MODELOS_ROLE_BOOT
   u64 deadline=role_tsc()+role_tsc_hz;
   while(readb(&common->device_status)){if(role_tsc()>deadline)role_runtime_fault();role_pause();}
-#else
-  readb(&common->device_status);
-#endif
  }
  for(unsigned i=0;i<2;i++){
   struct poll_queue *q=&queues[i];
@@ -164,10 +146,6 @@ int mos_nic_init(u8 mac[6])
  if(!nic)nic=pci_get_device(0x1af4,0x1000,NULL);
  if(!nic)return -ENODEV;
  error=pci_enable_device(nic);if(error)goto put;
-#ifndef CONFIG_MODELOS_ROLE_BOOT
- error=pci_request_regions(nic,"modelos-poll-net");if(error)goto disable;
- error=dma_set_mask_and_coherent(&nic->dev,DMA_BIT_MASK(64));if(error)goto regions;
-#endif
  pci_set_master(nic);pci_intx(nic,0);
  error=map_caps();if(error)goto failed;
  status(0);
@@ -186,24 +164,15 @@ int mos_nic_init(u8 mac[6])
  for(unsigned i=0;i<6;i++)mac[i]=readb(device_cfg+i);
  error=queue_init(0);if(error)goto failed;
  error=queue_init(1);if(error)goto failed;
-#ifdef CONFIG_MODELOS_ROLE_BOOT
  error=role_nic_msix_prepare(nic);if(error)goto failed;
  writew(0,&common->queue_select);writew(0,&common->queue_msix_vector);
  if(readw(&common->queue_msix_vector)!=0){error=-ENOTSUPP;goto failed;}
-#endif
  dma_wmb();status(VIRTIO_CONFIG_S_ACKNOWLEDGE|VIRTIO_CONFIG_S_DRIVER|VIRTIO_CONFIG_S_FEATURES_OK|VIRTIO_CONFIG_S_DRIVER_OK);
  ready=true;kick(0);
  pr_info("MODELOS_POLL_NET ready=1 mac=%pM rx=%u tx=%u irq=0 netdev=0\n",mac,queues[0].ring.num,queues[1].ring.num);return 0;
 failed:cleanup();pci_clear_master(nic);
-#ifndef CONFIG_MODELOS_ROLE_BOOT
-regions:pci_release_regions(nic);
-disable:
-#endif
  pci_disable_device(nic);
 put:
-#ifndef CONFIG_MODELOS_ROLE_BOOT
- pci_dev_put(nic);
-#endif
  nic=NULL;return error;
 }
 void mos_nic_poll(void)
@@ -268,7 +237,6 @@ int mos_nic_receive(void *out,size_t capacity)
  return 0;
 }
 
-#ifdef CONFIG_MODELOS_ROLE_BOOT
 /* Interrupt only wakes the owner. All descriptor/TCP work remains polled. */
 int role_nic_arm(void)
 {
@@ -279,4 +247,3 @@ int role_nic_arm(void)
  return 1;
 }
 void role_nic_disarm(void){writel(1,role_msix_table+3);WRITE_ONCE(queues[0].ring.avail->flags,cpu_to_le16(VRING_AVAIL_F_NO_INTERRUPT));}
-#endif

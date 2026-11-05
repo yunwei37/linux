@@ -138,7 +138,7 @@ is_prefetch(struct pt_regs *regs, unsigned long error_code, unsigned long addr)
 	if (error_code & X86_PF_INSTR)
 		return 0;
 
-	instr = (void *)(IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY) ? regs->ip : convert_ip_to_linear(current, regs));
+	instr = (void *)convert_ip_to_linear(current, regs);
 	max_instr = instr + 15;
 
 	/*

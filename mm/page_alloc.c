@@ -3818,7 +3818,7 @@ retry:
 		 * will require awareness of nodes in the
 		 * dirty-throttling and the flusher threads.
 		 */
-		if (!IS_ENABLED(CONFIG_MODELOS_KERNEL_ONLY) && ac->spread_dirty_pages) {
+		if (ac->spread_dirty_pages) {
 			if (last_pgdat != zone->zone_pgdat) {
 				last_pgdat = zone->zone_pgdat;
 				last_pgdat_dirty_ok = node_dirty_ok(zone->zone_pgdat);

@@ -1835,7 +1835,7 @@ void tcp_update_recv_tstamps(struct sk_buff *skb,
 		tss->ts[2] = (struct timespec64) {0};
 }
 
-#if defined(CONFIG_MMU) && !defined(CONFIG_MODELOS_KERNEL_ONLY)
+#if defined(CONFIG_MMU)
 static const struct vm_operations_struct tcp_vm_ops = {
 };
 
@@ -4719,7 +4719,7 @@ int do_tcp_getsockopt(struct sock *sk, int level,
 		}
 		return 0;
 	}
-#if defined(CONFIG_MMU) && !defined(CONFIG_MODELOS_KERNEL_ONLY)
+#if defined(CONFIG_MMU)
 	case TCP_ZEROCOPY_RECEIVE: {
 		struct scm_timestamping_internal tss;
 		struct tcp_zerocopy_receive zc = {};

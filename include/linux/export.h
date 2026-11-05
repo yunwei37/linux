@@ -38,7 +38,7 @@
 		__EXPORT_SYMBOL_REF(sym)	ASM_NL	\
 	.previous
 
-#if defined(__DISABLE_EXPORTS) || (defined(CONFIG_MODELOS_KERNEL_ONLY) && !defined(CONFIG_MODULES))
+#if defined(__DISABLE_EXPORTS)
 
 /*
  * Allow symbol exports to be disabled completely so that C code may
