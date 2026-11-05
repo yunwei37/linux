@@ -16,6 +16,9 @@
 #include "runtime.h"
 extern const u8 m3_boot_begin[],m3_boot_end[];
 extern int m3_execute_cubin(struct pci_dev *,const u64 *);
+#ifdef CONFIG_MODELOS_M3_GENERIC
+extern int m3_generic_start(struct pci_dev *);
+#endif
 struct operation {u32 kind,bytes;u64 address,value;} __packed;
 static void __iomem *bar;
 static u64 queue_pa;
@@ -527,6 +530,14 @@ static int __init boot(void)
 #endif
   }
   else if(op.kind==27){model_root=op.address;model_root_tier=op.value;have_model_root=true;pr_info("M3_BOOT_MODEL_PDB root=%llx tier=%u\n",model_root,model_root_tier);}
+  else if(op.kind==28){
+#ifdef CONFIG_MODELOS_M3_GENERIC
+   pr_info("M3_BOOT_PROTOCOL_PASS sends=%u replies=%u rm_linked=0 cubin_checked=0\n",sends,replies);gpu_ready=true;
+   rc=m3_generic_start(gpu);if(rc)break;
+#else
+   rc=-EOPNOTSUPP;break;
+#endif
+  }
   else {rc=-EINVAL;break;}
   p+=op.bytes;
  }

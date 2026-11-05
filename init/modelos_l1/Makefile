@@ -8,3 +8,4 @@ ccflags-y += -DNV_VERSION_STRING=\"615.78.08\" -DNV_SPECTRE_V2=0
 ccflags-y += -Wno-unused-function
 
 ccflags-y += -I$(objtree)/init/modelos_l1
+obj-$(CONFIG_MODELOS_L1_LAUNCH) += launch.o

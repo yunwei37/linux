@@ -2251,11 +2251,13 @@ config MODELOS_L1_QWEN
 	depends on MODELOS_L1
 
 config MODELOS_M3_BOOT
- bool "M3 RM-free boot replay diagnostic"
+ bool "M3 RM-free bring-up"
  depends on MODELOS_KERNEL_ONLY && PCI
 
-
-config MODELOS_M3_RUNTIME_OBJECTS
- bool "M3 owner VRAM/PTE hardware fixture"
+config MODELOS_M3_GENERIC
+ bool "M3 generic production initialization diagnostic"
  depends on MODELOS_M3_BOOT
 
+config MODELOS_SERVE
+ bool "ModelOS owner HTTP service"
+ depends on MODELOS && MODELOS_POLL_NET

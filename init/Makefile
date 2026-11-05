@@ -72,3 +72,5 @@ obj-$(CONFIG_MODELOS_L1) += modelos_l1/
 obj-y += modelos_m3/
 
 obj-$(CONFIG_MODELOS_M3_BOOT) += modelos_m3_boot/
+
+obj-$(CONFIG_MODELOS_SERVE) += modelos_serve/

@@ -7,7 +7,7 @@
 #define M3_HIGH_BASE 0x400000000ULL
 #define M3_HIGH_SIZE (2ULL<<30)
 #define M3_TAPE_BASE 0x600000000ULL
-#define M3_TAPE_SIZE (512ULL<<20)
+#define M3_TAPE_SIZE (2ULL<<30)
 void modelos_m3_reserve(void);
 void *modelos_m3_alloc(u64 bytes,u64 alignment,u32 kind,bool dma32);
 bool modelos_m3_owned(const void *p);

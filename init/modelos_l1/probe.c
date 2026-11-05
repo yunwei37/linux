@@ -2,6 +2,12 @@
 /* L1 consumer: call the trim lane's direct RM bridge, never an ioctl. */
 #include "nv-linux.h"
 #include "nvos.h"
+#include <linux/modelos_gpu.h>
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+#include <linux/kexec_handover.h>
+#include <linux/memblock.h>
+#include "payload.h"
+#endif
 #include "class/cl0000.h"
 #include "class/cl0080.h"
 #include "class/cl2080.h"
@@ -12,9 +18,28 @@ extern NV_STATUS modelos_rm_alloc(nvidia_stack_t *,NvHandle,NvHandle,NvHandle *,
 extern NV_STATUS modelos_rm_control(nvidia_stack_t *,NvHandle,NvHandle,NvU32,void *,NvU32);
 extern NV_STATUS modelos_rm_free(nvidia_stack_t *,NvHandle,NvHandle);
 
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+extern int modelos_kexec_payload_verify(void);
+#endif
+
 extern NV_STATUS modelos_l1_resources(nvidia_stack_t *,NvHandle,NvHandle,NvHandle);
 
-extern void l2_counts_dump(void);
+
+#ifdef CONFIG_MODELOS_L1_TCP
+static struct {nvidia_stack_t *stack;NvHandle client;NvU32 gpuid;bool held;} tcp_hold;
+int modelos_l1_release_held(void)
+{
+ NV_STATUS s;
+ if(!tcp_hold.held)return -ENODEV;
+ s=modelos_rm_free(tcp_hold.stack,tcp_hold.client,tcp_hold.client);
+ pr_info("L1_RM_FREE status=0x%08x tcp_drain=1\n",s);
+ if(s!=NV_OK)return -EIO;
+ nvidia_dev_put(tcp_hold.gpuid,tcp_hold.stack,NV_FALSE);
+ nv_kmem_cache_free_stack(tcp_hold.stack);tcp_hold.held=false;
+ return 0;
+}
+#endif
+
 static int __init modelos_l1_probe(void)
 {
     NvU32 ids[32],count=32;
@@ -31,6 +56,9 @@ static int __init modelos_l1_probe(void)
     unsigned short cs;
     asm volatile("mov %%cs,%0":"=r"(cs));
     pr_info("L1_RM_CONTEXT cpl=%u mm=%s\n",cs&3,current->mm?"present":"none");
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+    if(is_kho_boot() && modelos_kexec_payload_verify()) {pr_err("KEXEC_PAYLOAD_REJECTED\n");return 0;}
+#endif
     while((pci=pci_get_device(0x10de,PCI_ANY_ID,pci))) {
         if((pci->class>>16)==PCI_BASE_CLASS_DISPLAY && pci->driver &&
            !strcmp(pci->driver->name,"nvidia")) { bound=true;pci_dev_put(pci);break; }
@@ -43,6 +71,19 @@ static int __init modelos_l1_probe(void)
     if(nvidia_dev_get(ids[0],stack,NV_FALSE))goto done;
     held=true;
 #define CALL(label,expr) do { status=(expr);pr_info("L1_RM_CALL %s status=0x%08x\n",label,status);if(status!=NV_OK)goto done; } while(0)
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+    if(is_kho_boot()) {
+        phys_addr_t pa,len;
+        if(reserve_mem_find_by_name(KHO_MODEL_NAME,&pa,&len) && len>=4096) {
+            const struct modelos_kho_payload *old=(const void *)((const char *)phys_to_virt(pa)+len-4096);
+            if(!memcmp(old->magic,"Q3KHO001",8) && old->mode==2) {
+                NV0080_CTRL_GPU_GET_CLASSLIST_PARAMS q={0};
+                NV_STATUS adopted=modelos_rm_control(stack,old->old_client,old->old_device,NV0080_CTRL_CMD_GPU_GET_CLASSLIST,&q,sizeof(q));
+                pr_info("KEXEC_ADOPT_CONTROL old_client=%x old_device=%x old_sub=%x status=0x%08x classes=%u\n",old->old_client,old->old_device,old->old_subdevice,adopted,q.numClasses);
+            }
+        }
+    }
+#endif
     CALL("root",modelos_rm_alloc(stack,0,0,&client,NV01_ROOT,&client,sizeof(client)));
     info.gpuId=ids[0];
     CALL("gpu-id",modelos_rm_control(stack,client,client,NV0000_CTRL_CMD_GPU_GET_ID_INFO_V2,&info,sizeof(info)));
@@ -55,7 +96,15 @@ static int __init modelos_l1_probe(void)
     if(!classes.numClasses){status=NV_ERR_INVALID_STATE;goto done;}
     pr_info("L1_RM_PROBE_PASS gpu=0x%08x classes=%u no_userspace=1\n",ids[0],classes.numClasses);
     CALL("replay-resources",modelos_l1_resources(stack,client,device,subdevice));
+    pr_info("M3_GENERIC_CAPTURE_PASS rm_linked=1 token_gate=0\n");
+    for(;;)schedule_timeout_uninterruptible(HZ);
     status=NV_OK;
+#ifdef CONFIG_MODELOS_L1_TCP
+    if(modelos_l1_serving()) {
+        tcp_hold.stack=stack;tcp_hold.client=client;tcp_hold.gpuid=ids[0];tcp_hold.held=true;
+        pr_info("L1_RM_TCP_HANDOFF retained=1 no_userspace=1\n");return 0;
+    }
+#endif
 #undef CALL
 done:
     if(status!=NV_OK)pr_err("L1_RM_PROBE_FAIL status=0x%08x held=%u\n",status,held);
@@ -63,7 +112,6 @@ done:
     if(client){NV_STATUS released=modelos_rm_free(stack,client,client);pr_info("L1_RM_FREE status=0x%08x\n",released);}
     if(held)nvidia_dev_put(ids[0],stack,NV_FALSE);
     nv_kmem_cache_free_stack(stack);
-    l2_counts_dump();
     return 0;
 }
 late_initcall(modelos_l1_probe);
