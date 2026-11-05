@@ -8,6 +8,7 @@
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/io.h>
+#include <linux/ktime.h>
 #include <linux/modelos_net.h>
 #include <linux/pci.h>
 #include <linux/virtio_config.h>
@@ -24,7 +25,8 @@ struct poll_queue {
  dma_addr_t dma, buffers_dma;
  size_t ring_bytes;
  void __iomem *notify;
- u16 avail, used, free_count;
+ u16 avail, published, used, free_count;
+ int reserved;
  u16 free[QUEUE_MAX];
  bool pending[QUEUE_MAX];
 };
@@ -34,12 +36,18 @@ static void __iomem *notify_base, *device_cfg;
 static u32 notify_multiplier, notify_length;
 static struct poll_queue queues[2];
 static bool ready;
+static struct mos_nic_stats counters;
+void mos_nic_stats(struct mos_nic_stats *out,int reset)
+{if(out)*out=counters;if(reset)memset(&counters,0,sizeof(counters));}
 static void status(u8 value){writeb(value,&common->device_status);}
 static void put64(void __iomem *where,u64 value)
 {writel(lower_32_bits(value),where);writel(upper_32_bits(value),where+4);}
 static void kick(unsigned index)
 { /* Publish ring descriptors before MMIO notification. */
+ u64 start=ktime_get_ns();
  dma_wmb();writew(index,queues[index].notify);
+ if(index){counters.tx_kicks++;counters.tx_kick_ns+=ktime_get_ns()-start;}
+ else{counters.rx_kicks++;counters.rx_kick_ns+=ktime_get_ns()-start;}
 }
 static int map_caps(void)
 {
@@ -68,6 +76,20 @@ static int map_caps(void)
  }
  return common&&notify_base&&device_cfg?0:-ENODEV;
 }
+/* Publish a whole owner batch, then obey the device's split-ring kick
+ * suppression flag. The full barrier pairs the avail update with vhost's
+ * enable-notification/recheck sequence: neither side may miss the wakeup. */
+void mos_nic_flush(void)
+{
+ if(!ready)return;
+ for(unsigned index=0;index<2;index++){
+  struct poll_queue *q=&queues[index];
+  if(q->published==q->avail)continue;
+  dma_wmb();WRITE_ONCE(q->ring.avail->idx,cpu_to_le16(q->avail));
+  q->published=q->avail;mb();
+  if(!(le16_to_cpu(READ_ONCE(q->ring.used->flags))&VRING_USED_F_NO_NOTIFY))kick(index);
+ }
+}
 static int queue_init(unsigned index)
 {
  struct poll_queue *q=&queues[index];unsigned n;u64 offset;
@@ -75,7 +97,7 @@ static int queue_init(unsigned index)
  n=readw(&common->queue_size);if(!n)return -ENODEV;
  n=min(n,QUEUE_MAX);if(!is_power_of_2(n))return -EINVAL;
  writew(n,&common->queue_size);writew(VIRTIO_MSI_NO_VECTOR,&common->queue_msix_vector);
- q->ring.num=n;q->ring_bytes=vring_size(n,PAGE_SIZE);
+ q->reserved=-1;q->ring.num=n;q->ring_bytes=vring_size(n,PAGE_SIZE);
  q->memory=dma_alloc_coherent(&nic->dev,q->ring_bytes,&q->dma,GFP_KERNEL);
  q->buffers=dma_alloc_coherent(&nic->dev,n*BUFFER_BYTES,&q->buffers_dma,GFP_KERNEL);
  if(!q->memory||!q->buffers)return -ENOMEM;
@@ -90,7 +112,7 @@ static int queue_init(unsigned index)
    q->ring.avail->ring[q->avail++]=cpu_to_le16(i);
   }else q->free[q->free_count++]=i;
  }
- dma_wmb();WRITE_ONCE(q->ring.avail->idx,cpu_to_le16(q->avail));
+ dma_wmb();WRITE_ONCE(q->ring.avail->idx,cpu_to_le16(q->avail));q->published=q->avail;
  offset=(u64)readw(&common->queue_notify_off)*notify_multiplier;
  if(offset+2>notify_length)return -EINVAL;
  q->notify=notify_base+offset;
@@ -159,18 +181,34 @@ void mos_nic_poll(void)
   q->pending[id]=false;q->free[q->free_count++]=id;
  }
 }
-int mos_nic_tx_ready(void){mos_nic_poll();return ready&&queues[1].free_count;}
+int mos_nic_tx_ready(void)
+{
+ if(!ready)return 0;
+ if(!queues[1].free_count)mos_nic_poll();
+ return queues[1].free_count&&queues[1].reserved<0;
+}
+void *mos_nic_tx_acquire(size_t bytes)
+{
+ struct poll_queue *q=&queues[1];unsigned id;
+ if(bytes<14||bytes>FRAME_BYTES||!mos_nic_tx_ready())return NULL;
+ id=q->free[--q->free_count];q->reserved=id;
+ /* The non-offloaded virtio header was zeroed at boot and stays zero. */
+ return q->buffers+id*BUFFER_BYTES+HDR_BYTES;
+}
+int mos_nic_tx_commit(size_t bytes)
+{
+ struct poll_queue *q=&queues[1];int id=q->reserved;
+ if(id<0||bytes<14||bytes>FRAME_BYTES)return -EINVAL;
+ q->reserved=-1;q->ring.desc[id].len=cpu_to_le32(HDR_BYTES+bytes);q->pending[id]=true;
+ q->ring.avail->ring[q->avail++%q->ring.num]=cpu_to_le16(id);
+ counters.tx_frames++;counters.tx_bytes+=bytes;return 0;
+}
 int mos_nic_send(const void *frame,size_t bytes)
 {
- struct poll_queue *q=&queues[1];unsigned id;void *buffer;
- if(!ready)return -ENODEV;
- if(bytes<14||bytes>FRAME_BYTES)return -EMSGSIZE;
- if(!mos_nic_tx_ready())return -EAGAIN;
- id=q->free[--q->free_count];buffer=q->buffers+id*BUFFER_BYTES;
- memset(buffer,0,HDR_BYTES);memcpy(buffer+HDR_BYTES,frame,bytes);
- q->ring.desc[id].len=cpu_to_le32(HDR_BYTES+bytes);q->pending[id]=true;
- q->ring.avail->ring[q->avail%q->ring.num]=cpu_to_le16(id);
- dma_wmb();WRITE_ONCE(q->ring.avail->idx,cpu_to_le16(++q->avail));kick(1);return 0;
+ void *buffer=mos_nic_tx_acquire(bytes);
+ if(!buffer)return bytes<14||bytes>FRAME_BYTES?-EMSGSIZE:-EAGAIN;
+ memcpy(buffer,frame,bytes);counters.copy_bytes+=bytes;
+ return mos_nic_tx_commit(bytes);
 }
 int mos_nic_receive(void *out,size_t capacity)
 {
@@ -184,10 +222,10 @@ int mos_nic_receive(void *out,size_t capacity)
   hdr=q->buffers+id*BUFFER_BYTES;
   if(len>=HDR_BYTES+14&&len<=min_t(size_t,BUFFER_BYTES,HDR_BYTES+capacity)&&
      !hdr->flags&&!hdr->gso_type){
-   copied=len-HDR_BYTES;memcpy(out,(void *)hdr+HDR_BYTES,copied);
+   copied=len-HDR_BYTES;counters.rx_frames++;memcpy(out,(void *)hdr+HDR_BYTES,copied);
   }
   q->ring.avail->ring[q->avail%q->ring.num]=cpu_to_le16(id);
-  dma_wmb();WRITE_ONCE(q->ring.avail->idx,cpu_to_le16(++q->avail));kick(0);
+  q->avail++;
   if(copied)return copied;
  }
  return 0;
