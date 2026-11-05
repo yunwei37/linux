@@ -208,7 +208,9 @@ int mos_nic_send(const void *frame,size_t bytes)
  void *buffer=mos_nic_tx_acquire(bytes);
  if(!buffer)return bytes<14||bytes>FRAME_BYTES?-EMSGSIZE:-EAGAIN;
  memcpy(buffer,frame,bytes);counters.copy_bytes+=bytes;
- return mos_nic_tx_commit(bytes);
+ /* Preserve the original copy-send ABI for already linked owners. The new
+  * smoltcp adapter uses acquire/commit and flushes only at Step boundaries. */
+ int error=mos_nic_tx_commit(bytes);mos_nic_flush();return error;
 }
 int mos_nic_receive(void *out,size_t capacity)
 {
