@@ -5,7 +5,6 @@
 #define MODELOS_ROLE_NIC_PLATFORM_H
 #include "role.h"
 #include "net.h"
-#include <linux/modelos_net.h>
 #include <linux/string.h>
 #include <linux/errno.h>
 #include <linux/log2.h>
