@@ -2309,13 +2309,10 @@ config MODELOS_KEXEC_TCP
 
 config MODELOS_ROLE_BOOT
  bool "ModelOS object memory and Op roles"
- depends on X86_64 && !SMP && !RELOCATABLE && !EFI && !PARAVIRT
+ depends on X86_64 && !SMP && !PARAVIRT
  help
    Linux boot protocol and decompressor, then owner-controlled per-core Ops.
    Runtime model objects and mailbox role changes; no generic initcalls,
    Linux tasks/allocators or IRQ/timer services.
-   CPU-only qualification profile; not an RM compatibility profile.
+   One image for CPU-only tests and RM-free GPU serving; EFI stub is boot-only.
 
-config MODELOS_ROLE_GPU
- bool "ModelOS RM-free GPU owner on role boot"
- depends on MODELOS_ROLE_BOOT

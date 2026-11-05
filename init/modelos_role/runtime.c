@@ -161,11 +161,7 @@ int role_cpu_post(unsigned cpu,void (*fn)(void *),void *arg,u64 boundary){return
 void role_step_boundary(void)
 {
  u64 boundary=role_next_boundary();u64 move[3],free_before=mos_role_memory_free_bytes();
-#ifdef CONFIG_MODELOS_ROLE_GPU
  unsigned cpu=2+(boundary-1)%(role_cpus-2);
-#else
- unsigned cpu=1+(boundary-1)%(role_cpus-1);
-#endif
  if(mos_role_move_begin(move)||role_reconfigure(cpu,ROLE_CPU,boundary)||
     role_cpu_copy(cpu,move[0],move[1],move[2],boundary)||mos_role_move_finish()||
     role_reconfigure(cpu,ROLE_IDLE,boundary)||mos_role_memory_free_bytes()!=free_before)role_runtime_fault();
