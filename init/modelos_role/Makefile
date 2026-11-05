@@ -6,4 +6,4 @@ ccflags-y += -I$(MODELOS_TEXT_SOURCE) -I$(MODELOS_CORE_SOURCE) -I$(MODELOS_NET_S
 CFLAGS_storage.o += -DMODELOS_STRATA_STORAGE_SOURCE=\"$(MODELOS_CORE_SOURCE)/strata-storage.c\"
 
 obj-y += gpu-service.o gpu-boot.o gpu-production.o gpu-owner.o gpu-text.o gpu-image.o gpu-engine.o gpu-io.o core-runtime.o
-ccflags-y += -I$(obj) -I$(MODELOS_ROLE_GPU_SOURCE)
+ccflags-y += -I$(obj) -I$(obj)/gpu -I$(MODELOS_ROLE_GPU_SOURCE)
