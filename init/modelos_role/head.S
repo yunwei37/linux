@@ -80,6 +80,7 @@ startup_64:
 .balign 4096
 .globl role_pml4
 role_pml4: .skip 4096
+.globl role_puds
 role_puds: .skip 524288
 role_high_pud: .skip 4096
 role_kernel_pmd: .skip 4096

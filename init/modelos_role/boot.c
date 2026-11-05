@@ -4,6 +4,7 @@
 #include <asm/bootparam.h>
 static struct boot_params role_boot_params;
 static u64 ram_bytes;
+u64 role_rsdp_address(void){return role_boot_params.acpi_rsdp_addr;}
 int role_ram_contains(u64 start,u64 bytes)
 {
  unsigned i;if(!bytes||start+bytes<start)return 0;

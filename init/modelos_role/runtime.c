@@ -7,7 +7,7 @@ static u64 gdt[ROLE_MAX_CPUS][5] __attribute__((aligned(16)));
 struct role_tss {u32 reserved;u64 rsp[3];u64 reserved2;u64 ist[7];u64 reserved3;u16 reserved4,iomap;} __attribute__((packed));
 static struct role_tss tss[ROLE_MAX_CPUS];
 static char fault_stacks[ROLE_MAX_CPUS][8192] __attribute__((aligned(16)));
-static char ap_stacks[ROLE_MAX_CPUS][32768] __attribute__((aligned(16)));
+static char ap_stacks[ROLE_MAX_CPUS][524288] __attribute__((aligned(16)));
 struct descriptor {u16 limit;u64 base;} __attribute__((packed));
 struct gate {u16 low,selector;u8 ist,type;u16 mid;u32 high,zero;} __attribute__((packed));
 static struct gate idt[256] __attribute__((aligned(16)));
@@ -39,6 +39,8 @@ void role_core_init(unsigned slot)
  asm volatile("mov $16,%%ax; mov %%ax,%%ds; mov %%ax,%%es; mov %%ax,%%ss; mov $24,%%ax; ltr %%ax":::"rax","memory");
  if(!slot){unsigned i;for(i=0;i<256;i++)gate(i,(u64)role_fault_stubs+13*16,1);for(i=0;i<32;i++)gate(i,(u64)role_fault_stubs+i*16,1);gate(0xf1,(u64)role_wake_isr,0);}
  asm volatile("lidt %0"::"m"(id):"memory");
+ /* PAT slot 4 is WC for the fixed GPU BAR1 direct-map aperture. */
+ u32 pl,ph;asm volatile("rdmsr":"=a"(pl),"=d"(ph):"c"(0x277));ph=(ph&~255U)|1;asm volatile("wrmsr"::"c"(0x277),"a"(pl),"d"(ph));
  if(mos_role_enable_fpu())role_runtime_fault();
  apic_write(0xf0,0x1ff);apic_write(0x320,0x10000);apic_write(0x350,slot?0x10000:0x700);apic_write(0x360,0x400);
 }
@@ -47,8 +49,9 @@ static u8 checksum(const void *p,unsigned n){const u8 *b=p;u8 s=0;while(n--)s+=*
 struct acpi_header {char sig[4];u32 len;u8 rest[28];} __attribute__((packed));
 static struct acpi_header *acpi_find(void)
 {
- u64 p;u8 *rsdp=0;
- for(p=0xe0000;p<0x100000;p+=16){u8 *b=role_va(p);if(!memcmp(b,"RSD PTR ",8)&&!checksum(b,20)){rsdp=b;break;}}
+ extern u64 role_rsdp_address(void);
+ u64 p,address=role_rsdp_address();u8 *rsdp=address&&address<ROLE_DIRECT_LIMIT?role_va(address):0;
+ for(p=0xe0000;!rsdp&&p<0x100000;p+=16){u8 *b=role_va(p);if(!memcmp(b,"RSD PTR ",8)&&!checksum(b,20)){rsdp=b;break;}}
  if(!rsdp)return 0;
  u64 root=*(u32 *)(rsdp+16);unsigned stride=4;
  if(rsdp[15]>=2&&!checksum(rsdp,36)&&*(u64 *)(rsdp+24)){root=*(u64 *)(rsdp+24);stride=8;}
@@ -77,6 +80,7 @@ void __attribute__((noreturn)) role_ap_entry(unsigned slot)
   if(posted!=__atomic_load_n(&m->done,__ATOMIC_RELAXED)){
    if(m->operation==1)m->role=m->bytes;
    else if(m->operation==2&&m->role==ROLE_CPU)memcpy(role_va(m->destination),role_va(m->source),m->bytes);
+   else if(m->operation==3&&m->role==ROLE_CPU)((void (*)(void *))m->source)((void *)m->destination);
    else role_runtime_fault();
    __atomic_store_n(&m->done,posted,__ATOMIC_RELEASE);
   }else asm volatile("sti; hlt":::"memory");
@@ -94,7 +98,7 @@ void role_start_aps(void)
   u8 *e=(u8 *)madt+i;if(e[1]<2||i+e[1]>madt->len)break;
   if(e[0]==0&&e[1]>=8&&(*(u32 *)(e+4)&1)&&e[3]!=bsp&&role_cpus<ROLE_MAX_CPUS){
    unsigned slot=role_cpus;apic_ids[slot]=e[3];
-   *(u64 *)role_va(0x8f00)=role_pa(role_pml4);*(u64 *)role_va(0x8f08)=(u64)&ap_stacks[slot][32768];*(u64 *)role_va(0x8f10)=(u64)role_ap_entry;*(u32 *)role_va(0x8f18)=slot;
+   *(u64 *)role_va(0x8f00)=role_pa(role_pml4);*(u64 *)role_va(0x8f08)=(u64)&ap_stacks[slot][524288];*(u64 *)role_va(0x8f10)=(u64)role_ap_entry;*(u32 *)role_va(0x8f18)=slot;
    asm volatile("mfence":::"memory");
    apic_write(0x310,(u32)e[3]<<24);apic_write(0x300,0xc500);delay_us(10000);
    apic_write(0x310,(u32)e[3]<<24);apic_write(0x300,0x8500);delay_us(200);
@@ -118,19 +122,26 @@ void *memset(void *d,int c,size_t n){u8 *p=d;while(n--)*p++=c;return d;}
 int memcmp(const void *a,const void *b,size_t n){const u8 *p=a,*q=b;while(n--){if(*p!=*q)return *p-*q;p++;q++;}return 0;}
 
 void __attribute__((noreturn)) role_runtime_fault(void){role_puts("ROLE_RUNTIME_ERROR\n");role_halt();}
-static int role_command(unsigned cpu,unsigned operation,u64 source,u64 destination,u64 bytes,u64 boundary)
+static int role_publish(unsigned cpu,unsigned operation,u64 source,u64 destination,u64 bytes,u64 boundary)
 {
  if(!cpu||cpu>=role_cpus)return -22;
  struct role_mailbox *m=&mailboxes[cpu];
  u64 seq=__atomic_load_n(&m->posted,__ATOMIC_RELAXED);
  if(seq!=__atomic_load_n(&m->done,__ATOMIC_ACQUIRE)||boundary<m->boundary||seq==~0UL)return -16;
- if(operation==2&&m->role!=ROLE_CPU)return -22;
+ if(operation>1&&m->role!=ROLE_CPU)return -22;
  m->operation=operation;m->source=source;m->destination=destination;m->bytes=bytes;m->boundary=boundary;
  __atomic_store_n(&m->posted,seq+1,__ATOMIC_RELEASE);
  while(apic_read(0x300)&(1<<12))role_pause();
  apic_write(0x310,(u32)apic_ids[cpu]<<24);apic_write(0x300,0xf1);
+ return 0;
+}
+int role_cpu_done(unsigned cpu){return cpu&&cpu<role_cpus&&__atomic_load_n(&mailboxes[cpu].done,__ATOMIC_ACQUIRE)==__atomic_load_n(&mailboxes[cpu].posted,__ATOMIC_RELAXED);}
+static int role_command(unsigned cpu,unsigned operation,u64 source,u64 destination,u64 bytes,u64 boundary)
+{
+ int rc=role_publish(cpu,operation,source,destination,bytes,boundary);if(rc)return rc;
+ struct role_mailbox *m=&mailboxes[cpu];u64 seq=__atomic_load_n(&m->posted,__ATOMIC_RELAXED);
  u64 deadline=role_tsc()+role_tsc_hz;
- while(__atomic_load_n(&m->done,__ATOMIC_ACQUIRE)!=seq+1){if(role_tsc()>deadline)return -5;role_pause();}
+ while(__atomic_load_n(&m->done,__ATOMIC_ACQUIRE)!=seq){if(role_tsc()>deadline)return -5;role_pause();}
  return 0;
 }
 int role_reconfigure(unsigned cpu,enum role_kind role,u64 boundary)
@@ -144,9 +155,17 @@ int role_cpu_copy(unsigned cpu,u64 source,u64 destination,u64 bytes,u64 boundary
  if(!role_ram_contains(source,bytes)||!role_ram_contains(destination,bytes))return -22;
  return role_command(cpu,2,source,destination,bytes,boundary);
 }
+static u64 step_boundary;
+u64 role_next_boundary(void){return ++step_boundary;}
+int role_cpu_post(unsigned cpu,void (*fn)(void *),void *arg,u64 boundary){return role_publish(cpu,3,(u64)fn,(u64)arg,0,boundary);}
 void role_step_boundary(void)
 {
- static u64 boundary;u64 move[3],free_before=mos_role_memory_free_bytes();boundary++;unsigned cpu=1+(boundary-1)%(role_cpus-1);
+ u64 boundary=role_next_boundary();u64 move[3],free_before=mos_role_memory_free_bytes();
+#ifdef CONFIG_MODELOS_ROLE_GPU
+ unsigned cpu=2+(boundary-1)%(role_cpus-2);
+#else
+ unsigned cpu=1+(boundary-1)%(role_cpus-1);
+#endif
  if(mos_role_move_begin(move)||role_reconfigure(cpu,ROLE_CPU,boundary)||
     role_cpu_copy(cpu,move[0],move[1],move[2],boundary)||mos_role_move_finish()||
     role_reconfigure(cpu,ROLE_IDLE,boundary)||mos_role_memory_free_bytes()!=free_before)role_runtime_fault();
@@ -174,4 +193,11 @@ u64 role_net_wait(u64 deadline_ns)
  asm volatile("sti; hlt; cli":::"memory");
  low=high=0;asm volatile("wrmsr"::"c"(0x6e0),"a"(low),"d"(high));apic_write(0x320,0x10000);
  role_nic_disarm();return role_tsc()-begin;
+}
+
+/* Boot-time cache attributes on the already allocated large-page map. */
+void *role_mmio_map(u64 p,u64 bytes,bool wc){
+ extern u64 role_puds[];if(!bytes||p>=ROLE_DIRECT_LIMIT||bytes>ROLE_DIRECT_LIMIT-p)return NULL;
+ for(u64 i=p>>30;i<=((p+bytes-1)>>30);i++){u64 entry=role_puds[i];role_puds[i]=(entry&~(0x18UL|0x1000UL))|(wc?0x1000UL:0x18UL);}
+ asm volatile("mov %0,%%cr3"::"r"(role_pa(role_pml4)):"memory");return role_va(p);
 }
