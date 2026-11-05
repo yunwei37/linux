@@ -113,6 +113,9 @@ obj-$(CONFIG_DRM_HEADER_TEST)	+= include/
 # The role profile has no consumers of the generic kernel service archives.
 ifeq ($(CONFIG_MODELOS_ROLE_BOOT),y)
 obj-y := init/
+# The decompressor links this boot-only archive even though the role entry
+# excludes ordinary drivers. Visit it as builtin so Kbuild produces lib.a.
+obj-$(CONFIG_EFI_STUB) += drivers/firmware/efi/libstub/
 subdir-y += arch/x86/boot/startup
 PHONY += role-capflags
 prepare: role-capflags
