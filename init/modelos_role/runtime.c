@@ -52,12 +52,13 @@ static struct acpi_header *acpi_find(void)
  extern u64 role_rsdp_address(void);
  u64 p,address=role_rsdp_address();u8 *rsdp=address&&address<ROLE_DIRECT_LIMIT?role_va(address):0;
  for(p=0xe0000;!rsdp&&p<0x100000;p+=16){u8 *b=role_va(p);if(!memcmp(b,"RSD PTR ",8)&&!checksum(b,20)){rsdp=b;break;}}
- if(!rsdp)return 0;
+ role_puts("ROLE_ACPI RSDP=");role_hex(rsdp?role_pa(rsdp):0);role_puts("\n");
+ if(!rsdp||memcmp(rsdp,"RSD PTR ",8)||checksum(rsdp,20))return 0;
  u64 root=*(u32 *)(rsdp+16);unsigned stride=4;
  if(rsdp[15]>=2&&!checksum(rsdp,36)&&*(u64 *)(rsdp+24)){root=*(u64 *)(rsdp+24);stride=8;}
- if(root>=0x100000000UL)return 0;
+ if(!root||root>ROLE_DIRECT_LIMIT-sizeof(struct acpi_header))return 0;
  struct acpi_header *h=role_va(root);if(h->len<36||h->len>1048576||checksum(h,h->len))return 0;
- for(p=36;p+stride<=h->len;p+=stride){u64 a=stride==8?*(u64 *)((u8 *)h+p):*(u32 *)((u8 *)h+p);if(a>=0x100000000UL)continue;struct acpi_header *t=role_va(a);if(!memcmp(t->sig,"APIC",4)&&t->len>=44&&t->len<1048576&&!checksum(t,t->len))return t;}
+ for(p=36;p+stride<=h->len;p+=stride){u64 a=stride==8?*(u64 *)((u8 *)h+p):*(u32 *)((u8 *)h+p);if(!a||a>ROLE_DIRECT_LIMIT-sizeof(struct acpi_header))continue;struct acpi_header *t=role_va(a);if(!memcmp(t->sig,"APIC",4)&&t->len>=44&&t->len<1048576&&!checksum(t,t->len))return t;}
  return 0;
 }
 static void delay_us(unsigned us){u64 start=role_tsc(),cycles=(role_tsc_hz/1000000)*us;while(role_tsc()-start<cycles)role_pause();}

@@ -2,9 +2,26 @@
 /* No task, initcall, allocator or timer roots in this profile. */
 #include "role.h"
 #include <asm/bootparam.h>
+#include <linux/efi.h>
+#include <linux/string.h>
 static struct boot_params role_boot_params;
 static u64 ram_bytes;
-u64 role_rsdp_address(void){return role_boot_params.acpi_rsdp_addr;}
+u64 role_rsdp_address(void)
+{
+ if(role_boot_params.acpi_rsdp_addr)return role_boot_params.acpi_rsdp_addr;
+ const struct efi_info *info=&role_boot_params.efi_info;
+ u64 address=(u64)info->efi_systab|((u64)info->efi_systab_hi<<32),fallback=0;
+ if(memcmp(&info->efi_loader_signature,"EL64",4)||!address||address>ROLE_DIRECT_LIMIT-sizeof(efi_system_table_64_t))return 0;
+ const efi_system_table_64_t *system=role_va(address);
+ if(system->hdr.signature!=EFI_SYSTEM_TABLE_SIGNATURE||system->nr_tables>4096||!system->tables||system->tables>ROLE_DIRECT_LIMIT-system->nr_tables*sizeof(efi_config_table_64_t))return 0;
+ const efi_config_table_64_t *tables=role_va(system->tables);
+ static const efi_guid_t acpi20=ACPI_20_TABLE_GUID,acpi10=ACPI_TABLE_GUID;
+ for(unsigned i=0;i<system->nr_tables;i++){
+  if(!memcmp(&tables[i].guid,&acpi20,sizeof(acpi20)))return tables[i].table;
+  if(!memcmp(&tables[i].guid,&acpi10,sizeof(acpi10)))fallback=tables[i].table;
+ }
+ return fallback;
+}
 int role_ram_contains(u64 start,u64 bytes)
 {
  unsigned i;if(!bytes||start+bytes<start)return 0;
