@@ -13,7 +13,7 @@ struct gate {u16 low,selector;u8 ist,type;u16 mid;u32 high,zero;} __attribute__(
 static struct gate idt[256] __attribute__((aligned(16)));
 extern char role_fault_stubs[],role_ap_begin[],role_ap_end[];
 extern void role_wake_isr(void);
-static volatile unsigned ap_online;
+static volatile unsigned ap_online,roles_released;
 static u32 apic_read(unsigned reg){return *(volatile u32 *)role_va(0xfee00000+reg);}
 static void apic_write(unsigned reg,u32 value){*(volatile u32 *)role_va(0xfee00000+reg)=value;}
 void role_puts(const char *s){while(*s){while(!(role_in(0x3fd)&32))role_pause();role_out(0x3f8,*s++);}}
@@ -64,13 +64,15 @@ void __attribute__((noreturn)) role_ap_entry(unsigned slot)
 {
  role_core_init(slot);
  __atomic_store_n(&ap_online,slot,__ATOMIC_RELEASE);
+ while(!__atomic_load_n(&roles_released,__ATOMIC_ACQUIRE))role_pause();
+ asm volatile("mov %0,%%cr3"::"r"(role_pa(role_pml4)):"memory");
  for(;;)asm volatile("sti; hlt":::"memory");
 }
 void role_start_aps(void)
 {
  calibrate_tsc();
  struct acpi_header *madt=acpi_find();
- if(!madt){role_puts("ROLE_NO_MADT\n");return;}
+ if(!madt){role_puts("ROLE_NO_MADT\n");role_halt();}
  memcpy(role_va(0x8000),role_ap_begin,role_ap_end-role_ap_begin);
  unsigned i;u8 bsp=apic_read(0x20)>>24;
  for(i=44;i+2<=madt->len;){
@@ -90,13 +92,10 @@ void role_start_aps(void)
   }
   i+=e[1];
  }
-}
-/* Temporary boot acceptance endpoint. The next commit binds production text. */
-void __attribute__((noreturn)) role_service(void)
-{
- role_out(0x21,0xff);role_out(0xa1,0xff);
- role_puts("ROLE_PARKED no tasks no tick\n");
- for(;;)asm volatile("sti; hlt":::"memory");
+ /* Remove the boot-only low alias once every AP executes high virtual code. */
+ role_pml4[0]=0;
+ asm volatile("mov %0,%%cr3"::"r"(role_pa(role_pml4)):"memory");
+ __atomic_store_n(&roles_released,1,__ATOMIC_RELEASE);
 }
 /* Freestanding byte adapters; no runtime allocation. */
 void *memcpy(void *d,const void *s,size_t n){u8 *p=d;const u8 *q=s;while(n--)*p++=*q++;return d;}

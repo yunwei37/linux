@@ -4,6 +4,15 @@
 #include <asm/bootparam.h>
 static struct boot_params role_boot_params;
 static u64 ram_bytes;
+int role_ram_contains(u64 start,u64 bytes)
+{
+ unsigned i;if(!bytes||start+bytes<start)return 0;
+ for(i=0;i<role_boot_params.e820_entries;i++){
+  const struct boot_e820_entry *e=&role_boot_params.e820_table[i];
+  if(e->type==1&&start>=e->addr&&start-e->addr<=e->size&&bytes<=e->size-(start-e->addr))return 1;
+ }
+ return 0;
+}
 void __attribute__((noreturn)) start_kernel(void *physical_boot_params)
 {
  unsigned i;

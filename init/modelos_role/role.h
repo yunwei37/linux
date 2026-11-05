@@ -16,6 +16,7 @@ void role_fault(u64 *) __attribute__((noreturn));
 void role_ap_entry(unsigned) __attribute__((noreturn));
 void role_puts(const char *s);
 void role_hex(u64 n);
+int role_ram_contains(u64 start,u64 bytes);
 void role_core_init(unsigned slot);
 void role_start_aps(void);
 void role_service(void) __attribute__((noreturn));

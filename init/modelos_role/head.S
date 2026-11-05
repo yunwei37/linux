@@ -8,11 +8,6 @@ startup_64:
  cld
  mov %rsi,%r15
  lea role_boot_stack_end(%rip),%rsp
- lea __bss_start(%rip),%rdi
- lea _end(%rip),%rcx
- sub %rdi,%rcx
- xor %eax,%eax
- rep stosb
  /* Static bootstrap mappings: first 4GiB, identity + direct + kernel alias.
   * Filled using RIP-relative addresses while executing at physical addresses. */
  lea role_pml4(%rip),%rdi
@@ -42,6 +37,11 @@ startup_64:
  loop 2b
  lea role_pml4(%rip),%rax
  mov %rax,%cr3
+ lea __bss_start(%rip),%rdi
+ lea _end(%rip),%rcx
+ sub %rdi,%rcx
+ xor %eax,%eax
+ rep stosb
  movabs $3f,%rax
  jmp *%rax
 3: movabs $role_boot_stack_end,%rsp
@@ -49,13 +49,14 @@ startup_64:
  mov %r15,%rdi
  call start_kernel
  ud2
-.section .bss,"aw",@nobits
+.section .data.role_tables,"aw"
 .balign 4096
 .globl role_pml4
 role_pml4: .skip 4096
 role_pud: .skip 4096
 role_high_pud: .skip 4096
 role_pmd: .skip 16384
+.section .bss,"aw",@nobits
 .balign 16
 role_boot_stack: .skip 1048576
 role_boot_stack_end:
@@ -120,7 +121,7 @@ role_wake_isr:
  out %al,%dx
  mov $0x20,%al
  out %al,$0x20
- mov $0xfee000b0,%eax
+ movabs $0xffff8880fee000b0,%rax
  movl $0,(%rax)
  pop %rdx
  pop %rax
