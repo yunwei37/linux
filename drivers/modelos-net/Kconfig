@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config MODELOS_POLL_NET
+ bool "ModelOS owner-polled virtio PCI network rings"
+ depends on MODELOS_KERNEL_ONLY && PCI && !VIRTIO_NET
+ help
+   Fixed boot-time DMA rings and frame buffers, polled by the service owner.
+   Does not depend on NET, INET, virtio queues, NAPI, skb or interrupt handlers.
+   The service links its existing small TCP library separately.

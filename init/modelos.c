@@ -11,6 +11,12 @@
 #include <linux/printk.h>
 #include <linux/sched.h>
 
+#ifdef CONFIG_MODELOS_SERVE
+int modelos_serve_prepare(void);
+int modelos_serve_worker(unsigned int cpu);
+int modelos_serve_network(void *unused);
+#endif
+
 static DEFINE_PER_CPU(struct completion, modelos_started);
 
 static int modelos_worker(void *data)
@@ -23,6 +29,9 @@ static int modelos_worker(void *data)
 		cpu, raw_smp_processor_id(), current->pid,
 		current->mm ? "present" : "none");
 	complete(per_cpu_ptr(&modelos_started, cpu));
+#ifdef CONFIG_MODELOS_SERVE
+	return modelos_serve_worker(cpu);
+#endif
 	while (!kthread_should_stop()) {
 		unsigned int i;
 		for (i = 0; i < 65536; i++) { value = value * 6364136223846793005ULL + 1; barrier(); }
@@ -56,6 +65,9 @@ void __noreturn modelos_enter(void)
 	asm volatile("mov %%cs,%0" : "=r" (cs));
 	pr_info("MODELOS_PRIVILEGE cpl=%u cs=0x%x active_mm_init=%u\n",
 		cs & 3, cs, current->active_mm == &init_mm);
+#ifdef CONFIG_MODELOS_SERVE
+	if (modelos_serve_prepare())panic("modelos-serve: model preparation failed");
+#endif
 
 	{
 		DECLARE_COMPLETION_ONSTACK(started);
@@ -93,6 +105,12 @@ void __noreturn modelos_enter(void)
 	pr_info("MODELOS_READY workers=%u pid=%d pid1_mm=%s uptime_ns=%llu\n",
 		workers, current->pid, current->mm ? "present" : "none",
 		ktime_get_boottime_ns());
+#ifdef CONFIG_MODELOS_SERVE
+ {
+  struct task_struct *network=kthread_run(modelos_serve_network,NULL,"modelos/listener");
+  if(IS_ERR(network))panic("modelos-serve: network thread failed");
+ }
+#endif
 	for (;;)
 		schedule_timeout_uninterruptible(MAX_SCHEDULE_TIMEOUT);
 }

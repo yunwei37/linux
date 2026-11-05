@@ -1,3 +1,4 @@
+#include <linux/modelos_m3.h>
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  *  Copyright (C) 1995  Linus Torvalds
@@ -1083,6 +1084,7 @@ void __init setup_arch(char **cmdline_p)
 	cleanup_highmap();
 
 	e820__memblock_setup();
+	modelos_m3_reserve();
 
 	/*
 	 * Needs to run after memblock setup because it needs the physical

@@ -2249,3 +2249,15 @@ config MODELOS_L1
 config MODELOS_L1_QWEN
 	bool "Run the L1 persistent Qwen GPU validation"
 	depends on MODELOS_L1
+
+config MODELOS_M3_BOOT
+ bool "M3 RM-free bring-up"
+ depends on MODELOS_KERNEL_ONLY && PCI
+
+config MODELOS_M3_GENERIC
+ bool "M3 generic production initialization diagnostic"
+ depends on MODELOS_M3_BOOT
+
+config MODELOS_SERVE
+ bool "ModelOS owner HTTP service"
+ depends on MODELOS && MODELOS_POLL_NET

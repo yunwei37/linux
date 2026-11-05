@@ -9,6 +9,34 @@
 #include "ctrl/ctrla06c.h"
 #include "ctrl/ctrlc36f.h"
 #include "l1-image.h"
+#include <linux/modelos_gpu.h>
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+#include "receiver-payload.h"
+#include <asm/msr.h>
+#include <asm/pgtable.h>
+#include <asm/memtype.h>
+#include "receiver-request.h"
+/* Observe the actual mapping used by the unmodified transfer path. */
+static void kexec_cache_mapping(const char *name, void *address)
+{
+ unsigned int level=0,index;pte_t *pte=lookup_address((unsigned long)address,&level);
+ u64 pat=0,mtrr=0,entry=pte?pte_val(*pte):0;
+ int pat_ret=rdmsrq_safe(MSR_IA32_CR_PAT,&pat);
+ int mtrr_ret=rdmsrq_safe(MSR_MTRRdefType,&mtrr);
+ index=!!(entry&_PAGE_PWT)+2*!!(entry&_PAGE_PCD)+
+       4*!!(entry&(level==PG_LEVEL_4K?_PAGE_PAT:_PAGE_PAT_LARGE));
+ pr_info("KEXEC_CACHE_MAPPING name=%s pat=%016llx pat_ret=%d pat_enabled=%u mtrr=%016llx mtrr_ret=%d pte=%016llx level=%u index=%u type=%u wc_bits=%lx cpu=%u\n",
+         name,pat,pat_ret,pat_enabled(),mtrr,mtrr_ret,entry,level,index,
+         (unsigned)((pat>>(index*8))&0xff),cachemode2protval(_PAGE_CACHE_MODE_WC),raw_smp_processor_id());
+}
+int modelos_kexec_payload_verify(void);
+int modelos_kexec_payload_verify(void)
+{
+ phys_addr_t pa=0;const u8 *code=NULL;u64 bytes=0;
+ int ret=kexec_payload(&pa,&code,&bytes);
+ return ret?ret:kexec_request_validate();
+}
+#endif
 
 extern NV_STATUS modelos_rm_alloc(nvidia_stack_t *,NvHandle,NvHandle,NvHandle *,NvU32,void *,NvU32);
 extern NV_STATUS modelos_rm_control(nvidia_stack_t *,NvHandle,NvHandle,NvU32,void *,NvU32);
@@ -16,7 +44,19 @@ extern NV_STATUS modelos_rm_map_cpu(nvidia_stack_t *,NvHandle,NvHandle,NvHandle,
 extern NV_STATUS modelos_rm_map_dma(nvidia_stack_t *,NVOS46_PARAMETERS *);
 
 struct l1_memory { NvHandle handle; void *cpu; NvU64 gpu,bytes; };
-struct l1_context { nvidia_stack_t *stack; NvHandle client,device,sub,va,virt,group,ctx,channel,compute,usermode; void *doorbell; NvU32 token; };
+/* Trace VM: bounded symbols and SDK parameter relocations, no ioctl layer. */
+enum { L1_OP_ALLOC,L1_OP_MEMORY,L1_OP_MAP_CPU,L1_OP_CONTROL };
+struct l1_expression { int slot; unsigned field; NvU64 add; };
+struct l1_relocation { unsigned offset,width; struct l1_expression value; };
+struct l1_operation {
+ unsigned kind,out,cls,command,cache,flags,capture,qwen_only;
+ const char *name;const unsigned char *params;unsigned params_size;
+ struct l1_expression parent,object,size,gpu;
+ const struct l1_relocation *patches;unsigned patch_count;
+};
+#include "l1-plan.h"
+struct l1_resource { NvU64 value;struct l1_memory memory; };
+struct l1_context { struct l1_resource resources[L1_RESOURCE_COUNT]; nvidia_stack_t *stack; NvHandle client,device,sub,va,virt,group,ctx,channel,compute,usermode; void *doorbell; NvU32 token; };
 #define L1_TRY(label,expr) do { NV_STATUS status=(expr); pr_info("L1_REPLAY_CALL %s status=0x%08x\n",label,status);if(status!=NV_OK)return status; } while(0)
 static NV_STATUS l1_alloc(struct l1_context *c,NvHandle parent,NvHandle *h,NvU32 cls,void *p,NvU32 n)
 { return modelos_rm_alloc(c->stack,c->client,parent,h,cls,p,n); }
@@ -33,7 +73,86 @@ static NV_STATUS l1_memory(struct l1_context *c,struct l1_memory *m,const unsign
  m->gpu=dma.dmaOffset;m->bytes=size;
  L1_TRY("memory-cpu-map",modelos_rm_map_cpu(c->stack,c->client,c->sub,m->handle,0,size,&m->cpu,cache<<23));
  pr_info("L1_REPLAY_MEMORY class=0x%x bytes=%llu gpu=0x%llx cpu=%px\n",cls,size,m->gpu,m->cpu);
- if(size<=0x200000)memset_io((void __iomem *)m->cpu,0,size);
+ memset_io((void __iomem *)m->cpu,0,min_t(NvU64,size,0x200000));
+ return NV_OK;
+}
+static u64 l1_boot_weights_phys,l1_boot_gpu_bias;
+static unsigned l1_streams=1;
+static int __init l1_streams_arg(char *s)
+{unsigned n;if(kstrtouint(s,0,&n)||n<1||n>4)return 0;l1_streams=n;return 1;}
+__setup("l1_streams=",l1_streams_arg);
+static int __init l1_physical_arg(char *s){return !kstrtou64(s,0,&l1_boot_weights_phys);}
+static int __init l1_bias_arg(char *s){return !kstrtou64(s,0,&l1_boot_gpu_bias);}
+__setup("l1_weights_phys=",l1_physical_arg);
+__setup("l1_gpu_bias=",l1_bias_arg);
+static NvU64 l1_value(struct l1_context *c,struct l1_expression e)
+{
+ NvU64 value=0;
+ if(e.slot>=0) {
+  struct l1_resource *r=&c->resources[e.slot];
+  switch(e.field){case 0:value=r->value;break;case 1:value=r->memory.gpu;break;
+   case 2:value=(NvU64)(unsigned long)r->memory.cpu;break;case 3:value=r->memory.bytes;break;}
+ }
+ return value+e.add;
+}
+static NV_STATUS l1_replay(struct l1_context *c,struct l1_context *shared)
+{
+ unsigned i,j;unsigned char params[512] __aligned(8);
+ static_assert(sizeof(NVA06C_CTRL_GPFIFO_SCHEDULE_PARAMS)==sizeof(l1_plan_schedule));
+ static_assert(sizeof(NV_CHANNELGPFIFO_ALLOCATION_PARAMETERS)==sizeof(l1_plan_fifo));
+ for(i=0;i<L1_RESOURCE_COUNT;i++)c->resources[i].value=l1_defaults[i];
+ c->resources[L1_CLIENT].value=c->client;c->resources[L1_DEVICE].value=c->device;c->resources[L1_SUB].value=c->sub;
+ if(l1_boot_weights_phys)c->resources[L1_WEIGHTS_PHYS].value=l1_boot_weights_phys;
+ c->resources[L1_GPU_BIAS].value+=l1_boot_gpu_bias;
+#ifdef L1_STATE_GPU
+ c->resources[L1_STATE_GPU].value=c->resources[L1_GPU_BIAS].value+(IS_ENABLED(CONFIG_MODELOS_L1_TCP)&&IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH)?0x400000000ULL:0x60000000ULL);
+#endif
+ if(IS_ENABLED(CONFIG_MODELOS_L1_TCP))l1_streams=4;
+ if(IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))c->resources[L1_HOST_BYTES].value=0x400000;
+ c->resources[L1_STATE_BYTES].value=IS_ENABLED(CONFIG_MODELOS_L1_TCP)?MODELOS_GPU_ARENA_BYTES*MODELOS_GPU_ARENAS:0x4000000ULL*l1_streams;
+ if(IS_ENABLED(CONFIG_MODELOS_L1_TCP)&&IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))c->resources[L1_MODEL_BYTES].value=1193283584ULL;
+ if(shared){memcpy(c->resources,shared->resources,sizeof(c->resources));c->virt=shared->virt;c->resources[L1_GPU_BIAS].value+=0x400000;
+  static const unsigned fresh[]={L1_CTX,L1_LOCAL,L1_HOST,L1_ERROR,L1_CHANNEL,L1_COMPUTE,L1_TOKEN};for(unsigned f=0;f<ARRAY_SIZE(fresh);f++)memset(&c->resources[fresh[f]],0,sizeof(c->resources[0]));}
+ for(i=0;i<ARRAY_SIZE(l1_operations);i++) {
+  const struct l1_operation *op=&l1_operations[i];
+  struct l1_resource *r=&c->resources[op->out];NV_STATUS status=NV_ERR_INVALID_ARGUMENT;
+  NvHandle handle=0;
+  if(shared&&op->out!=L1_CTX&&op->out!=L1_LOCAL&&op->out!=L1_HOST&&op->out!=L1_ERROR&&op->out!=L1_CHANNEL&&op->out!=L1_COMPUTE&&op->out!=L1_TOKEN&&op->kind!=L1_OP_CONTROL)continue;
+  if(op->qwen_only&&!IS_ENABLED(CONFIG_MODELOS_L1_QWEN))continue;
+#ifdef L1_STAGING
+  if(op->out==L1_STAGING&&!IS_ENABLED(CONFIG_MODELOS_L1_LAUNCH))continue;
+#endif
+  if(op->out>=L1_RESOURCE_COUNT||op->params_size>sizeof(params))return NV_ERR_INVALID_ARGUMENT;
+  memset(params,0,sizeof(params));if(op->params_size)memcpy(params,op->params,op->params_size);
+  for(j=0;j<op->patch_count;j++) {
+   const struct l1_relocation *p=&op->patches[j];NvU64 value=l1_value(c,p->value);
+   if((p->width!=4&&p->width!=8)||p->offset+p->width>op->params_size)return NV_ERR_INVALID_ARGUMENT;
+   if(p->width==4&&value>U32_MAX)return NV_ERR_INVALID_ARGUMENT;
+   memcpy(params+p->offset,&value,p->width);
+  }
+  switch(op->kind) {
+  case L1_OP_ALLOC:
+   status=l1_alloc(c,l1_value(c,op->parent),&handle,op->cls,op->params_size?params:NULL,op->params_size);
+   if(status==NV_OK)r->value=handle;
+   break;
+  case L1_OP_MEMORY:
+   status=l1_memory(c,&r->memory,params,op->cls,l1_value(c,op->size),l1_value(c,op->gpu),op->cache);
+   if(status==NV_OK)r->value=r->memory.handle;
+   break;
+  case L1_OP_MAP_CPU:
+   status=modelos_rm_map_cpu(c->stack,c->client,c->sub,l1_value(c,op->object),0,l1_value(c,op->size),&r->memory.cpu,op->flags);
+   break;
+  case L1_OP_CONTROL:
+   status=modelos_rm_control(c->stack,c->client,l1_value(c,op->object),op->command,params,op->params_size);
+   if(status==NV_OK&&op->capture){NvU32 v;memcpy(&v,params,sizeof(v));r->value=v;}
+   break;
+  }
+  pr_info("L1_TRACE_OP index=%u resource=%s status=0x%x value=0x%llx gpu=0x%llx bytes=%llu\n",i,op->name,status,r->value,r->memory.gpu,r->memory.bytes);
+  if(status!=NV_OK)return status;
+  if(op->out==L1_VIRT){c->virt=r->value;return NV_OK;}
+ }
+ c->doorbell=c->resources[L1_DOORBELL].memory.cpu;c->token=c->resources[L1_TOKEN].value;
+ pr_info("L1_TRACE_PASS format=modelos-l1-rm version=1 operations=%zu symbols=%u gpu_bias=0x%llx weights_phys=0x%llx\n",ARRAY_SIZE(l1_operations),L1_RESOURCE_COUNT,c->resources[L1_GPU_BIAS].value,c->resources[L1_WEIGHTS_PHYS].value);
  return NV_OK;
 }
 static void l1_bits(NvU32 *q,unsigned hi,unsigned lo,NvU64 value)
@@ -104,25 +223,203 @@ static NV_STATUS l1_step(NvU32 *queue,NvU32 *serial,NvU32 token,NvU32 position,N
  dma_rmb();if(READ_ONCE(queue[5]))return NV_ERR_INVALID_DATA;
  *result=READ_ONCE(queue[4]);return NV_OK;
 }
+
+#define L1_ARENA_BYTES 0x4000000ULL
+static void l1_canaries(struct l1_memory *state,unsigned arenas)
+{
+ unsigned a,j;for(a=0;a<arenas;a++)for(j=0;j<16;j++) {
+  writel(0x51a70000U+a*256+j,(void __iomem *)state->cpu+a*L1_ARENA_BYTES+0x3b00000+j*4);
+  writel(0x93c80000U+a*256+j,(void __iomem *)state->cpu+a*L1_ARENA_BYTES+0x3fff000+j*4);
+ }wmb();
+}
+static bool l1_canary_ok(struct l1_memory *state,unsigned a)
+{
+ unsigned j;for(j=0;j<16;j++) {
+  if(readl((void __iomem *)state->cpu+a*L1_ARENA_BYTES+0x3b00000+j*4)!=0x51a70000U+a*256+j)return false;
+  if(readl((void __iomem *)state->cpu+a*L1_ARENA_BYTES+0x3fff000+j*4)!=0x93c80000U+a*256+j)return false;
+ }return true;
+}
+
+#if defined(CONFIG_MODELOS_L1_TCP) && !defined(CONFIG_MODELOS_L1_LAUNCH)
+static struct {
+ struct l1_memory state;
+ NvU32 *queue,*released,serial[4],owner[MODELOS_GPU_ARENAS];
+ bool ready;
+} l1_service;
+bool modelos_l1_serving(void){return smp_load_acquire(&l1_service.ready);}
+int modelos_gpu_prepare(void)
+{return modelos_l1_serving()&&!current->mm?0:-ENODEV;}
+int modelos_gpu_arena_acquire(unsigned arena,u32 request)
+{
+ if(!modelos_l1_serving()||arena>=MODELOS_GPU_ARENAS||!request)return -EINVAL;
+ if(cmpxchg(&l1_service.owner[arena],0,request))return -EBUSY;
+ pr_info("L1_GPU_ARENA_ACQUIRE slot=%u request=%u gpu=0x%llx bytes=%llu\n",arena,request,l1_service.state.gpu+arena*L1_ARENA_BYTES,L1_ARENA_BYTES);
+ return 0;
+}
+int modelos_gpu_arena_release(unsigned arena,u32 request)
+{
+ if(arena>=MODELOS_GPU_ARENAS||READ_ONCE(l1_service.owner[arena])!=request)return -EINVAL;
+ if(!l1_canary_ok(&l1_service.state,arena))return -EIO;
+ if(cmpxchg(&l1_service.owner[arena],request,0)!=request)return -EINVAL;
+ pr_info("L1_GPU_ARENA_RELEASE slot=%u request=%u canaries=32 owner=0\n",arena,request);
+ return 0;
+}
+int modelos_gpu_step(unsigned worker,unsigned arena,u32 request,u32 token,u32 position,u32 *result)
+{
+ NvU32 *q,serial;u64 deadline;
+ if(!modelos_l1_serving()||worker>=4||arena>=MODELOS_GPU_ARENAS||READ_ONCE(l1_service.owner[arena])!=request)return -EINVAL;
+ q=l1_service.queue+worker*64;
+ if(l1_service.serial[worker]>=0xfffffffeU)return -EOVERFLOW;
+ serial=++l1_service.serial[worker];
+ WRITE_ONCE(q[2],token);WRITE_ONCE(q[3],position);WRITE_ONCE(q[8],request);WRITE_ONCE(q[10],arena);WRITE_ONCE(q[11],MODELOS_GPU_ARENAS);
+ wmb();WRITE_ONCE(q[0],serial);wmb();deadline=ktime_get_ns()+20ULL*NSEC_PER_SEC;
+ while(READ_ONCE(q[1])!=serial&&ktime_get_ns()<deadline)usleep_range(50,100);
+ if(READ_ONCE(q[1])!=serial)return -ETIMEDOUT;
+ dma_rmb();if(READ_ONCE(q[5])||READ_ONCE(q[9])!=request)return -EIO;
+ *result=READ_ONCE(q[4]);
+ if(serial==1)pr_info("L1_GPU_WORKER worker=%u sm=%u cpl=0 mm=none first_start=%llu first_end=%llu\n",worker,READ_ONCE(q[6]),READ_ONCE(*(NvU64 *)(q+12)),READ_ONCE(*(NvU64 *)(q+14)));
+ return 0;
+}
+int modelos_gpu_stop(void)
+{
+ unsigned i;u64 deadline;
+ if(!modelos_l1_serving())return -ENODEV;
+ for(i=0;i<MODELOS_GPU_ARENAS;i++)if(READ_ONCE(l1_service.owner[i]))return -EBUSY;
+ smp_store_release(&l1_service.ready,false);
+ for(i=0;i<4;i++)WRITE_ONCE(l1_service.queue[i*64],0xffffffffU);
+ wmb();deadline=ktime_get_ns()+20ULL*NSEC_PER_SEC;
+ while(READ_ONCE(*l1_service.released)!=1&&ktime_get_ns()<deadline)usleep_range(50,100);
+ if(READ_ONCE(*l1_service.released)!=1)return -ETIMEDOUT;
+ pr_info("L1_GPU_TCP_DRAIN release=1 owners=0 steps=%u,%u,%u,%u\n",l1_service.serial[0],l1_service.serial[1],l1_service.serial[2],l1_service.serial[3]);
+ return modelos_l1_release_held();
+}
+#endif
+
+static NV_STATUS l1_parallel(NvU32 *queue,struct l1_memory *state,unsigned *matched,NvU32 *steps)
+{
+ struct run {unsigned id,pos,generated,serial;bool active;u64 deadline;} runs[4]={0};
+ u64 first_start[4]={0},first_end[4]={0},latest=0,earliest=U64_MAX;
+ unsigned slot,next=l1_streams,completed=0,peak=l1_streams;NvU32 smids[4]={0};
+ for(slot=0;slot<l1_streams;slot++){runs[slot].id=slot;runs[slot].active=true;}
+ while(completed<ARRAY_SIZE(l1_cases)) {
+  for(slot=0;slot<l1_streams;slot++) {
+   struct run *r=&runs[slot];NvU32 *q=queue+slot*64,result;
+   if(!r->active)continue;
+   if(r->serial&&READ_ONCE(q[1])!=r->serial) {
+    if(ktime_get_ns()>r->deadline)return NV_ERR_TIMEOUT;
+    continue;
+   }
+   if(r->serial) {
+    dma_rmb();if(READ_ONCE(q[5])||READ_ONCE(q[9])!=r->id+1)return NV_ERR_INVALID_DATA;
+    result=READ_ONCE(q[4]);
+    if(!r->pos&&r->id<4) {
+     first_start[slot]=READ_ONCE(*(NvU64 *)(q+12));first_end[slot]=READ_ONCE(*(NvU64 *)(q+14));smids[slot]=READ_ONCE(q[6]);
+    }
+    ++r->pos;
+    if(r->pos>=l1_cases[r->id].inputs) {
+     unsigned index=r->generated++;
+     pr_info("L1_QWEN_TOKEN case=%u index=%u got=%u expected=%u\n",r->id,index,result,l1_cases[r->id].output[index]);
+     if(result!=l1_cases[r->id].output[index])return NV_ERR_INVALID_DATA;
+     ++*matched;
+    }
+    if(r->generated==l1_cases[r->id].outputs) {
+     if(!l1_canary_ok(state,slot))return NV_ERR_INVALID_DATA;
+     pr_info("L1_QWEN_CASE_PASS case=%u tokens=%u slot=%u arena=0x%llx request_echo=%u canaries=32\n",r->id,r->generated,slot,state->gpu+slot*L1_ARENA_BYTES,READ_ONCE(q[9]));
+     ++completed;
+     if(next<ARRAY_SIZE(l1_cases)){r->id=next++;r->pos=r->generated=0;}
+     else{r->active=false;continue;}
+    }
+   } else result=0;
+   WRITE_ONCE(q[2],r->pos<l1_cases[r->id].inputs?l1_cases[r->id].input[r->pos]:result);
+   WRITE_ONCE(q[3],r->pos);WRITE_ONCE(q[8],r->id+1);WRITE_ONCE(q[10],slot);WRITE_ONCE(q[11],l1_streams);
+   ++r->serial;++*steps;wmb();WRITE_ONCE(q[0],r->serial);wmb();r->deadline=ktime_get_ns()+20ULL*NSEC_PER_SEC;
+  }
+  usleep_range(50,100);
+ }
+ for(slot=0;slot<l1_streams;slot++) {
+  pr_info("L1_QWEN_GPU_INTERVAL slot=%u sm=%u start=%llu end=%llu\n",slot,smids[slot],first_start[slot],first_end[slot]);
+  latest=max(latest,first_start[slot]);earliest=min(earliest,first_end[slot]);
+ }
+ if(latest>=earliest)return NV_ERR_INVALID_DATA;
+ pr_info("L1_QWEN_CONCURRENT_PASS streams=%u peak=%u gpu_overlap_ns=%llu arenas=%u canaries=32_per_arena request_echo=1\n",l1_streams,peak,earliest-latest,l1_streams);
+ return NV_OK;
+}
+
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+static NV_STATUS kexec_request_prepare(struct l1_memory *state)
+{
+ const struct modelos_kho_request *r;u64 start;
+ if(!kexec_request_mode)return NV_OK;
+ if(kexec_request_validate())return NV_ERR_INVALID_DATA;
+ r=kexec_request_record;
+ if(r->position!=l1_cases[0].inputs+r->emitted-1||r->next_token!=r->emitted_ids[r->emitted-1]||r->arena_bytes>state->bytes||r->arena_bytes>0x3b00000)return NV_ERR_INVALID_DATA;
+ for(unsigned i=0;i<r->emitted;i++)if(r->emitted_ids[i]!=l1_cases[0].output[i])return NV_ERR_INVALID_DATA;
+ for(unsigned i=0;i<r->history_count;i++)if(r->history[i]!=(i<l1_cases[0].inputs?l1_cases[0].input[i]:r->emitted_ids[i-l1_cases[0].inputs]))return NV_ERR_INVALID_DATA;
+ start=ktime_get_ns();memset_io((void __iomem *)state->cpu,0,r->arena_bytes);
+ if(kexec_request_mode==1)for(u64 off=0;off<r->arena_bytes;off+=0x10000) {
+  memcpy_toio((void __iomem *)state->cpu+off,kexec_request_state+off,min_t(u64,0x10000,r->arena_bytes-off));cond_resched();
+ }
+ wmb();
+ pr_info("KEXEC_REQUEST_ARENA mode=%s old_gpu_va=0x%llx new_gpu_va=0x%llx bytes=%llu zeroed=1 copied=%u elapsed_ns=%llu\n",kexec_request_mode==1?"restore":"replay",r->old_gpu_va,state->gpu,r->arena_bytes,kexec_request_mode==1,ktime_get_ns()-start);
+ return NV_OK;
+}
+static NV_STATUS kexec_request_execute(NvU32 *queue,NvU32 *serial,unsigned *matched)
+{
+ const struct modelos_kho_request *r=kexec_request_record;NvU32 token=r->next_token,result=0;NV_STATUS status;
+ if(kexec_request_mode==2)for(unsigned i=0;i<r->history_count;i++) {
+  status=l1_step(queue,serial,r->history[i],i,&result);if(status!=NV_OK)return status;
+  if(i+1>=l1_cases[0].inputs&&result!=r->emitted_ids[i+1-l1_cases[0].inputs])return NV_ERR_INVALID_DATA;
+ }
+ for(unsigned i=0;i<MODELOS_REQUEST_CONTINUE;i++) {
+  status=l1_step(queue,serial,token,r->position+i,&result);if(status!=NV_OK)return status;
+  pr_info("KEXEC_REQUEST_TOKEN index=%u token=%u expected=%u position=%u\n",r->emitted+i,result,l1_cases[0].output[r->emitted+i],r->position+i);
+  if(result!=l1_cases[0].output[r->emitted+i])return NV_ERR_INVALID_DATA;
+  ++*matched;
+  if(!i)pr_info("KEXEC_FIRST_TOKEN token=%u expected=%u index=%u cpl=0 mm=none\n",result,l1_cases[0].output[r->emitted],r->emitted);
+  token=result;
+ }
+ return NV_OK;
+}
+#endif
 static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_memory *host)
 {
- struct l1_memory weights={0},state={0};
- const NvU64 bytes=1192235008,physical=0x100000000ULL;
+ struct l1_memory weights=c->resources[L1_WEIGHTS].memory,state=c->resources[L1_STATE].memory;
+ const NvU64 bytes=c->resources[L1_MODEL_BYTES].value;phys_addr_t physical=c->resources[L1_WEIGHTS_PHYS].value;
+ const u8 *qcode=l1_qwen_code;u64 code_bytes=sizeof(l1_qwen_code);
  void *source;NvU32 q[96],push[12],constants[232]={0};
  NvU64 code=local->gpu+0x40000,qmd=local->gpu+0x30000,cb=local->gpu+0x31000,entry,deadline,start;
  NvU32 *queue=host->cpu,*released=(void *)((char *)host->cpu+0x1000),serial=0,result=0;
  unsigned i,j,matched=0;NV_STATUS status=NV_OK;
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ NvU64 copy_start;
+#endif
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ if(kexec_payload(&physical,&qcode,&code_bytes)||code_bytes!=sizeof(l1_qwen_code))return NV_ERR_INVALID_DATA;
+#endif
  source=memremap(physical,bytes,MEMREMAP_WB);
  if(!source)return NV_ERR_NO_MEMORY;
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ pr_info("KEXEC_WEIGHT_SOURCE phys=%pa vmalloc_mapping=%u kho_boot=%u\n",&physical,is_vmalloc_addr(source),is_kho_boot());
+#endif
  if(memcmp(source,"MOSQ3B1",7)||*(NvU64 *)((char *)source+48)!=bytes){memunmap(source);return NV_ERR_INVALID_DATA;}
- L1_TRY("qwen-weights",l1_memory(c,&weights,l1_local_memory,0x40,ALIGN(bytes,0x2000),0x10000000ULL,2));
- L1_TRY("qwen-state",l1_memory(c,&state,l1_local_memory,0x40,0x4000000,0x60000000ULL,2));
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ kexec_cache_mapping("source",source);
+ kexec_cache_mapping("weights",weights.cpu);
+ copy_start=ktime_get_ns();
+#endif
  for(NvU64 offset=0;offset<bytes;offset+=0x10000) {
   memcpy_toio((void __iomem *)weights.cpu+offset,(char *)source+offset,min_t(NvU64,0x10000,bytes-offset));
   cond_resched();
  }
- wmb();memunmap(source);
+ wmb();
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ pr_info("KEXEC_WEIGHT_COPY bytes=%llu elapsed_ns=%llu cpu=%u\n",bytes,ktime_get_ns()-copy_start,raw_smp_processor_id());
+#endif
+ memunmap(source);
  pr_info("L1_QWEN_WEIGHTS_READY bytes=%llu GPU=0x%llx\n",bytes,weights.gpu);
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ status=kexec_request_prepare(&state);if(status!=NV_OK)return status;
+#endif
  memcpy(q,l1_qmd,sizeof(q));memcpy(constants,l1_qwen_constant0,sizeof(l1_qwen_constant0));
  *(NvU64 *)((char *)constants+0x380)=host->gpu;
  *(NvU64 *)((char *)constants+0x388)=weights.gpu;
@@ -138,8 +435,10 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
  l1_bits(q,511,480,(NvU32)(host->gpu+0x1000));l1_bits(q,536,512,(host->gpu+0x1000)>>32);
  l1_bits(q,575,544,1);l1_bits(q,607,576,0);l1_bits(q,304,304,0);
  l1_bits(q,351,336,0);l1_bits(q,447,384,0);l1_bits(q,623,608,0);
- memset(queue,0,4096);WRITE_ONCE(*released,0);
- memcpy_toio((void __iomem *)local->cpu+0x40000,l1_qwen_code,sizeof(l1_qwen_code));
+ l1_bits(q,1279,1248,l1_streams);
+ memset(queue,0,4096);WRITE_ONCE(queue[8],1);WRITE_ONCE(queue[11],l1_streams);WRITE_ONCE(*released,0);
+ l1_canaries(&state,state.bytes/L1_ARENA_BYTES);
+ memcpy_toio((void __iomem *)local->cpu+0x40000,qcode,code_bytes);
  memcpy_toio((void __iomem *)local->cpu+0x30000,q,sizeof(q));
  memcpy_toio((void __iomem *)local->cpu+0x31000,constants,sizeof(constants));
  push[0]=0x20012000;push[1]=0xcec0;
@@ -152,62 +451,80 @@ static NV_STATUS l1_qwen(struct l1_context *c,struct l1_memory *local,struct l1_
  wmb();writel(1,(void __iomem *)local->cpu+0x208c);wmb();writel(c->token,(void __iomem *)c->doorbell+0x90);
  start=ktime_get_ns();
  pr_info("L1_QWEN_PERSISTENT_SUBMIT regs=%u smem=%u code_bytes=%zu\n",L1_QWEN_REGISTERS,L1_QWEN_SHARED_BYTES,sizeof(l1_qwen_code));
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ if(kexec_request_mode){status=kexec_request_execute(queue,&serial,&matched);goto stop;}
+#endif
+#if defined(CONFIG_MODELOS_L1_TCP) && !defined(CONFIG_MODELOS_L1_LAUNCH)
+ l1_service.state=state;l1_service.queue=queue;l1_service.released=released;
+ smp_store_release(&l1_service.ready,true);
+ pr_info("L1_GPU_TCP_PERSISTENT_READY ctas=4 arenas=8 arena_bytes=%llu no_libcuda=1 launches=1\n",L1_ARENA_BYTES);
+ return NV_OK;
+#endif
+ if(l1_streams>1){status=l1_parallel(queue,&state,&matched,&serial);goto stop;}
  for(i=0;i<ARRAY_SIZE(l1_cases);i++) {
   for(j=0;j<l1_cases[i].inputs;j++){status=l1_step(queue,&serial,l1_cases[i].input[j],j,&result);if(status!=NV_OK)goto stop;}
   for(j=0;j<l1_cases[i].outputs;j++) {
    pr_info("L1_QWEN_TOKEN case=%u index=%u got=%u expected=%u\n",i,j,result,l1_cases[i].output[j]);
    if(result!=l1_cases[i].output[j]){status=NV_ERR_INVALID_DATA;goto stop;}
    ++matched;
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+   if(i==0 && j==0){pr_info("KEXEC_FIRST_TOKEN token=%u expected=%u cpl=0 mm=none\n",result,l1_cases[i].output[j]);goto stop;}
+#endif
    if(j+1<l1_cases[i].outputs){status=l1_step(queue,&serial,result,l1_cases[i].inputs+j,&result);if(status!=NV_OK)goto stop;}
   }
   pr_info("L1_QWEN_CASE_PASS case=%u tokens=%u\n",i,l1_cases[i].outputs);
  }
 stop:
- WRITE_ONCE(queue[0],0xffffffffU);wmb();deadline=ktime_get_ns()+20ULL*NSEC_PER_SEC;
+ for(i=0;i<l1_streams;i++)WRITE_ONCE(queue[i*64],0xffffffffU);wmb();deadline=ktime_get_ns()+20ULL*NSEC_PER_SEC;
  while(READ_ONCE(*released)!=1 && ktime_get_ns()<deadline)usleep_range(50,100);
  pr_info("L1_QWEN_FINISH status=0x%x release=%u matched=%u steps=%u elapsed_ns=%llu\n",status,READ_ONCE(*released),matched,serial,ktime_get_ns()-start);
  if(READ_ONCE(*released)!=1)return NV_ERR_TIMEOUT;
- if(status==NV_OK)pr_info("L1_QWEN_PASS cases=5 tokens=320 cpl=0 mm=none\n");
+ if(status==NV_OK)
+#ifdef CONFIG_MODELOS_KEXEC_TEST
+ {
+  pr_info("KEXEC_QWEN_PASS matched=%u cpl=0 mm=none\n",matched);
+  if(kexec_request_mode)pr_info("KEXEC_REQUEST_PASS mode=%s emitted=%u position=%u tokens=%u gpu_steps=%u generation=%llu\n",kexec_request_mode==1?"restore":"replay",kexec_request_record->emitted,kexec_request_record->position,matched,serial,kexec_request_record->request_generation);
+ }
+#else
+  pr_info("L1_QWEN_PASS cases=5 tokens=320 cpl=0 mm=none\n");
+#endif
  return status;
 }
 #endif
+#ifdef CONFIG_MODELOS_L1_LAUNCH
+#include "launch.h"
+#endif
+#include "image-restore.h"
 NV_STATUS modelos_l1_resources(nvidia_stack_t *stack,NvHandle client,NvHandle device,NvHandle sub)
 {
  struct l1_context c={.stack=stack,.client=client,.device=device,.sub=sub};
- NV_VASPACE_ALLOCATION_PARAMETERS va;
- NV_MEMORY_VIRTUAL_ALLOCATION_PARAMS virt={0};
- NV_CHANNEL_GROUP_ALLOCATION_PARAMETERS grp;
- NV_CTXSHARE_ALLOCATION_PARAMETERS ctx;
- NV_CHANNELGPFIFO_ALLOCATION_PARAMETERS fifo;
- NVA06C_CTRL_GPFIFO_SCHEDULE_PARAMS schedule={.bEnable=NV_TRUE};
- NVC36F_CTRL_CMD_GPFIFO_GET_WORK_SUBMIT_TOKEN_PARAMS token={0};
- struct l1_memory local={0},host={0},error={0};
- NvU16 doorbell_flags=1;
- memcpy(&va,l1_vaspace,sizeof(va));va.vaSize=(1ULL<<47)-0x1000;va.flags=0; /* RM-owned tables; no UVM/external page directory. */
- L1_TRY("vaspace",l1_alloc(&c,device,&c.va,0x90f1,&va,sizeof(va)));
- virt.hVASpace=c.va;virt.offset=0x1000;virt.limit=(1ULL<<47)-1;
- L1_TRY("virtual",l1_alloc(&c,device,&c.virt,0x70,&virt,sizeof(virt)));
- pr_info("L1_REPLAY_VIRTUAL base=0x%llx limit=0x%llx va_size=0x%llx\n",virt.offset,virt.limit,va.vaSize);
- memcpy(&grp,l1_group,sizeof(grp));
- L1_TRY("group",l1_alloc(&c,device,&c.group,0xa06c,&grp,sizeof(grp)));
- memcpy(&ctx,l1_ctxshare,sizeof(ctx));ctx.hVASpace=c.va;
- L1_TRY("ctxshare",l1_alloc(&c,c.group,&c.ctx,0x9067,&ctx,sizeof(ctx)));
- L1_TRY("local",l1_memory(&c,&local,l1_local_memory,0x40,0x200000,0x02000000,2));
- L1_TRY("host",l1_memory(&c,&host,l1_system_memory,0x3e,0x10000,0x01000000,0));
- L1_TRY("error",l1_memory(&c,&error,l1_error_memory,0x3e,0x1000,0x01100000,1));
- L1_TRY("usermode",l1_alloc(&c,sub,&c.usermode,0xc661,&doorbell_flags,sizeof(doorbell_flags)));
- L1_TRY("doorbell-map",modelos_rm_map_cpu(stack,client,sub,c.usermode,0,0x10000,&c.doorbell,2));
- memcpy(&fifo,l1_fifo,sizeof(fifo));fifo.hObjectError=error.handle;fifo.hObjectBuffer=local.handle;
- fifo.gpFifoOffset=local.gpu;fifo.hContextShare=c.ctx;fifo.hUserdMemory[0]=local.handle;fifo.userdOffset[0]=0x2000;
- L1_TRY("fifo",l1_alloc(&c,c.group,&c.channel,0xc96f,&fifo,sizeof(fifo)));
- L1_TRY("compute",l1_alloc(&c,c.channel,&c.compute,0xcec0,NULL,0));
- L1_TRY("schedule",modelos_rm_control(stack,client,c.group,NVA06C_CTRL_CMD_GPFIFO_SCHEDULE,&schedule,sizeof(schedule)));
- L1_TRY("work-token",modelos_rm_control(stack,client,c.channel,NVC36F_CTRL_CMD_GPFIFO_GET_WORK_SUBMIT_TOKEN,&token,sizeof(token)));
- c.token=token.workSubmitToken;
+ L1_TRY("resource-trace",l1_replay(&c,NULL));
+ return state_image_restore(&c);
  pr_info("L1_REPLAY_RESOURCES_PASS token=0x%x no_submission=1\n",c.token);
+#ifdef CONFIG_MODELOS_L1_LAUNCH
+ {
+  struct l1_launch_resources resources={.doorbell=c.doorbell,.token=c.token,.weights_phys=c.resources[L1_WEIGHTS_PHYS].value,.model_bytes=c.resources[L1_MODEL_BYTES].value};
+#define COPY_MEMORY(dst,role) resources.dst=(struct l1_launch_memory){c.resources[role].memory.cpu,c.resources[role].memory.gpu,c.resources[role].memory.bytes}
+#ifdef L1_STAGING
+  COPY_MEMORY(staging,L1_STAGING);
+#endif
+  COPY_MEMORY(local,L1_LOCAL);COPY_MEMORY(host,L1_HOST);COPY_MEMORY(weights,L1_WEIGHTS);COPY_MEMORY(state,L1_STATE);
+#undef COPY_MEMORY
+  if(l1_streams==2){
+   struct l1_context peer={.stack=stack,.client=client,.device=device,.sub=sub};struct l1_launch_resources second={0};
+   L1_TRY("shared-channel-trace",l1_replay(&peer,&c));
+   second.doorbell=peer.doorbell;second.token=peer.token;
+   second.local=(struct l1_launch_memory){peer.resources[L1_LOCAL].memory.cpu,peer.resources[L1_LOCAL].memory.gpu,peer.resources[L1_LOCAL].memory.bytes};
+   second.host=(struct l1_launch_memory){peer.resources[L1_HOST].memory.cpu,peer.resources[L1_HOST].memory.gpu,peer.resources[L1_HOST].memory.bytes};
+   resources.peer=&second;pr_info("L1_SHARED_STREAMS channels=2 same_vas=1 same_tsg=1 token0=%u token1=%u\n",resources.token,second.token);
+   return modelos_l1_launch(&resources);
+  }
+  return modelos_l1_launch(&resources);
+ }
+#endif
 #ifdef CONFIG_MODELOS_L1_QWEN
- return l1_qwen(&c,&local,&host);
+ return l1_qwen(&c,&c.resources[L1_LOCAL].memory,&c.resources[L1_HOST].memory);
 #else
- return l1_execute(&c,&local,&host);
+ return l1_execute(&c,&c.resources[L1_LOCAL].memory,&c.resources[L1_HOST].memory);
 #endif
 }
