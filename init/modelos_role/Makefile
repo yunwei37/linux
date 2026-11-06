@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0
-obj-y := head.o runtime.o strings.o text-aot.o role-runtime.o net-stack.o nic.o storage.o
+obj-y := head.o runtime.o strings.o crc.o crc-pclmul.o text-aot.o role-runtime.o net-stack.o nic.o storage.o
 always-y := vmlinux.lds
 ccflags-y += -fno-stack-protector -fno-builtin
 ccflags-y += -I$(MODELOS_TEXT_SOURCE) -I$(MODELOS_CORE_SOURCE) -I$(MODELOS_NET_SOURCE)

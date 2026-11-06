@@ -25,6 +25,7 @@ void mos_net_panic(void) __attribute__((noreturn));
 enum role_kind { ROLE_IDLE, ROLE_CPU };
 int role_reconfigure(unsigned cpu,enum role_kind role,u64 boundary);
 int role_acquire_worker(u64 boundary);
+bool role_crc32_accelerated(const void *data,u64 bytes,u32 *result);
 int role_cpu_copy(unsigned cpu,u64 source,u64 destination,u64 bytes,u64 boundary);
 void role_step_boundary(void);
 int mos_role_enable_fpu(void);
