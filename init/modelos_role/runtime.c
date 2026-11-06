@@ -178,10 +178,19 @@ int role_cpu_post(unsigned cpu,void (*fn)(void *),void *arg,u64 boundary){return
 void role_step_boundary(void)
 {
  u64 boundary=role_next_boundary();u64 move[3],free_before=mos_role_memory_free_bytes();
- unsigned cpu=2+(boundary-1)%(role_cpus-2);
- if(mos_role_move_begin(move)||role_reconfigure(cpu,ROLE_CPU,boundary)||
-    role_cpu_copy(cpu,move[0],move[1],move[2],boundary)||mos_role_move_finish()||
-    role_reconfigure(cpu,ROLE_IDLE,boundary)||mos_role_memory_free_bytes()!=free_before)role_runtime_fault();
+ if(mos_role_move_begin(move))role_runtime_fault();
+ if(role_cpus>2){
+  unsigned cpu=2+(boundary-1)%(role_cpus-2);
+  if(role_reconfigure(cpu,ROLE_CPU,boundary)||
+     role_cpu_copy(cpu,move[0],move[1],move[2],boundary)||mos_role_move_finish()||
+     role_reconfigure(cpu,ROLE_IDLE,boundary))role_runtime_fault();
+ }else{
+  /* Worker1 may own a text Op. With no spare worker, this CPU Op runs
+   * inline on the owner instead of dividing by an empty worker set. */
+  memcpy(role_va(move[1]),role_va(move[0]),move[2]);
+  if(mos_role_move_finish())role_runtime_fault();
+ }
+ if(mos_role_memory_free_bytes()!=free_before)role_runtime_fault();
  role_puts("ROLE_OBJECT_MOVE_PASS bytes=137 freed=1 cpu_op=1\n");
 }
 
