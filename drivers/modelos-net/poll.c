@@ -84,6 +84,15 @@ void mos_nic_flush(void)
  for(unsigned index=0;index<2;index++){
   struct poll_queue *q=&queues[index];
   if(q->published==q->avail)continue;
+  if(!index){
+   /* RX buffers return to device ownership only at avail publication. A
+    * stale second completion in the current used batch must not pass. */
+   for(u16 n=q->published;n!=q->avail;n++){
+    u16 id=le16_to_cpu(q->ring.avail->ring[n%q->ring.num]);
+    if(id>=q->ring.num||q->pending[id])panic("modelos-net: invalid RX publication");
+    q->pending[id]=true;
+   }
+  }
   dma_wmb();WRITE_ONCE(q->ring.avail->idx,cpu_to_le16(q->avail));
   q->published=q->avail;mb();
   if(!(le16_to_cpu(READ_ONCE(q->ring.used->flags))&VRING_USED_F_NO_NOTIFY))kick(index);
@@ -109,6 +118,7 @@ static int queue_init(unsigned index)
    q->ring.desc[i].len=cpu_to_le32(BUFFER_BYTES);
    q->ring.desc[i].flags=cpu_to_le16(VRING_DESC_F_WRITE);
    q->ring.avail->ring[q->avail++]=cpu_to_le16(i);
+   q->pending[i]=true;
   }else q->free[q->free_count++]=i;
  }
  dma_wmb();WRITE_ONCE(q->ring.avail->idx,cpu_to_le16(q->avail));q->published=q->avail;
@@ -180,6 +190,8 @@ void mos_nic_poll(void)
  struct poll_queue *q=&queues[1];unsigned budget=QUEUE_MAX;
  if(!ready)return;
  while(budget--&&q->used!=le16_to_cpu(READ_ONCE(q->ring.used->idx))){
+  if((u16)(le16_to_cpu(READ_ONCE(q->ring.used->idx))-q->used)>(u16)(q->published-q->used))
+   panic("modelos-net: TX used index exceeds published descriptors");
   u32 id;dma_rmb();id=le32_to_cpu(q->ring.used->ring[q->used++%q->ring.num].id);
   if(id>=q->ring.num||!q->pending[id])panic("modelos-net: invalid TX completion");
   q->pending[id]=false;q->free[q->free_count++]=id;
@@ -221,10 +233,13 @@ int mos_nic_receive(void *out,size_t capacity)
  struct poll_queue *q=&queues[0];unsigned budget=QUEUE_MAX;
  if(!ready)return -ENODEV;
  while(budget--&&q->used!=le16_to_cpu(READ_ONCE(q->ring.used->idx))){
+  if((u16)(le16_to_cpu(READ_ONCE(q->ring.used->idx))-q->used)>(u16)(q->published-q->used))
+   panic("modelos-net: RX used index exceeds published descriptors");
   u32 id,len;int copied=0;struct virtio_net_hdr_v1 *hdr;
   dma_rmb();id=le32_to_cpu(q->ring.used->ring[q->used%q->ring.num].id);
   len=le32_to_cpu(q->ring.used->ring[q->used++%q->ring.num].len);
-  if(id>=q->ring.num)panic("modelos-net: invalid RX completion");
+  if(id>=q->ring.num||!q->pending[id])panic("modelos-net: invalid RX completion");
+  q->pending[id]=false;
   hdr=q->buffers+id*BUFFER_BYTES;
   if(len>=HDR_BYTES+14&&len<=min_t(size_t,BUFFER_BYTES,HDR_BYTES+capacity)&&
      !hdr->flags&&!hdr->gso_type){
