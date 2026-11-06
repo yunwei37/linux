@@ -21,6 +21,8 @@ struct role_mailbox {
 } __attribute__((aligned(64)));
 static struct role_mailbox mailboxes[ROLE_MAX_CPUS];
 static u8 apic_ids[ROLE_MAX_CPUS];
+static bool deadline_timer;
+static u64 apic_timer_hz;
 static u32 apic_read(unsigned reg){return *(volatile u32 *)role_va(0xfee00000+reg);}
 static void apic_write(unsigned reg,u32 value){*(volatile u32 *)role_va(0xfee00000+reg)=value;}
 void role_puts(const char *s){while(*s){while(!(role_in(0x3fd)&32))role_pause();role_out(0x3f8,*s++);}}
@@ -30,6 +32,7 @@ void __attribute__((noreturn)) role_fault(u64 *frame){while(__atomic_exchange_n(
 static void gate(unsigned n,u64 target,unsigned ist){idt[n]=(struct gate){target,8,ist,0x8e,target>>16,target>>32,0};}
 void role_core_init(unsigned slot)
 {
+ if(!slot){u32 a=1,b,c,d;asm volatile("cpuid":"+a"(a),"=b"(b),"=c"(c),"=d"(d));deadline_timer=!!(c&(1U<<24));}
  u64 base=(u64)&tss[slot];
  struct descriptor gd={sizeof(gdt[slot])-1,(u64)gdt[slot]},id={sizeof(idt)-1,(u64)idt};
  gdt[slot][1]=0x00af9a000000ffffUL;gdt[slot][2]=0x00cf92000000ffffUL;
@@ -66,8 +69,10 @@ static void delay_us(unsigned us){u64 start=role_tsc(),cycles=(role_tsc_hz/10000
 static void calibrate_tsc(void)
 {
  /* PIT channel 2, one shot at boot. No periodic tick or runtime timer. */
+ if(!deadline_timer){apic_write(0x3e0,3);apic_write(0x380,~0U);}
  role_out(0x61,(role_in(0x61)&~2)|1);role_out(0x43,0xb0);role_out(0x42,0x9b);role_out(0x42,0x2e);
  u64 start=role_tsc();while(!(role_in(0x61)&32))role_pause();role_tsc_hz=(role_tsc()-start)*100;
+ if(!deadline_timer){apic_timer_hz=(u64)(~0U-apic_read(0x390))*100;apic_write(0x380,0);if(!apic_timer_hz)role_runtime_fault();}
 }
 void __attribute__((noreturn)) role_ap_entry(unsigned slot)
 {
@@ -208,12 +213,23 @@ u64 role_net_wait(u64 deadline_ns)
  /* No periodic clock: program an absolute one-shot only for a TCP deadline. */
  if(deadline_ns!=~0UL){
   u64 delta=deadline_ns-now;
-  u64 cycles=(delta/1000000000)*role_tsc_hz+(delta%1000000000)*role_tsc_hz/1000000000;
-  u64 deadline=role_tsc()+cycles;low=deadline;high=deadline>>32;
-  apic_write(0x320,0x40000|0xf1);asm volatile("wrmsr"::"c"(0x6e0),"a"(low),"d"(high));
+  if(deadline_timer){
+   u64 cycles=(delta/1000000000)*role_tsc_hz+(delta%1000000000)*role_tsc_hz/1000000000;
+   u64 deadline=role_tsc()+cycles;low=deadline;high=deadline>>32;
+   apic_write(0x320,0x40000|0xf1);asm volatile("wrmsr"::"c"(0x6e0),"a"(low),"d"(high));
+  }else{
+   /* The calibrated local APIC supplies the same one-shot wake. Long
+    * deadlines wake early at the counter limit and are re-evaluated. */
+   u64 limit=0xffffffffUL*1000000000/apic_timer_hz;
+   if(delta>limit)delta=limit;
+   u64 count=delta/1000000000*apic_timer_hz+delta%1000000000*apic_timer_hz/1000000000;
+   apic_write(0x320,0xf1);apic_write(0x380,count?count:1);
+  }
  }
  asm volatile("sti; hlt; cli":::"memory");
- low=high=0;asm volatile("wrmsr"::"c"(0x6e0),"a"(low),"d"(high));apic_write(0x320,0x10000);
+ if(deadline_timer){low=high=0;asm volatile("wrmsr"::"c"(0x6e0),"a"(low),"d"(high));}
+ else apic_write(0x380,0);
+ apic_write(0x320,0x10000);
  role_nic_disarm();return role_tsc()-begin;
 }
 
