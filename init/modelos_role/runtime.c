@@ -16,7 +16,7 @@ extern void role_wake_isr(void);
 extern void role_spurious_isr(void);
 static volatile unsigned ap_online,roles_released;
 struct role_mailbox {
- u64 posted,done,boundary;u32 operation,role;
+ u64 posted,done,boundary;u32 operation,role,sleeping;
  u64 source,destination,bytes;
 } __attribute__((aligned(64)));
 static struct role_mailbox mailboxes[ROLE_MAX_CPUS];
@@ -90,7 +90,17 @@ void __attribute__((noreturn)) role_ap_entry(unsigned slot)
    else if(m->operation==3&&m->role==ROLE_CPU)((void (*)(void *))m->source)((void *)m->destination);
    else role_runtime_fault();
    __atomic_store_n(&m->done,posted,__ATOMIC_RELEASE);
-  }else asm volatile("sti; hlt":::"memory");
+  }else if(m->role==ROLE_CPU){
+   role_pause();
+  }else{
+   /* Publish idle intent before rechecking the mailbox. Paired sequential
+    * fences in post/park prohibit both sides missing the other's store. */
+   __atomic_store_n(&m->sleeping,1,__ATOMIC_RELEASE);
+   __atomic_thread_fence(__ATOMIC_SEQ_CST);
+   if(__atomic_load_n(&m->posted,__ATOMIC_ACQUIRE)==__atomic_load_n(&m->done,__ATOMIC_RELAXED))
+    asm volatile("sti; hlt; cli":::"memory");
+   __atomic_store_n(&m->sleeping,0,__ATOMIC_RELEASE);
+  }
  }
 
 }
@@ -153,8 +163,11 @@ static int role_publish(unsigned cpu,unsigned operation,u64 source,u64 destinati
  if(operation>1&&m->role!=ROLE_CPU)return -22;
  m->operation=operation;m->source=source;m->destination=destination;m->bytes=bytes;m->boundary=boundary;
  __atomic_store_n(&m->posted,seq+1,__ATOMIC_RELEASE);
- while(apic_read(0x300)&(1<<12))role_pause();
- apic_write(0x310,(u32)apic_ids[cpu]<<24);apic_write(0x300,0xf1);
+ __atomic_thread_fence(__ATOMIC_SEQ_CST);
+ if(__atomic_load_n(&m->sleeping,__ATOMIC_ACQUIRE)){
+  while(apic_read(0x300)&(1<<12))role_pause();
+  apic_write(0x310,(u32)apic_ids[cpu]<<24);apic_write(0x300,0xf1);
+ }
  return 0;
 }
 int role_cpu_done(unsigned cpu){return cpu&&cpu<role_cpus&&__atomic_load_n(&mailboxes[cpu].done,__ATOMIC_ACQUIRE)==__atomic_load_n(&mailboxes[cpu].posted,__ATOMIC_RELAXED);}
@@ -170,7 +183,21 @@ int role_reconfigure(unsigned cpu,enum role_kind role,u64 boundary)
 {
  if(role!=ROLE_IDLE&&role!=ROLE_CPU)return -22;
  int ret=role_command(cpu,1,0,0,role,boundary);
- if(!ret){role_puts("ROLE_CHANGE cpu=");role_hex(cpu);role_puts(" role=");role_hex(role);role_puts(" boundary=");role_hex(boundary);role_puts("\n");}return ret;
+ extern bool role_has_gpu;
+ /* CPU acceptance records the transitions. Production never puts serial
+  * tracing between the owner's device polls on every admission. */
+ if(!ret&&!role_has_gpu){role_puts("ROLE_CHANGE cpu=");role_hex(cpu);role_puts(" role=");role_hex(role);role_puts(" boundary=");role_hex(boundary);role_puts("\n");}return ret;
+}
+int role_acquire_worker(u64 boundary)
+{
+ if(role_cpus==1)return 0;
+ for(unsigned cpu=1;cpu<role_cpus;cpu++){
+  struct role_mailbox *m=&mailboxes[cpu];
+  if(__atomic_load_n(&m->posted,__ATOMIC_RELAXED)!=__atomic_load_n(&m->done,__ATOMIC_ACQUIRE)||m->role!=ROLE_IDLE)continue;
+  int rc=role_reconfigure(cpu,ROLE_CPU,boundary);
+  return rc?rc:cpu;
+ }
+ return -16;
 }
 int role_cpu_copy(unsigned cpu,u64 source,u64 destination,u64 bytes,u64 boundary)
 {
