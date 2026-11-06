@@ -7,3 +7,7 @@ CFLAGS_storage.o += -DMODELOS_STRATA_STORAGE_SOURCE=\"$(MODELOS_CORE_SOURCE)/str
 
 obj-y += gpu-service.o gpu-boot.o gpu-production.o gpu-owner.o gpu-text.o gpu-image.o gpu-engine.o gpu-io.o core-runtime.o
 ccflags-y += -I$(obj) -I$(obj)/gpu -I$(MODELOS_ROLE_GPU_SOURCE)
+
+# trim: keep device implementation in the canonical ModelOS source tree.
+CFLAGS_nic.o += -DMODELOS_NIC_SOURCE=\"$(MODELOS_NET_SOURCE)/nic.c\"
+CFLAGS_nic.o += -DMODELOS_VIRTIO_NIC_SOURCE=\"$(srctree)/drivers/modelos-net/poll.c\"
