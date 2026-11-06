@@ -155,6 +155,10 @@ role_ap_end:
 
 .section .text,"ax"
 .code64
+.globl role_spurious_isr
+role_spurious_isr:
+ /* APIC spurious interrupts set no ISR bit and must not issue an EOI. */
+ iretq
 .globl role_wake_isr
 role_wake_isr:
  push %rax

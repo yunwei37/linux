@@ -13,6 +13,7 @@ struct gate {u16 low,selector;u8 ist,type;u16 mid;u32 high,zero;} __attribute__(
 static struct gate idt[256] __attribute__((aligned(16)));
 extern char role_fault_stubs[],role_ap_begin[],role_ap_end[];
 extern void role_wake_isr(void);
+extern void role_spurious_isr(void);
 static volatile unsigned ap_online,roles_released;
 struct role_mailbox {
  u64 posted,done,boundary;u32 operation,role;
@@ -37,7 +38,7 @@ void role_core_init(unsigned slot)
  asm volatile("lgdt %0"::"m"(gd):"memory");
  asm volatile("pushq $8; leaq 1f(%%rip),%%rax; pushq %%rax; lretq; 1:":::"rax","memory");
  asm volatile("mov $16,%%ax; mov %%ax,%%ds; mov %%ax,%%es; mov %%ax,%%ss; mov $24,%%ax; ltr %%ax":::"rax","memory");
- if(!slot){unsigned i;for(i=0;i<256;i++)gate(i,(u64)role_fault_stubs+13*16,1);for(i=0;i<32;i++)gate(i,(u64)role_fault_stubs+i*16,1);gate(0xf1,(u64)role_wake_isr,0);}
+ if(!slot){unsigned i;for(i=0;i<256;i++)gate(i,(u64)role_fault_stubs+13*16,1);for(i=0;i<32;i++)gate(i,(u64)role_fault_stubs+i*16,1);gate(0xf1,(u64)role_wake_isr,0);gate(0xff,(u64)role_spurious_isr,0);}
  asm volatile("lidt %0"::"m"(id):"memory");
  /* PAT slot 4 is WC for the fixed GPU BAR1 direct-map aperture. */
  u32 pl,ph;asm volatile("rdmsr":"=a"(pl),"=d"(ph):"c"(0x277));ph=(ph&~255U)|1;asm volatile("wrmsr"::"c"(0x277),"a"(pl),"d"(ph));
