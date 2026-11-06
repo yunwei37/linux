@@ -118,7 +118,15 @@ void role_start_aps(void)
  __atomic_store_n(&roles_released,1,__ATOMIC_RELEASE);
 }
 /* Freestanding byte adapters; no runtime allocation. */
-void *memcpy(void *d,const void *s,size_t n){u8 *p=d;const u8 *q=s;while(n--)*p++=*q++;return d;}
+/* The frozen x86 setup exposes ERMS. Keep the general RAM copy independent
+ * of Linux CPU alternatives, tasks and vector-register ownership. MMIO copies
+ * retain the architecture's separately ordered string-I/O implementation. */
+void *memcpy(void *d,const void *s,size_t n)
+{
+ void *result=d;
+ asm volatile("rep movsb":"+D"(d),"+S"(s),"+c"(n)::"memory");
+ return result;
+}
 void *memset(void *d,int c,size_t n)
 {
  void *result=d;u64 word=(u8)c;word*=0x0101010101010101UL;
