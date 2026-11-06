@@ -241,7 +241,20 @@ static unsigned mmio_pmd_used;
 void *role_mmio_map(u64 p,u64 bytes,bool wc)
 {
  extern u64 role_puds[];if(!bytes||p>=ROLE_DIRECT_LIMIT||bytes>ROLE_DIRECT_LIMIT-p)return NULL;
- u64 last=p+bytes-1;
+ u64 last=p+bytes-1,attributes=wc?0x1000UL:0x18UL;unsigned needed=0;
+ /* Cache modes belong to hardware leaves, not the few requested bytes.
+  * Reject a conflicting existing leaf before changing any mapping; the
+  * Image must place register/FB intervals in separate 2MiB leaves. */
+ for(u64 i=p>>30;i<=(last>>30);i++){
+  if(role_puds[i]&0x80){needed++;continue;}
+  u64 *table=role_va(role_puds[i]&~4095UL);
+  unsigned begin=i==(p>>30)?(p>>21)&511:0,end=i==(last>>30)?(last>>21)&511:511;
+  for(unsigned j=begin;j<=end;j++){
+   u64 old=table[j]&(0x18UL|0x1000UL);
+   if(old&&old!=attributes)return NULL;
+  }
+ }
+ if(needed>128-mmio_pmd_used)return NULL;
  for(u64 i=p>>30;i<=(last>>30);i++){
   if(role_puds[i]&0x80){
    if(mmio_pmd_used==128)return NULL;
@@ -251,7 +264,7 @@ void *role_mmio_map(u64 p,u64 bytes,bool wc)
   }
   u64 *table=role_va(role_puds[i]&~4095UL);
   unsigned begin=i==(p>>30)?(p>>21)&511:0,end=i==(last>>30)?(last>>21)&511:511;
-  for(unsigned j=begin;j<=end;j++)table[j]=(table[j]&~(0x18UL|0x1000UL))|(wc?0x1000UL:0x18UL);
+  for(unsigned j=begin;j<=end;j++)table[j]=(table[j]&~(0x18UL|0x1000UL))|attributes;
  }
  asm volatile("mov %0,%%cr3"::"r"(role_pa(role_pml4)):"memory");return role_va(p);
 }
