@@ -2216,3 +2216,16 @@ config MODELOS_ROLE_BOOT
    Runtime model objects and mailbox role changes; no generic initcalls,
    Linux tasks/allocators or IRQ/timer services.
    One image for CPU-only tests and RM-free GPU serving; EFI stub is boot-only.
+
+config MODELOS_CAPTURE_PRODUCER
+ bool "Offline ModelOS GPU bring-up input producer"
+ depends on X86_64 && PCI && !MODELOS_ROLE_BOOT
+ help
+   Build-machine-only RM recorder and direct resource producer. Reserves
+   explicit RAM before allocation and records inputs for the RM-free image.
+   This conventional Linux capture kernel is never the serving image or a
+   benchmark baseline. No captured whole model program is executed here.
+
+config MODELOS_NVIDIA
+ bool
+ default y if MODELOS_CAPTURE_PRODUCER

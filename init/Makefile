@@ -67,6 +67,8 @@ CFLAGS_version-timestamp.o := -include include/generated/utsversion.h
 
 
 
+obj-$(CONFIG_MODELOS_CAPTURE_PRODUCER) += modelos_capture/
+
 ifeq ($(CONFIG_MODELOS_ROLE_BOOT),y)
 obj-y := main.o modelos_role/
 endif

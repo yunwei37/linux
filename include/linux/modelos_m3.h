@@ -16,10 +16,15 @@ void modelos_m3_cpu_write(void *p,unsigned long long bytes);
 void modelos_m3_fb_map(void *p,unsigned long long bytes);
 void modelos_m3_fb_unmap(void *p);
 void modelos_m3_snapshot_inputs(void);
+void modelos_m3_snapshot(const char *label);
 void modelos_m3_snapshot_new_inputs(void);
 void modelos_m3_mmio_map(void *base);
 void modelos_m3_cpu_scalar(void *p,unsigned long long value,unsigned bytes);
 void modelos_m3_cpu_read_value(void *p,unsigned long long value,unsigned bytes);
 void l2_record(unsigned type,unsigned long long address,const void *data,unsigned length);
+unsigned long l2_mmio_enter(void);
+void l2_mmio_exit(unsigned long flags);
+void l2_map(void *cpu,unsigned long long bytes,unsigned long long physical);
+void l2_unmap(void *cpu);
 void l2_counts_dump(void);
 #endif
