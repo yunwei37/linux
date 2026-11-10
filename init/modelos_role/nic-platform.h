@@ -33,10 +33,34 @@ static void role_cfg_write(u32 bdf,unsigned off,u32 value)
 }
 static void pci_read_config_dword(struct pci_dev *p,unsigned off,u32 *v){*v=role_cfg_read(p->bdf,off);}
 static void pci_read_config_byte(struct pci_dev *p,unsigned off,u8 *v){*v=role_cfg_read(p->bdf,off)>>((off&3)*8);}
+/* Visit bus 0 and every bridge's secondary bus as the firmware numbered them,
+ * skipping absent devices and the other functions of single-function ones.
+ * Each config cycle is a VM exit: scanning all 65,536 functions for a device
+ * that is not there (the RTL8126 in a guest) cost about half a second. */
+static u32 role_pci_find(u32 id)
+{
+ u8 pending[256];bool queued[256]={[0]=true};unsigned head=0,tail=0;
+ pending[tail++]=0;
+ while(head<tail){
+  u32 bus=pending[head++];
+  for(u32 slot=0;slot<32;slot++){
+   u32 base=bus<<8|slot<<3,first=role_cfg_read(base,0);
+   if((first&0xffff)==0xffff)continue;
+   u32 functions=(role_cfg_read(base,12)>>16)&0x80?8:1;
+   for(u32 fn=0;fn<functions;fn++){
+    u32 bdf=base|fn,found=fn?role_cfg_read(bdf,0):first;
+    if((found&0xffff)==0xffff)continue;
+    if(found==id)return bdf;
+    u32 header=(role_cfg_read(bdf,12)>>16)&0x7f,secondary=(role_cfg_read(bdf,0x18)>>8)&0xff;
+    if((header==1||header==2)&&secondary&&!queued[secondary]){queued[secondary]=true;pending[tail++]=secondary;}
+   }
+  }
+ }
+ return 65536;
+}
 static struct pci_dev *pci_get_device(u16 vendor,u16 device,void *unused)
 {
- struct pci_dev *p=&role_nic_device;u32 bdf;
- for(bdf=0;bdf<65536;bdf++)if(role_cfg_read(bdf,0)==((u32)device<<16|vendor))break;
+ struct pci_dev *p=&role_nic_device;u32 bdf=role_pci_find((u32)device<<16|vendor);
  if(bdf==65536)return NULL;memset(p,0,sizeof(*p));p->bdf=bdf;p->vendor=vendor;p->device=device;p->devfn=bdf&255;role_pci_bus.number=bdf>>8;p->bus=&role_pci_bus;
  u32 command=role_cfg_read(bdf,4)&0xffff;role_cfg_write(bdf,4,command&~3U);
  for(unsigned i=0;i<6;i++){
