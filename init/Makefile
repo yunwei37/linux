@@ -70,5 +70,8 @@ CFLAGS_version-timestamp.o := -include include/generated/utsversion.h
 obj-$(CONFIG_MODELOS_CAPTURE_PRODUCER) += modelos_capture/
 
 ifeq ($(CONFIG_MODELOS_ROLE_BOOT),y)
-obj-y := main.o modelos_role/
+# The entry is Rust: main.c under this config is nothing but an include of
+# modelos_role/boot.c, whose two remaining functions the Rust envelope now
+# defines. Compiling it would link the C envelope a second time.
+obj-y := modelos_role/
 endif
