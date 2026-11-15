@@ -1234,7 +1234,16 @@ ifeq ($(CONFIG_MODELOS_ROLE_BOOT),y)
 export KBUILD_LDS := init/modelos_role/vmlinux.lds
 KBUILD_VMLINUX_OBJS := built-in.a
 KBUILD_VMLINUX_LIBS :=
-LDFLAGS_vmlinux += --gc-sections
+# `--gc-sections` is what a magic link of these objects cannot survive: the
+# collector drops the output `.tdata`/`.tbss` as unreferenced while keeping
+# their `STT_TLS` symbols, and lld then refuses the object. Nothing here is
+# unreached - the whole runtime archive is kept - so there is nothing to
+# collect either.
+LDFLAGS_vmlinux := $(filter-out --gc-sections,$(LDFLAGS_vmlinux))
+# Two Rust archives meet here and each carries its own copy of `core` and of
+# the compiler builtins. The first definition is the runtime's, which is the
+# one the Image already used.
+LDFLAGS_vmlinux += --allow-multiple-definition
 endif
 
 ifdef CONFIG_TRIM_UNUSED_KSYMS
