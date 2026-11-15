@@ -27,8 +27,6 @@ static u32 apic_read(unsigned reg){return *(volatile u32 *)role_va(0xfee00000+re
 static void apic_write(unsigned reg,u32 value){*(volatile u32 *)role_va(0xfee00000+reg)=value;}
 void role_puts(const char *s){while(*s){while(!(role_in(0x3fd)&32))role_pause();role_out(0x3f8,*s++);}}
 void role_hex(u64 n){char out[19]="0x0000000000000000";int i;for(i=17;i>=2;i--){out[i]="0123456789abcdef"[n&15];n>>=4;}role_puts(out);}
-static unsigned fault_print;
-void __attribute__((noreturn)) role_fault(u64 *frame){while(__atomic_exchange_n(&fault_print,1,__ATOMIC_ACQUIRE))role_pause();role_puts("ROLE_EXCEPTION vector/error/rip/cr2=");role_hex(frame[0]);role_hex(frame[1]);role_hex(frame[2]);u64 cr2;asm volatile("mov %%cr2,%0":"=r"(cr2));role_hex(cr2);role_puts(" halted\n");__atomic_store_n(&fault_print,0,__ATOMIC_RELEASE);role_halt();}
 static void gate(unsigned n,u64 target,unsigned ist){idt[n]=(struct gate){target,8,ist,0x8e,target>>16,target>>32,0};}
 void role_core_init(unsigned slot)
 {

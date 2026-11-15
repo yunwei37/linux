@@ -5,7 +5,12 @@
 #include <linux/efi.h>
 #include <linux/string.h>
 static struct boot_params role_boot_params;
-static u64 ram_bytes;
+/* The entry is Rust; the zero page's layout is known here. Copying it is the
+   one thing the entry cannot do from the other side. */
+void role_boot_params_store(void *physical)
+{
+ role_boot_params=*(struct boot_params *)role_va((u64)physical);
+}
 u64 role_rsdp_address(void)
 {
  if(role_boot_params.acpi_rsdp_addr)return role_boot_params.acpi_rsdp_addr;
@@ -49,18 +54,4 @@ void role_memory_init(void)
   if(mos_role_high_ram_probe(address))role_runtime_fault();
   role_puts("ROLE_HIGH_RAM_OBJECT_PASS address=");role_hex(address);role_puts(" bytes=137 freed=1\n");
  }
-}
-void __attribute__((noreturn)) start_kernel(void *physical_boot_params)
-{
- unsigned i;
- struct boot_params *bp=role_va((u64)physical_boot_params);
- role_boot_params=*bp;
- role_core_init(0);
- role_puts("ROLE_BOOT direct entry; Linux-source boot envelope only; no rest_init\n");
- for(i=0;i<role_boot_params.e820_entries;i++)
-  if(role_boot_params.e820_table[i].type==1)ram_bytes+=role_boot_params.e820_table[i].size;
- role_puts("ROLE_RAM bytes=");role_hex(ram_bytes);role_puts("\n");
- role_start_aps();
- role_puts("ROLE_READY fixed cores=");role_hex(role_cpus);role_puts("\n");
- role_service();
 }

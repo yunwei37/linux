@@ -13,8 +13,10 @@ static inline void role_out(u16 port,u8 v) { asm volatile("outb %0,%1"::"a"(v),"
 static inline u64 role_tsc(void) { u32 l,h; asm volatile("rdtsc":"=a"(l),"=d"(h)); return ((u64)h<<32)|l; }
 static inline void role_pause(void) { asm volatile("pause"); }
 static inline __attribute__((noreturn)) void role_halt(void) { asm volatile("cli"); for(;;)asm volatile("hlt"); }
+/* Defined in the Rust runtime (os/platform/entry.rs); called from head.S. */
 void start_kernel(void *) __attribute__((noreturn));
 void role_fault(u64 *) __attribute__((noreturn));
+void role_boot_params_store(void *);
 void role_ap_entry(unsigned) __attribute__((noreturn));
 void *role_mmio_map(u64,u64,bool);
 int role_nic_arm(void);
