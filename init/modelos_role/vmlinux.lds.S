@@ -19,16 +19,25 @@ SECTIONS {
  __start_rodata = .;
  .rodata : AT(ADDR(.rodata)-0xffffffff80000000) { *(.rodata .rodata.*) } :text
  .data : AT(ADDR(.data)-0xffffffff80000000) { *(.data .data.*) } :text
- /* The text component is built over `std`, whose thread-locals are real
-  * sections. One core runs one thread, so the initial values in `.tdata` are
-  * the whole of TLS state and `.tbss` is the zeroed tail; `head.S` points
-  * `FS` at them. */
- .tdata : {
+ /* Place non-TLS orphans explicitly outside PT_TLS. Otherwise lld includes
+  * their span in p_memsz and local-exec offsets do not match the template. */
+ .init_array : AT(ADDR(.init_array)-0xffffffff80000000) {
+  KEEP(*(.init_array .init_array.*))
+ } :text
+ .got : AT(ADDR(.got)-0xffffffff80000000) { *(.got .got.*) } :text
+ /* The immutable ELF TLS template is copied into charged RAM by the serving
+  * owner. FS names a Variant II TCB after that private copy, never this data. */
+ . = ALIGN(16);
+ .tdata : AT(ADDR(.tdata)-0xffffffff80000000) {
   __tdata_start = .; KEEP(*(.tdata .tdata.*)) __tdata_end = .;
  } :text :tls
- .tbss : {
-  __tbss_start = .; KEEP(*(.tbss .tbss.*)) KEEP(*(.tls_common)) __tbss_end = .;
+ .tbss : AT(ADDR(.tbss)-0xffffffff80000000) {
+  __tbss_start = .; KEEP(*(.tbss .tbss.*)) KEEP(*(.tls_common)) . = ALIGN(16); __tbss_end = .;
  } :text :tls
+ __tls_alignment = ABSOLUTE(MAX(16, MAX(ALIGNOF(.tdata), ALIGNOF(.tbss))));
+ __tls_end = __tbss_end;
+ /* TLS NOBITS does not advance the normal location counter. */
+ . = __tls_end;
  . = ALIGN(4096);
  __bss_start = .;
  .bss (NOLOAD) : AT(ADDR(.bss)-0xffffffff80000000) { *(.bss .bss.*) *(COMMON) } :text
